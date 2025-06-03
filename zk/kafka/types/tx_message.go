@@ -36,26 +36,36 @@ type TransactionMessage struct {
 	BlobVersionedHashes []string `json:"blobVersionedHashes"`
 }
 
-func ToKafkaTransactionMessage(tx types1.Transaction, _ *types1.Receipt, blockNumber uint64) (TransactionMessage, error) {
+func ToKafkaTransactionMessage(tx types1.Transaction, receipt *types1.Receipt, blockNumber uint64) (txMsg TransactionMessage, err error) {
+	// Parse tx
 	switch tx.Type() {
 	case types1.LegacyTxType:
 		if _, ok := tx.(*types1.LegacyTx); !ok {
 			return TransactionMessage{}, fmt.Errorf("incorrect type, failed to encode legacy tx")
 		}
 
-		return fromLegacyTxMessage(tx, blockNumber)
+		txMsg, err = fromLegacyTxMessage(tx, blockNumber)
+		if err != nil {
+			return TransactionMessage{}, fmt.Errorf("parse legacy tx error: %w", err)
+		}
 	case types1.AccessListTxType:
 		if _, ok := tx.(*types1.AccessListTx); !ok {
 			return TransactionMessage{}, fmt.Errorf("incorrect type, failed to encode access list tx")
 		}
 
-		return fromAccessListTxMessage(tx, blockNumber)
+		txMsg, err = fromAccessListTxMessage(tx, blockNumber)
+		if err != nil {
+			return TransactionMessage{}, fmt.Errorf("parse accesslist tx error: %w", err)
+		}
 	case types1.DynamicFeeTxType:
 		if _, ok := tx.(*types1.DynamicFeeTransaction); !ok {
 			return TransactionMessage{}, fmt.Errorf("incorrect type, failed to encode dynamic fee tx")
 		}
 
-		return fromDynamicFeeTxMessage(tx, blockNumber)
+		txMsg, err = fromDynamicFeeTxMessage(tx, blockNumber)
+		if err != nil {
+			return TransactionMessage{}, fmt.Errorf("parse dynamic fee tx error: %w", err)
+		}
 	case types1.BlobTxType:
 		switch tx.(type) {
 		case *types1.BlobTx:
@@ -66,10 +76,21 @@ func ToKafkaTransactionMessage(tx types1.Transaction, _ *types1.Receipt, blockNu
 			return TransactionMessage{}, fmt.Errorf("incorrect type, failed to encode blob tx")
 		}
 
-		return fromBlobTxMessage(tx, blockNumber)
+		txMsg, err = fromBlobTxMessage(tx, blockNumber)
+		if err != nil {
+			return TransactionMessage{}, fmt.Errorf("parse blob tx error: %w", err)
+		}
 	default:
 		return TransactionMessage{}, fmt.Errorf("unsupported transaction type: %d", tx.Type())
 	}
+
+	// Parse receipt
+	err = txMsg.fromReceipt(receipt)
+	if err != nil {
+		return TransactionMessage{}, fmt.Errorf("parse receipt error: %w", err)
+	}
+
+	return txMsg, nil
 }
 
 func (msg TransactionMessage) GetTransaction() (types1.Transaction, uint64, error) {

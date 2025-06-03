@@ -50,7 +50,7 @@ func TestLegacyTx(t *testing.T) {
 	emptyTx.SetSender(testFromAddr)
 
 	blockNumber := uint64(100)
-	emptyMsg, err := ToKafkaTransactionMessage(emptyTx, blockNumber)
+	emptyMsg, err := ToKafkaTransactionMessage(emptyTx, nil, blockNumber)
 	assert.NilError(t, err)
 	assert.Equal(t, emptyMsg.BlockNumber, blockNumber)
 	assert.Equal(t, int(emptyMsg.Type), types1.LegacyTxType)
@@ -82,7 +82,7 @@ func TestLegacyTx(t *testing.T) {
 	)
 	rightvrsTx.SetSender(testFromAddr)
 
-	msg, err := ToKafkaTransactionMessage(rightvrsTx, blockNumber)
+	msg, err := ToKafkaTransactionMessage(rightvrsTx, nil, blockNumber)
 	assert.NilError(t, err)
 	assert.Equal(t, msg.BlockNumber, blockNumber)
 	assert.Equal(t, int(msg.Type), types1.LegacyTxType)
@@ -173,7 +173,7 @@ func TestAccessListTx(t *testing.T) {
 	signedAccessListTx.SetSender(testFromAddr)
 
 	blockNumber := uint64(100)
-	msg, err := ToKafkaTransactionMessage(signedAccessListTx, blockNumber)
+	msg, err := ToKafkaTransactionMessage(signedAccessListTx, nil, blockNumber)
 	assert.NilError(t, err)
 	assert.Equal(t, msg.BlockNumber, blockNumber)
 	assert.Equal(t, int(msg.Type), types1.AccessListTxType)
@@ -244,7 +244,7 @@ func TestDynamicFeeTx(t *testing.T) {
 	signedDynFeeTx.SetSender(testFromAddr)
 
 	blockNumber := uint64(100)
-	msg, err := ToKafkaTransactionMessage(signedDynFeeTx, blockNumber)
+	msg, err := ToKafkaTransactionMessage(signedDynFeeTx, nil, blockNumber)
 	assert.NilError(t, err)
 	assert.Equal(t, msg.BlockNumber, blockNumber)
 	assert.Equal(t, int(msg.Type), types1.DynamicFeeTxType)
@@ -313,7 +313,7 @@ func TestFromBlobTx(t *testing.T) {
 	blobTx.SetSender(testFromAddr)
 
 	blockNumber := uint64(100)
-	msg, err := ToKafkaTransactionMessage(blobTx, blockNumber)
+	msg, err := ToKafkaTransactionMessage(blobTx, nil, blockNumber)
 	assert.NilError(t, err)
 	assert.Equal(t, msg.BlockNumber, blockNumber)
 	assert.Equal(t, int(msg.Type), types1.BlobTxType)
