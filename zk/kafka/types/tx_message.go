@@ -45,21 +45,18 @@ func ToKafkaTransactionMessage(tx types1.Transaction, blockNumber uint64) (Trans
 		}
 
 		return fromLegacyTxMessage(tx, blockNumber)
-
 	case types1.AccessListTxType:
 		if _, ok := tx.(*types1.AccessListTx); !ok {
 			return TransactionMessage{}, fmt.Errorf("incorrect type, failed to encode access list tx")
 		}
 
 		return fromAccessListTxMessage(tx, blockNumber)
-
 	case types1.DynamicFeeTxType:
 		if _, ok := tx.(*types1.DynamicFeeTransaction); !ok {
 			return TransactionMessage{}, fmt.Errorf("incorrect type, failed to encode dynamic fee tx")
 		}
 
 		return fromDynamicFeeTxMessage(tx, blockNumber)
-
 	case types1.BlobTxType:
 		switch tx.(type) {
 		case *types1.BlobTx:
@@ -71,12 +68,54 @@ func ToKafkaTransactionMessage(tx types1.Transaction, blockNumber uint64) (Trans
 		}
 
 		return fromBlobTxMessage(tx, blockNumber)
-
 	default:
 		return TransactionMessage{}, fmt.Errorf("unsupported transaction type: %d", tx.Type())
 	}
 }
 
-func (msg TransactionMessage) GetTransaction() (types1.Transaction, error) {
-	return nil, nil
+func (msg TransactionMessage) GetTransaction() (types1.Transaction, uint64, error) {
+	blockNumber := msg.BlockNumber
+
+	// Get tx
+	switch msg.Type {
+	case types1.LegacyTxType:
+		tx, err := msg.toLegacyTx()
+		if err != nil {
+			return nil, blockNumber, err
+		}
+
+		return &tx, blockNumber, nil
+	case types1.AccessListTxType:
+		tx, err := msg.toAccessListTx()
+		if err != nil {
+			return nil, blockNumber, err
+		}
+
+		return &tx, blockNumber, nil
+	case types1.DynamicFeeTxType:
+		tx, err := msg.toDynamicFeeTx()
+		if err != nil {
+			return nil, blockNumber, err
+		}
+
+		return &tx, blockNumber, nil
+	case types1.BlobTxType:
+		if msg.BlobTxAreWrappedWithBlobs {
+			tx, err := msg.toBlobTxWrapper()
+			if err != nil {
+				return nil, blockNumber, err
+			}
+
+			return &tx, blockNumber, nil
+		} else {
+			tx, err := msg.toBlobTx()
+			if err != nil {
+				return nil, blockNumber, err
+			}
+
+			return &tx, blockNumber, nil
+		}
+	default:
+		return nil, blockNumber, fmt.Errorf("unsupported transaction type: %d", msg.Type)
+	}
 }
