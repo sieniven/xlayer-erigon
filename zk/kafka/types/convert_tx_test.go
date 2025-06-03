@@ -49,8 +49,10 @@ func TestLegacyTx(t *testing.T) {
 	)
 	emptyTx.SetSender(testFromAddr)
 
+	emptyTxReceipt := types1.NewReceipt(false, 1000)
+
 	blockNumber := uint64(100)
-	emptyMsg, err := ToKafkaTransactionMessage(emptyTx, nil, blockNumber)
+	emptyMsg, err := ToKafkaTransactionMessage(emptyTx, emptyTxReceipt, blockNumber)
 	assert.NilError(t, err)
 	assert.Equal(t, emptyMsg.BlockNumber, blockNumber)
 	assert.Equal(t, int(emptyMsg.Type), types1.LegacyTxType)
@@ -83,7 +85,19 @@ func TestLegacyTx(t *testing.T) {
 	)
 	rightvrsTx.SetSender(testFromAddr)
 
-	msg, err := ToKafkaTransactionMessage(rightvrsTx, nil, blockNumber)
+	rightvrsTxReceipt := &types1.Receipt{
+		PostState:         libcommon.Hash{2}.Bytes(),
+		CumulativeGasUsed: 3,
+		Logs: []*types1.Log{
+			{Address: libcommon.BytesToAddress([]byte{0x22})},
+			{Address: libcommon.BytesToAddress([]byte{0x02, 0x22})},
+		},
+		TxHash:          rightvrsTx.Hash(),
+		ContractAddress: libcommon.BytesToAddress([]byte{0x02, 0x22, 0x22}),
+		GasUsed:         2,
+	}
+
+	msg, err := ToKafkaTransactionMessage(rightvrsTx, rightvrsTxReceipt, blockNumber)
 	assert.NilError(t, err)
 	assert.Equal(t, msg.BlockNumber, blockNumber)
 	assert.Equal(t, int(msg.Type), types1.LegacyTxType)
@@ -188,7 +202,7 @@ func TestAccessListTx(t *testing.T) {
 	}
 
 	blockNumber := uint64(100)
-	msg, err := ToKafkaTransactionMessage(signedAccessListTx, nil, blockNumber)
+	msg, err := ToKafkaTransactionMessage(signedAccessListTx, signedAccessListTxReceipt, blockNumber)
 	assert.NilError(t, err)
 	assert.Equal(t, msg.BlockNumber, blockNumber)
 	assert.Equal(t, int(msg.Type), types1.AccessListTxType)
@@ -273,7 +287,7 @@ func TestDynamicFeeTx(t *testing.T) {
 	}
 
 	blockNumber := uint64(100)
-	msg, err := ToKafkaTransactionMessage(signedDynFeeTx, nil, blockNumber)
+	msg, err := ToKafkaTransactionMessage(signedDynFeeTx, signedDynFeeTxReceipt, blockNumber)
 	assert.NilError(t, err)
 	assert.Equal(t, msg.BlockNumber, blockNumber)
 	assert.Equal(t, int(msg.Type), types1.DynamicFeeTxType)
@@ -354,7 +368,7 @@ func TestFromBlobTx(t *testing.T) {
 	}
 
 	blockNumber := uint64(100)
-	msg, err := ToKafkaTransactionMessage(blobTx, nil, blockNumber)
+	msg, err := ToKafkaTransactionMessage(blobTx, blobTxReceipt, blockNumber)
 	assert.NilError(t, err)
 	assert.Equal(t, msg.BlockNumber, blockNumber)
 	assert.Equal(t, int(msg.Type), types1.BlobTxType)
