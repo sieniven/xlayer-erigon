@@ -36,7 +36,7 @@ type TransactionMessage struct {
 	BlobVersionedHashes []string `json:"blobVersionedHashes"`
 }
 
-func ToKafkaTransactionMessage(tx types1.Transaction, blockNumber uint64) (TransactionMessage, error) {
+func ToKafkaTransactionMessage(tx types1.Transaction, _ *types1.Receipt, blockNumber uint64) (TransactionMessage, error) {
 	switch tx.Type() {
 	case types1.LegacyTxType:
 		if _, ok := tx.(*types1.LegacyTx); !ok {
