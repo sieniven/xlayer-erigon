@@ -65,15 +65,20 @@ cast call 0x2d42E2899662EFf08b13eeb65b154b904C7a1c8a "rollupTypeMap(uint32)(addr
 echo "Creating ./tools/updateRollup/updateRollup.json..."
 cat > ./tools/updateRollup/updateRollup.json << EOF
 {
-    "rollupAddress": "0xeb173087729c88a47568AF87b17C653039377BA6",
-    "newRollupTypeID": $rollupTypeCount,
-    "upgradeData": "0x",
+    "type": "EOA",
     "polygonRollupManagerAddress": "0x2d42E2899662EFf08b13eeb65b154b904C7a1c8a",
-    "timelockDelay": 100,
+    "timelockDelay": 0,
     "deployerPvtKey": "",
     "maxFeePerGas": "",
     "maxPriorityFeePerGas": "",
-    "multiplierGas": ""
+    "multiplierGas": "",
+    "rollups": [
+        {
+            "rollupAddress": "0xeb173087729c88a47568AF87b17C653039377BA6",
+            "newRollupTypeID": $rollupTypeCount,
+            "upgradeData": "0x"
+        }
+    ]
 }
 EOF
 
