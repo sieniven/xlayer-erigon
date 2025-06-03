@@ -33,6 +33,7 @@ cast call 0x2d42E2899662EFf08b13eeb65b154b904C7a1c8a "rollupTypeMap(uint32)(addr
 echo "Creating ./tools/addRollupType/add_rollup_type.json..."
 cat > ./tools/addRollupType/add_rollup_type.json << EOF
 {
+    "type": "EOA",
     "consensusContract": "PolygonPessimisticConsensus",
     "polygonRollupManagerAddress": "0x2d42E2899662EFf08b13eeb65b154b904C7a1c8a",
     "polygonZkEVMBridgeAddress": "0x3a277Fa4E78cc1266F32E26c467F99A8eAEfF7c3",
