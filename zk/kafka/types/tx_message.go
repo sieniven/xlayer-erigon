@@ -1,0 +1,82 @@
+package types
+
+import (
+	"fmt"
+
+	types1 "github.com/ledgerwatch/erigon/core/types"
+)
+
+// TransactionMessage represents the structure of the transaction message to be sent to Kafka
+type TransactionMessage struct {
+	// Sequenced block number
+	BlockNumber uint64 `json:"blockNumber"`
+
+	// Common tx fields
+	Type    uint8  `json:"type"`
+	Hash    string `json:"hash"`
+	From    string `json:"from"`
+	ChainID uint64 `json:"chainId"`
+	Nonce   uint64 `json:"nonce"`
+	Gas     uint64 `json:"gas"`
+	To      string `json:"to"`
+	Value   string `json:"value"`
+	Data    string `json:"data"`
+	V       string `json:"v"`
+	R       string `json:"r"`
+	S       string `json:"s"`
+
+	// For legacy txs
+	GasPrice string `json:"gasPrice"`
+	// For EIP-1559 and EIP-2930 txs
+	AccessList []AccessTupleMessage `json:"accessList"`
+	Tip        string               `json:"tip"`
+	FeeCap     string               `json:"feeCap"`
+	// For blob txs
+	MaxFeePerBlobGas          string   `json:"maxFeePerBlobGas"`
+	BlobVersionedHashes       []string `json:"blobVersionedHashes"`
+	BlobTxAreWrappedWithBlobs bool     `json:"blobTxnsAreWrappedWithBlobs"`
+}
+
+func ToKafkaTransactionMessage(tx types1.Transaction, blockNumber uint64) (TransactionMessage, error) {
+	switch tx.Type() {
+	case types1.LegacyTxType:
+		if _, ok := tx.(*types1.LegacyTx); !ok {
+			return TransactionMessage{}, fmt.Errorf("incorrect type, failed to encode legacy tx")
+		}
+
+		return fromLegacyTxMessage(tx, blockNumber)
+
+	case types1.AccessListTxType:
+		if _, ok := tx.(*types1.AccessListTx); !ok {
+			return TransactionMessage{}, fmt.Errorf("incorrect type, failed to encode access list tx")
+		}
+
+		return fromAccessListTxMessage(tx, blockNumber)
+
+	case types1.DynamicFeeTxType:
+		if _, ok := tx.(*types1.DynamicFeeTransaction); !ok {
+			return TransactionMessage{}, fmt.Errorf("incorrect type, failed to encode dynamic fee tx")
+		}
+
+		return fromDynamicFeeTxMessage(tx, blockNumber)
+
+	case types1.BlobTxType:
+		switch tx.(type) {
+		case *types1.BlobTx:
+			// continue
+		case *types1.BlobTxWrapper:
+			// continue
+		default:
+			return TransactionMessage{}, fmt.Errorf("incorrect type, failed to encode blob tx")
+		}
+
+		return fromBlobTxMessage(tx, blockNumber)
+
+	default:
+		return TransactionMessage{}, fmt.Errorf("unsupported transaction type: %d", tx.Type())
+	}
+}
+
+func (msg TransactionMessage) GetTransaction() (types1.Transaction, error) {
+	return nil, nil
+}

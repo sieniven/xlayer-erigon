@@ -664,6 +664,8 @@ BatchLoop:
 					metrics.GetLogStatistics().CumulativeValue(metrics.BatchGas, int64(execResult.UsedGas))
 					batchState.onAddedTransaction(transaction, receipt, execResult, effectiveGas)
 					minedTxHashes = append(minedTxHashes, txHash)
+
+					// Send kafka transaction message
 				}
 
 				// We will only update the processed index in resequence job if there isn't overflow
