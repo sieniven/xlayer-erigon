@@ -69,3 +69,9 @@ type ApolloClientConfig struct {
 	AppID         string
 	NamespaceName string
 }
+
+type KafkaConfig struct {
+	BootstrapServers []string
+	Topic            string
+	ClientID         string
+}
