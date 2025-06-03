@@ -1,10 +1,12 @@
 package kafka
 
 import (
+	"encoding/json"
 	"fmt"
 
 	"github.com/IBM/sarama"
 	"github.com/ledgerwatch/erigon/eth/ethconfig"
+	kafkaTypes "github.com/ledgerwatch/erigon/zk/kafka/types"
 )
 
 type KafkaConsumer struct {
@@ -29,8 +31,8 @@ func NewKafkaConsumer(config ethconfig.KafkaConfig) (*KafkaConsumer, error) {
 	}, nil
 }
 
-// ConsumeTransactions starts consuming transaction messages from the specified topic
-func (client *KafkaConsumer) ConsumeTransactions(handler func(message []byte) error) error {
+// ConsumeKafkaTransactions starts consuming transaction messages from the specified topic
+func (client *KafkaConsumer) ConsumeKafkaTransactions(txMsgsChan chan kafkaTypes.TransactionMessage) error {
 	// Create a partition consumer for the topic
 	partitionConsumer, err := client.consumer.ConsumePartition(client.config.Topic, 0, sarama.OffsetNewest)
 	if err != nil {
@@ -42,11 +44,13 @@ func (client *KafkaConsumer) ConsumeTransactions(handler func(message []byte) er
 	for {
 		select {
 		case msg := <-partitionConsumer.Messages():
-			if err := handler(msg.Value); err != nil {
-				return fmt.Errorf("error handling message: %v", err)
+			var txMsg kafkaTypes.TransactionMessage
+			if err := json.Unmarshal(msg.Value, &txMsg); err != nil {
+				return fmt.Errorf("ConsumeKafkaTransactions error: error unmarshaling transaction message, %v", err)
 			}
+			txMsgsChan <- txMsg
 		case err := <-partitionConsumer.Errors():
-			return fmt.Errorf("error consuming message: %v", err)
+			return fmt.Errorf("ConsumeKafkaTransactions error: %v", err)
 		}
 	}
 }
