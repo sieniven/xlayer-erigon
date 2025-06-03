@@ -21,7 +21,7 @@ sed_inplace() {
 
 cd ./xlayer-contracts
 
-CONTRACT_JSON="./artifacts/contracts/verifiers/SP1Verifier.sol/SP1Verifier.json"
+CONTRACT_JSON="./artifacts/contracts/verifiers/v4.0.0-rc.3/SP1VerifierPlonk.sol/SP1VerifierPlonk.json"
 
 BYTECODE=$(jq -r '.bytecode' "$CONTRACT_JSON")
 sp1_contract_address=$(cast send --private-key $DEPLOYER_PRIVATE_KEY --create  "$BYTECODE" | awk '/contractAddress/ {print $2}')
