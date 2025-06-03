@@ -34,28 +34,31 @@ type TransactionMessage struct {
 	// For blob txs
 	MaxFeePerBlobGas    string   `json:"maxFeePerBlobGas"`
 	BlobVersionedHashes []string `json:"blobVersionedHashes"`
+
+	// Receipt data
+	Receipt *types1.Receipt `json:"rlpReceipt"`
 }
 
-func ToKafkaTransactionMessage(tx types1.Transaction, _ *types1.Receipt, blockNumber uint64) (TransactionMessage, error) {
+func ToKafkaTransactionMessage(tx types1.Transaction, receipt *types1.Receipt, blockNumber uint64) (TransactionMessage, error) {
 	switch tx.Type() {
 	case types1.LegacyTxType:
 		if _, ok := tx.(*types1.LegacyTx); !ok {
 			return TransactionMessage{}, fmt.Errorf("incorrect type, failed to encode legacy tx")
 		}
 
-		return fromLegacyTxMessage(tx, blockNumber)
+		return fromLegacyTxMessage(tx, receipt, blockNumber)
 	case types1.AccessListTxType:
 		if _, ok := tx.(*types1.AccessListTx); !ok {
 			return TransactionMessage{}, fmt.Errorf("incorrect type, failed to encode access list tx")
 		}
 
-		return fromAccessListTxMessage(tx, blockNumber)
+		return fromAccessListTxMessage(tx, receipt, blockNumber)
 	case types1.DynamicFeeTxType:
 		if _, ok := tx.(*types1.DynamicFeeTransaction); !ok {
 			return TransactionMessage{}, fmt.Errorf("incorrect type, failed to encode dynamic fee tx")
 		}
 
-		return fromDynamicFeeTxMessage(tx, blockNumber)
+		return fromDynamicFeeTxMessage(tx, receipt, blockNumber)
 	case types1.BlobTxType:
 		switch tx.(type) {
 		case *types1.BlobTx:
@@ -66,7 +69,7 @@ func ToKafkaTransactionMessage(tx types1.Transaction, _ *types1.Receipt, blockNu
 			return TransactionMessage{}, fmt.Errorf("incorrect type, failed to encode blob tx")
 		}
 
-		return fromBlobTxMessage(tx, blockNumber)
+		return fromBlobTxMessage(tx, receipt, blockNumber)
 	default:
 		return TransactionMessage{}, fmt.Errorf("unsupported transaction type: %d", tx.Type())
 	}

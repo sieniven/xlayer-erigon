@@ -11,7 +11,7 @@ import (
 	types1 "github.com/ledgerwatch/erigon/core/types"
 )
 
-func fromCommonTxMessage(tx types1.Transaction, blockNumber uint64) (TransactionMessage, error) {
+func fromCommonTxMessage(tx types1.Transaction, receipt *types1.Receipt, blockNumber uint64) (TransactionMessage, error) {
 	msg := TransactionMessage{
 		BlockNumber: blockNumber,
 		Type:        tx.Type(),
@@ -35,11 +35,13 @@ func fromCommonTxMessage(tx types1.Transaction, blockNumber uint64) (Transaction
 	msg.R = r.Hex()
 	msg.S = s.Hex()
 
+	msg.Receipt = receipt
+
 	return msg, nil
 }
 
-func fromLegacyTxMessage(tx types1.Transaction, blockNumber uint64) (TransactionMessage, error) {
-	msg, err := fromCommonTxMessage(tx, blockNumber)
+func fromLegacyTxMessage(tx types1.Transaction, receipt *types1.Receipt, blockNumber uint64) (TransactionMessage, error) {
+	msg, err := fromCommonTxMessage(tx, receipt, blockNumber)
 	if err != nil {
 		return TransactionMessage{}, err
 	}
@@ -49,8 +51,8 @@ func fromLegacyTxMessage(tx types1.Transaction, blockNumber uint64) (Transaction
 	return msg, nil
 }
 
-func fromAccessListTxMessage(tx types1.Transaction, blockNumber uint64) (TransactionMessage, error) {
-	msg, err := fromLegacyTxMessage(tx, blockNumber)
+func fromAccessListTxMessage(tx types1.Transaction, receipt *types1.Receipt, blockNumber uint64) (TransactionMessage, error) {
+	msg, err := fromLegacyTxMessage(tx, receipt, blockNumber)
 	if err != nil {
 		return TransactionMessage{}, err
 	}
@@ -64,8 +66,8 @@ func fromAccessListTxMessage(tx types1.Transaction, blockNumber uint64) (Transac
 	return msg, nil
 }
 
-func fromDynamicFeeTxMessage(tx types1.Transaction, blockNumber uint64) (TransactionMessage, error) {
-	msg, err := fromCommonTxMessage(tx, blockNumber)
+func fromDynamicFeeTxMessage(tx types1.Transaction, receipt *types1.Receipt, blockNumber uint64) (TransactionMessage, error) {
+	msg, err := fromCommonTxMessage(tx, receipt, blockNumber)
 	if err != nil {
 		return TransactionMessage{}, err
 	}
@@ -82,9 +84,9 @@ func fromDynamicFeeTxMessage(tx types1.Transaction, blockNumber uint64) (Transac
 	return msg, nil
 }
 
-func fromBlobTxMessage(tx types1.Transaction, blockNumber uint64) (TransactionMessage, error) {
+func fromBlobTxMessage(tx types1.Transaction, receipt *types1.Receipt, blockNumber uint64) (TransactionMessage, error) {
 	// Check if it's a BlobTx or BlobTxWrapper
-	msg, err := fromDynamicFeeTxMessage(tx, blockNumber)
+	msg, err := fromDynamicFeeTxMessage(tx, receipt, blockNumber)
 	if err != nil {
 		return TransactionMessage{}, err
 	}
