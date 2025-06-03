@@ -91,14 +91,12 @@ func fromBlobTxMessage(tx types1.Transaction, blockNumber uint64) (TransactionMe
 
 	switch t := tx.(type) {
 	case *types1.BlobTx:
-		msg.BlobTxAreWrappedWithBlobs = false
 		msg.MaxFeePerBlobGas = t.MaxFeePerBlobGas.String()
 		msg.BlobVersionedHashes = make([]string, 0, len(t.BlobVersionedHashes))
 		for _, hash := range t.BlobVersionedHashes {
 			msg.BlobVersionedHashes = append(msg.BlobVersionedHashes, hash.String())
 		}
 	case *types1.BlobTxWrapper:
-		msg.BlobTxAreWrappedWithBlobs = true
 		msg.MaxFeePerBlobGas = t.Tx.MaxFeePerBlobGas.String()
 		msg.BlobVersionedHashes = make([]string, 0, len(t.Tx.BlobVersionedHashes))
 		for _, hash := range t.Tx.BlobVersionedHashes {
@@ -129,8 +127,9 @@ func (msg TransactionMessage) toCommonTx() (types1.CommonTx, error) {
 	if !ok {
 		return types1.CommonTx{}, fmt.Errorf("convert to common tx error, invalid value: %s", msg.Value)
 	}
-	tx.Value, ok = uint256.FromBig(value)
-	if !ok {
+	overflow := false
+	tx.Value, overflow = uint256.FromBig(value)
+	if overflow {
 		return types1.CommonTx{}, fmt.Errorf("convert to common tx error, value overflow: %s", msg.Value)
 	}
 
@@ -174,8 +173,9 @@ func (msg TransactionMessage) toLegacyTx() (types1.LegacyTx, error) {
 	if !ok {
 		return types1.LegacyTx{}, fmt.Errorf("convert to legacy tx error, invalid gas price : %s", msg.GasPrice)
 	}
-	tx.GasPrice, ok = uint256.FromBig(gasPrice)
-	if !ok {
+	overflow := false
+	tx.GasPrice, overflow = uint256.FromBig(gasPrice)
+	if overflow {
 		return types1.LegacyTx{}, fmt.Errorf("convert to legacy tx error, gasprice overflow: %s", msg.Value)
 	}
 
@@ -191,6 +191,7 @@ func (msg TransactionMessage) toAccessListTx() (types1.AccessListTx, error) {
 
 	tx := types1.AccessListTx{
 		LegacyTx: legacyTx,
+		ChainID:  new(uint256.Int).SetUint64(msg.ChainID),
 	}
 
 	// Set access list
@@ -225,8 +226,9 @@ func (msg TransactionMessage) toDynamicFeeTx() (types1.DynamicFeeTransaction, er
 	if !ok {
 		return types1.DynamicFeeTransaction{}, fmt.Errorf("convert to dynamic fee tx error, invalid gas price : %s", msg.GasPrice)
 	}
-	tx.Tip, ok = uint256.FromBig(tip)
-	if !ok {
+	overflow := false
+	tx.Tip, overflow = uint256.FromBig(tip)
+	if overflow {
 		return types1.DynamicFeeTransaction{}, fmt.Errorf("convert to dynamic fee tx error, tip overflow: %s", msg.Tip)
 	}
 
@@ -235,8 +237,9 @@ func (msg TransactionMessage) toDynamicFeeTx() (types1.DynamicFeeTransaction, er
 	if !ok {
 		return types1.DynamicFeeTransaction{}, fmt.Errorf("convert to dynamic fee tx error, invalid gas price : %s", msg.GasPrice)
 	}
-	tx.FeeCap, ok = uint256.FromBig(feeCap)
-	if !ok {
+	overflow = false
+	tx.FeeCap, overflow = uint256.FromBig(feeCap)
+	if overflow {
 		return types1.DynamicFeeTransaction{}, fmt.Errorf("convert to dynamic fee tx error, fee cap overflow: %s", msg.FeeCap)
 	}
 
@@ -259,8 +262,9 @@ func (msg TransactionMessage) toBlobTx() (types1.BlobTx, error) {
 	if !ok {
 		return types1.BlobTx{}, fmt.Errorf("convert to blob tx error, invalid max fee per blob gas : %s", msg.MaxFeePerBlobGas)
 	}
-	tx.MaxFeePerBlobGas, ok = uint256.FromBig(maxFeePerBlobGas)
-	if !ok {
+	overflow := false
+	tx.MaxFeePerBlobGas, overflow = uint256.FromBig(maxFeePerBlobGas)
+	if overflow {
 		return types1.BlobTx{}, fmt.Errorf("convert to blob tx error, max fee per blob gas overflow: %s", msg.MaxFeePerBlobGas)
 	}
 
@@ -271,8 +275,4 @@ func (msg TransactionMessage) toBlobTx() (types1.BlobTx, error) {
 	}
 
 	return tx, nil
-}
-
-func (msg TransactionMessage) toBlobTxWrapper() (types1.BlobTxWrapper, error) {
-	return types1.BlobTxWrapper{}, nil
 }

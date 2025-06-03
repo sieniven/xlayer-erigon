@@ -32,9 +32,8 @@ type TransactionMessage struct {
 	Tip        string               `json:"tip"`
 	FeeCap     string               `json:"feeCap"`
 	// For blob txs
-	MaxFeePerBlobGas          string   `json:"maxFeePerBlobGas"`
-	BlobVersionedHashes       []string `json:"blobVersionedHashes"`
-	BlobTxAreWrappedWithBlobs bool     `json:"blobTxnsAreWrappedWithBlobs"`
+	MaxFeePerBlobGas    string   `json:"maxFeePerBlobGas"`
+	BlobVersionedHashes []string `json:"blobVersionedHashes"`
 }
 
 func ToKafkaTransactionMessage(tx types1.Transaction, blockNumber uint64) (TransactionMessage, error) {
@@ -100,21 +99,12 @@ func (msg TransactionMessage) GetTransaction() (types1.Transaction, uint64, erro
 
 		return &tx, blockNumber, nil
 	case types1.BlobTxType:
-		if msg.BlobTxAreWrappedWithBlobs {
-			tx, err := msg.toBlobTxWrapper()
-			if err != nil {
-				return nil, blockNumber, err
-			}
-
-			return &tx, blockNumber, nil
-		} else {
-			tx, err := msg.toBlobTx()
-			if err != nil {
-				return nil, blockNumber, err
-			}
-
-			return &tx, blockNumber, nil
+		tx, err := msg.toBlobTx()
+		if err != nil {
+			return nil, blockNumber, err
 		}
+
+		return &tx, blockNumber, nil
 	default:
 		return nil, blockNumber, fmt.Errorf("unsupported transaction type: %d", msg.Type)
 	}
