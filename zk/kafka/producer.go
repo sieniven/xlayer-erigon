@@ -66,7 +66,7 @@ func (client *KafkaProducer) Close() error {
 	return client.producer.Close()
 }
 
-func (client *KafkaProducer) SendKafkaBlockHeader(ctx context.Context, blockNumber uint64, header *types.Header) error {
+func (client *KafkaProducer) SendKafkaBlockHeader(ctx context.Context, header *types.Header) error {
 	// Marshal header to JSON
 	jsonData, err := header.MarshalJSON()
 	if err != nil {

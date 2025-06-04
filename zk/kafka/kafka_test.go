@@ -138,7 +138,7 @@ func TestKafkaProducer(t *testing.T) {
 		err = producer.SendKafkaTransaction(context.Background(), uint64(i), rightvrsTx, rightvrsTxReceipt)
 		assert.NilError(t, err)
 
-		err = producer.SendKafkaBlockHeader(context.Background(), uint64(i), blockHeader)
+		err = producer.SendKafkaBlockHeader(context.Background(), blockHeader)
 		assert.NilError(t, err)
 	}
 

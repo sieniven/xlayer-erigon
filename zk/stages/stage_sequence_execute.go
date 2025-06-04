@@ -457,7 +457,7 @@ BatchLoop:
 
 		// For X Layer, send kafka block header
 		if cfg.zk.XLayer.Kafka.Enable {
-			cfg.txKafkaProducer.SendKafkaBlockHeader(ctx, blockNumber, header)
+			cfg.txKafkaProducer.SendKafkaBlockHeader(ctx, header)
 		}
 
 	OuterLoopTransactions:
