@@ -84,7 +84,7 @@ func TestIsBlockVirtualized(t *testing.T) {
 	baseApi := NewBaseApi(nil, stateCache, contractBackend.BlockReader(), agg, false, rpccfg.DefaultEvmCallTimeout, contractBackend.Engine(), datadir.New(t.TempDir()))
 	ethImpl := NewEthAPI(baseApi, db, dbsmt, nil, nil, nil, 5000000, 100_000, 100_000, &ethconfig.Defaults, false, 100, 100, log.New(), defaultL1GasPriceTracker, 1000)
 	var l1Syncer *syncer.L1Syncer
-	zkEvmImpl := NewZkEvmAPI(ethImpl, db, dbsmt, 100_000, &ethconfig.Defaults, l1Syncer, "", nil, nil)
+	zkEvmImpl := NewZkEvmAPI(ethImpl, db, dbsmt, 100_000, &ethconfig.Defaults, l1Syncer, "", nil, nil, nil, nil)
 	isVirtualized, err := zkEvmImpl.IsBlockVirtualized(ctx, 50)
 	assert.NoError(err)
 	t.Logf("blockNumber: 50 -> %v", isVirtualized)
@@ -133,7 +133,7 @@ func TestBatchNumberByBlockNumber(t *testing.T) {
 	baseApi := NewBaseApi(nil, stateCache, contractBackend.BlockReader(), agg, false, rpccfg.DefaultEvmCallTimeout, contractBackend.Engine(), datadir.New(t.TempDir()))
 	ethImpl := NewEthAPI(baseApi, db, dbsmt, nil, nil, nil, 5000000, 100_000, 100_000, &ethconfig.Defaults, false, 100, 100, log.New(), defaultL1GasPriceTracker, 1000)
 	var l1Syncer *syncer.L1Syncer
-	zkEvmImpl := NewZkEvmAPI(ethImpl, db, dbsmt, 100_000, &ethconfig.Defaults, l1Syncer, "", nil, nil)
+	zkEvmImpl := NewZkEvmAPI(ethImpl, db, dbsmt, 100_000, &ethconfig.Defaults, l1Syncer, "", nil, nil, nil, nil)
 	_, err := zkEvmImpl.BatchNumberByBlockNumber(ctx, rpc.BlockNumber(10))
 	assert.Error(err)
 	tx, err := db.BeginRw(ctx)
@@ -189,7 +189,7 @@ func TestBatchNumber(t *testing.T) {
 	baseApi := NewBaseApi(nil, stateCache, contractBackend.BlockReader(), agg, false, rpccfg.DefaultEvmCallTimeout, contractBackend.Engine(), datadir.New(t.TempDir()))
 	ethImpl := NewEthAPI(baseApi, db, dbsmt, nil, nil, nil, 5000000, 100_000, 100_000, &ethconfig.Defaults, false, 100, 100, log.New(), defaultL1GasPriceTracker, 1000)
 	var l1Syncer *syncer.L1Syncer
-	zkEvmImpl := NewZkEvmAPI(ethImpl, db, dbsmt, 100_000, &ethconfig.Defaults, l1Syncer, "", nil, nil)
+	zkEvmImpl := NewZkEvmAPI(ethImpl, db, dbsmt, 100_000, &ethconfig.Defaults, l1Syncer, "", nil, nil, nil, nil)
 	tx, err := db.BeginRw(ctx)
 	assert.NoError(err)
 	hDB := hermez_db.NewHermezDb(tx)
@@ -227,7 +227,7 @@ func TestVirtualBatchNumber(t *testing.T) {
 	baseApi := NewBaseApi(nil, stateCache, contractBackend.BlockReader(), agg, false, rpccfg.DefaultEvmCallTimeout, contractBackend.Engine(), datadir.New(t.TempDir()))
 	ethImpl := NewEthAPI(baseApi, db, dbsmt, nil, nil, nil, 5000000, 100_000, 100_000, &ethconfig.Defaults, false, 100, 100, log.New(), defaultL1GasPriceTracker, 1000)
 	var l1Syncer *syncer.L1Syncer
-	zkEvmImpl := NewZkEvmAPI(ethImpl, db, dbsmt, 100_000, &ethconfig.Defaults, l1Syncer, "", nil, nil)
+	zkEvmImpl := NewZkEvmAPI(ethImpl, db, dbsmt, 100_000, &ethconfig.Defaults, l1Syncer, "", nil, nil, nil, nil)
 	tx, err := db.BeginRw(ctx)
 	assert.NoError(err)
 	hDB := hermez_db.NewHermezDb(tx)
@@ -282,7 +282,7 @@ func TestGetBatchByNumber(t *testing.T) {
 	)
 	cfg := &ethconfig.Defaults
 	cfg.Zk.L1RollupId = 1
-	zkEvmImpl := NewZkEvmAPI(ethImpl, db, dbsmt, 100_000, &ethconfig.Defaults, l1Syncer, "", nil, nil)
+	zkEvmImpl := NewZkEvmAPI(ethImpl, db, dbsmt, 100_000, &ethconfig.Defaults, l1Syncer, "", nil, nil, nil, nil)
 	tx, err := db.BeginRw(ctx)
 	assert.NoError(err)
 	hDB := hermez_db.NewHermezDb(tx)
@@ -410,7 +410,7 @@ func TestGetBatchDataByNumber(t *testing.T) {
 	baseApi := NewBaseApi(nil, stateCache, contractBackend.BlockReader(), agg, false, rpccfg.DefaultEvmCallTimeout, contractBackend.Engine(), datadir.New(t.TempDir()))
 	ethImpl := NewEthAPI(baseApi, db, dbsmt, nil, nil, nil, 5000000, 100_000, 100_000, &ethconfig.Defaults, false, 100, 100, log.New(), defaultL1GasPriceTracker, 1000)
 
-	zkEvmImpl := NewZkEvmAPI(ethImpl, db, dbsmt, 100_000, &ethconfig.Defaults, nil, "", nil, nil)
+	zkEvmImpl := NewZkEvmAPI(ethImpl, db, dbsmt, 100_000, &ethconfig.Defaults, nil, "", nil, nil, nil, nil)
 	tx, err := db.BeginRw(ctx)
 	assert.NoError(err)
 	hDB := hermez_db.NewHermezDb(tx)
@@ -563,7 +563,7 @@ func TestGetExitRootsByGER(t *testing.T) {
 		10*time.Second,
 		5,
 	)
-	zkEvmImpl := NewZkEvmAPI(ethImpl, db, dbsmt, 100_000, &ethconfig.Defaults, l1Syncer, "", nil, nil)
+	zkEvmImpl := NewZkEvmAPI(ethImpl, db, dbsmt, 100_000, &ethconfig.Defaults, l1Syncer, "", nil, nil, nil, nil)
 	tx, err := db.BeginRw(ctx)
 	assert.NoError(err)
 	hDB := hermez_db.NewHermezDb(tx)
@@ -641,7 +641,7 @@ func TestLatestGlobalExitRoot(t *testing.T) {
 		10*time.Second,
 		5,
 	)
-	zkEvmImpl := NewZkEvmAPI(ethImpl, db, dbsmt, 100_000, &ethconfig.Defaults, l1Syncer, "", nil, nil)
+	zkEvmImpl := NewZkEvmAPI(ethImpl, db, dbsmt, 100_000, &ethconfig.Defaults, l1Syncer, "", nil, nil, nil, nil)
 	tx, err := db.BeginRw(ctx)
 	assert.NoError(err)
 	hDB := hermez_db.NewHermezDb(tx)
@@ -701,7 +701,7 @@ func TestGetVersionHistory(t *testing.T) {
 	baseApi := NewBaseApi(nil, stateCache, contractBackend.BlockReader(), agg, false, rpccfg.DefaultEvmCallTimeout, contractBackend.Engine(), datadir.New(t.TempDir()))
 	ethImpl := NewEthAPI(baseApi, db, dbsmt, nil, nil, nil, 5000000, 100_000, 100_000, &ethconfig.Defaults, false, 100, 100, log.New(), defaultL1GasPriceTracker, 1000)
 	var l1Syncer *syncer.L1Syncer
-	zkEvmImpl := NewZkEvmAPI(ethImpl, db, dbsmt, 100_000, &ethconfig.Defaults, l1Syncer, "", nil, nil)
+	zkEvmImpl := NewZkEvmAPI(ethImpl, db, dbsmt, 100_000, &ethconfig.Defaults, l1Syncer, "", nil, nil, nil, nil)
 
 	tx, err := db.BeginRw(ctx)
 	assert.NoError(err)
@@ -744,7 +744,7 @@ func TestGetExitRootTable(t *testing.T) {
 	baseApi := NewBaseApi(nil, stateCache, contractBackend.BlockReader(), agg, false, rpccfg.DefaultEvmCallTimeout, contractBackend.Engine(), datadir.New(t.TempDir()))
 	ethImpl := NewEthAPI(baseApi, db, dbsmt, nil, nil, nil, 5000000, 100_000, 100_000, &ethconfig.Defaults, false, 100, 100, log.New(), defaultL1GasPriceTracker, 1000)
 
-	zkEvmImpl := NewZkEvmAPI(ethImpl, db, dbsmt, 100_000, &ethconfig.Defaults, nil, "", nil, nil)
+	zkEvmImpl := NewZkEvmAPI(ethImpl, db, dbsmt, 100_000, &ethconfig.Defaults, nil, "", nil, nil, nil, nil)
 	tx, err := db.BeginRw(ctx)
 	assert.NoError(err)
 	hDB := hermez_db.NewHermezDb(tx)
@@ -819,7 +819,7 @@ func TestGetFullBlockByNumber(t *testing.T) {
 	baseApi := NewBaseApi(nil, stateCache, contractBackend.BlockReader(), agg, false, rpccfg.DefaultEvmCallTimeout, contractBackend.Engine(), datadir.New(t.TempDir()))
 	ethImpl := NewEthAPI(baseApi, db, dbsmt, nil, nil, nil, 5000000, 100_000, 100_000, &ethconfig.Defaults, false, 100, 100, log.New(), defaultL1GasPriceTracker, 1000)
 
-	zkEvmImpl := NewZkEvmAPI(ethImpl, db, dbsmt, 100_000, &ethconfig.Defaults, nil, "", nil, nil)
+	zkEvmImpl := NewZkEvmAPI(ethImpl, db, dbsmt, 100_000, &ethconfig.Defaults, nil, "", nil, nil, nil, nil)
 	tx, err := db.BeginRw(ctx)
 	assert.NoError(err)
 	hDB := hermez_db.NewHermezDb(tx)
@@ -994,7 +994,7 @@ func TestGetFullBlockByHash(t *testing.T) {
 	baseApi := NewBaseApi(nil, stateCache, contractBackend.BlockReader(), agg, false, rpccfg.DefaultEvmCallTimeout, contractBackend.Engine(), datadir.New(t.TempDir()))
 	ethImpl := NewEthAPI(baseApi, db, dbsmt, nil, nil, nil, 5000000, 100_000, 100_000, &ethconfig.Defaults, false, 100, 100, log.New(), defaultL1GasPriceTracker, 1000)
 
-	zkEvmImpl := NewZkEvmAPI(ethImpl, db, dbsmt, 100_000, &ethconfig.Defaults, nil, "", nil, nil)
+	zkEvmImpl := NewZkEvmAPI(ethImpl, db, dbsmt, 100_000, &ethconfig.Defaults, nil, "", nil, nil, nil, nil)
 	tx, err := db.BeginRw(ctx)
 	assert.NoError(err)
 	hDB := hermez_db.NewHermezDb(tx)
@@ -1165,7 +1165,7 @@ func TestGetForkId(t *testing.T) {
 	baseApi := NewBaseApi(nil, stateCache, contractBackend.BlockReader(), agg, false, rpccfg.DefaultEvmCallTimeout, contractBackend.Engine(), datadir.New(t.TempDir()))
 	ethImpl := NewEthAPI(baseApi, db, dbsmt, nil, nil, nil, 5000000, 100_000, 100_000, &ethconfig.Defaults, false, 100, 100, log.New(), defaultL1GasPriceTracker, 1000)
 	var l1Syncer *syncer.L1Syncer
-	zkEvmImpl := NewZkEvmAPI(ethImpl, db, dbsmt, 100_000, &ethconfig.Defaults, l1Syncer, "", nil, nil)
+	zkEvmImpl := NewZkEvmAPI(ethImpl, db, dbsmt, 100_000, &ethconfig.Defaults, l1Syncer, "", nil, nil, nil, nil)
 	tx, err := db.BeginRw(ctx)
 	assert.NoError(err)
 	hDB := hermez_db.NewHermezDb(tx)
@@ -1208,7 +1208,7 @@ func TestGetForkIdByBatchNumber(t *testing.T) {
 	baseApi := NewBaseApi(nil, stateCache, contractBackend.BlockReader(), agg, false, rpccfg.DefaultEvmCallTimeout, contractBackend.Engine(), datadir.New(t.TempDir()))
 	ethImpl := NewEthAPI(baseApi, db, dbsmt, nil, nil, nil, 5000000, 100_000, 100_000, &ethconfig.Defaults, false, 100, 100, log.New(), defaultL1GasPriceTracker, 1000)
 	var l1Syncer *syncer.L1Syncer
-	zkEvmImpl := NewZkEvmAPI(ethImpl, db, dbsmt, 100_000, &ethconfig.Defaults, l1Syncer, "", nil, nil)
+	zkEvmImpl := NewZkEvmAPI(ethImpl, db, dbsmt, 100_000, &ethconfig.Defaults, l1Syncer, "", nil, nil, nil, nil)
 	tx, err := db.BeginRw(ctx)
 	assert.NoError(err)
 	hDB := hermez_db.NewHermezDb(tx)
@@ -1255,7 +1255,7 @@ func TestGetForkById(t *testing.T) {
 	baseApi := NewBaseApi(nil, stateCache, contractBackend.BlockReader(), agg, false, rpccfg.DefaultEvmCallTimeout, contractBackend.Engine(), datadir.New(t.TempDir()))
 	ethImpl := NewEthAPI(baseApi, db, dbsmt, nil, nil, nil, 5000000, 100_000, 100_000, &ethconfig.Defaults, false, 100, 100, log.New(), defaultL1GasPriceTracker, 1000)
 	var l1Syncer *syncer.L1Syncer
-	zkEvmImpl := NewZkEvmAPI(ethImpl, db, dbsmt, 100_000, &ethconfig.Defaults, l1Syncer, "", nil, nil)
+	zkEvmImpl := NewZkEvmAPI(ethImpl, db, dbsmt, 100_000, &ethconfig.Defaults, l1Syncer, "", nil, nil, nil, nil)
 	tx, err := db.BeginRw(ctx)
 	assert.NoError(err)
 	hDB := hermez_db.NewHermezDb(tx)
@@ -1323,7 +1323,7 @@ func TestGetForks(t *testing.T) {
 	baseApi := NewBaseApi(nil, stateCache, contractBackend.BlockReader(), agg, false, rpccfg.DefaultEvmCallTimeout, contractBackend.Engine(), datadir.New(t.TempDir()))
 	ethImpl := NewEthAPI(baseApi, db, dbsmt, nil, nil, nil, 5000000, 100_000, 100_000, &ethconfig.Defaults, false, 100, 100, log.New(), defaultL1GasPriceTracker, 1000)
 	var l1Syncer *syncer.L1Syncer
-	zkEvmImpl := NewZkEvmAPI(ethImpl, db, dbsmt, 100_000, &ethconfig.Defaults, l1Syncer, "", nil, nil)
+	zkEvmImpl := NewZkEvmAPI(ethImpl, db, dbsmt, 100_000, &ethconfig.Defaults, l1Syncer, "", nil, nil, nil, nil)
 	tx, err := db.BeginRw(ctx)
 	assert.NoError(err)
 	hDB := hermez_db.NewHermezDb(tx)
@@ -1384,7 +1384,7 @@ func TestGetRollupAddress(t *testing.T) {
 	baseApi := NewBaseApi(nil, stateCache, contractBackend.BlockReader(), agg, false, rpccfg.DefaultEvmCallTimeout, contractBackend.Engine(), datadir.New(t.TempDir()))
 	ethImpl := NewEthAPI(baseApi, db, dbsmt, nil, nil, nil, 5000000, 100_000, 100_000, &ethconfig.Defaults, false, 100, 100, log.New(), defaultL1GasPriceTracker, 1000)
 	var l1Syncer *syncer.L1Syncer
-	zkEvmImpl := NewZkEvmAPI(ethImpl, db, dbsmt, 100_000, &ethconfig.Defaults, l1Syncer, "", nil, nil)
+	zkEvmImpl := NewZkEvmAPI(ethImpl, db, dbsmt, 100_000, &ethconfig.Defaults, l1Syncer, "", nil, nil, nil, nil)
 
 	// Call the GetRollupAddress method and check that the result matches the default value.
 	var result common.Address
@@ -1422,7 +1422,7 @@ func TestGetRollupManagerAddress(t *testing.T) {
 	baseApi := NewBaseApi(nil, stateCache, contractBackend.BlockReader(), agg, false, rpccfg.DefaultEvmCallTimeout, contractBackend.Engine(), datadir.New(t.TempDir()))
 	ethImpl := NewEthAPI(baseApi, db, dbsmt, nil, nil, nil, 5000000, 100_000, 100_000, &ethconfig.Defaults, false, 100, 100, log.New(), defaultL1GasPriceTracker, 1000)
 	var l1Syncer *syncer.L1Syncer
-	zkEvmImpl := NewZkEvmAPI(ethImpl, db, dbsmt, 100_000, &ethconfig.Defaults, l1Syncer, "", nil, nil)
+	zkEvmImpl := NewZkEvmAPI(ethImpl, db, dbsmt, 100_000, &ethconfig.Defaults, l1Syncer, "", nil, nil, nil, nil)
 
 	// Call the GetRollupManagerAddress method and check that the result matches the default value.
 	var result common.Address

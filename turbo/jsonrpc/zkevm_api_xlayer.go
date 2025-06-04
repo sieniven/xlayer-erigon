@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/ledgerwatch/erigon-lib/common"
 	"github.com/ledgerwatch/erigon/rpc"
 	types "github.com/ledgerwatch/erigon/zk/rpcdaemon"
 )
@@ -36,4 +37,28 @@ func (api *ZkEvmAPIImpl) GetBatchSealTime(ctx context.Context, batchNumber rpc.B
 	}
 
 	return lastBlock.Timestamp, nil
+}
+
+func (api *ZkEvmAPIImpl) GetTransactionReceipt(ctx context.Context, hash common.Hash) (map[string]interface{}, error) {
+	txn, receipt, ok := api.txInfoMap.Get(hash)
+	if !ok {
+		return api.ethApi.GetTransactionReceipt(ctx, hash)
+	}
+	header, ok := api.headerMap.Get(receipt.BlockNumber.Uint64())
+	if !ok {
+		return api.ethApi.GetTransactionReceipt(ctx, hash)
+	}
+
+	tx, err := api.ethApi.db.BeginRo(ctx)
+	if err != nil {
+		return nil, err
+	}
+	defer tx.Rollback()
+
+	cc, err := api.ethApi.chainConfig(ctx, tx)
+	if err != nil {
+		return nil, err
+	}
+
+	return marshalReceipt(receipt, txn, cc, header, txn.Hash(), true), nil
 }

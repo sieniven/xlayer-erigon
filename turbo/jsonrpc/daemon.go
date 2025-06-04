@@ -1,6 +1,7 @@
 package jsonrpc
 
 import (
+	"github.com/ledgerwatch/erigon/core/types"
 	"github.com/ledgerwatch/erigon/zk/smt"
 	"github.com/ledgerwatch/log/v3"
 
@@ -31,6 +32,8 @@ func APIList(db kv.RoDB, dbsmt kv.RoDB, eth rpchelper.ApiBackend, txPool txpool.
 	ethCfg *ethconfig.Config, l1Syncer *syncer.L1Syncer, logger log.Logger, dataStreamServer server.DataStreamServer,
 	gasTracker *RecurringL1GasPriceTracker,
 	cache *smt.SmtCache,
+	txInfoMap *types.TxInfoMap,
+	headerMap *types.HeaderMap,
 ) (list []rpc.API, gpCache *GasPriceCache) {
 	// non-sequencer nodes should forward on requests to the sequencer
 	rpcUrl := ""
@@ -73,7 +76,7 @@ func APIList(db kv.RoDB, dbsmt kv.RoDB, eth rpchelper.ApiBackend, txPool txpool.
 	gqlImpl := NewGraphQLAPI(base, db)
 	overlayImpl := NewOverlayAPI(base, db, cfg.Gascap, cfg.OverlayGetLogsTimeout, cfg.OverlayReplayBlockTimeout, otsImpl)
 	// For X Layer, split db and ac
-	zkEvmImpl := NewZkEvmAPI(ethImpl, db, dbsmt, cfg.ReturnDataLimit, ethCfg, l1Syncer, rpcUrl, dataStreamServer, cache)
+	zkEvmImpl := NewZkEvmAPI(ethImpl, db, dbsmt, cfg.ReturnDataLimit, ethCfg, l1Syncer, rpcUrl, dataStreamServer, cache, txInfoMap, headerMap)
 
 	if cfg.GraphQLEnabled {
 		list = append(list, rpc.API{

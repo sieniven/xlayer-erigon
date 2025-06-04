@@ -254,7 +254,8 @@ type Ethereum struct {
 	// For X Layer, kafka
 	txKafkaProducer *kafka.KafkaProducer
 	txKafkaConsumer *kafka.KafkaConsumer
-	receiptMap      *types.ReceiptMap
+	txInfoMap       *types.TxInfoMap
+	headerMap       *types.HeaderMap
 }
 
 func splitAddrIntoHostAndPort(addr string) (host string, port int, err error) {
@@ -1286,7 +1287,8 @@ func New(ctx context.Context, stack *node.Node, config *ethconfig.Config, logger
 					return nil, err
 				}
 				backend.txKafkaConsumer = kafkaConsumer
-				backend.receiptMap = types.NewReceiptMap()
+				backend.txInfoMap = types.NewTxInfoMap()
+				backend.headerMap = types.NewHeaderMap()
 			}
 
 			backend.syncStages = stages2.NewDefaultZkStages(
@@ -1305,7 +1307,8 @@ func New(ctx context.Context, stack *node.Node, config *ethconfig.Config, logger
 				streamClient,
 				dataStreamServer,
 				l1InfoTreeUpdater,
-				backend.receiptMap,
+				backend.txInfoMap,
+				backend.headerMap,
 			)
 
 			backend.syncUnwindOrder = zkStages.ZkUnwindOrder
@@ -1426,7 +1429,7 @@ func (s *Ethereum) Init(stack *node.Node, config *ethconfig.Config, chainConfig 
 
 	var gpCache *jsonrpc.GasPriceCache
 	// For X Layer, split db
-	s.apiList, gpCache = jsonrpc.APIList(chainKv, s.smtDB, ethRpcClient, txPoolRpcClient, s.txPool2, miningRpcClient, ff, stateCache, blockReader, s.agg, &httpRpcCfg, s.engine, config, s.l1Syncer, s.logger, dataStreamServer, s.gasTracker, s.stagedSync.GetCache())
+	s.apiList, gpCache = jsonrpc.APIList(chainKv, s.smtDB, ethRpcClient, txPoolRpcClient, s.txPool2, miningRpcClient, ff, stateCache, blockReader, s.agg, &httpRpcCfg, s.engine, config, s.l1Syncer, s.logger, dataStreamServer, s.gasTracker, s.stagedSync.GetCache(), s.txInfoMap, s.headerMap)
 
 	// For X Layer
 	if s.txPool2 != nil && gpCache != nil {
@@ -1996,7 +1999,7 @@ func (s *Ethereum) Start() error {
 
 		go stages2.StageLoop(s.sentryCtx, s.chainDB, s.stagedSync, s.sentriesClient.Hd, s.waitForStageLoopStop, s.config.Sync.LoopThrottle, s.logger, s.blockReader, hook, s.config.ForcePartialCommit)
 
-		go stages2.ListenTxKafka(s.sentryCtx, s.txKafkaConsumer, s.config.Zk.XLayer, s.logger, s.receiptMap)
+		go stages2.ListenTxKafka(s.sentryCtx, s.txKafkaConsumer, s.config.Zk.XLayer, s.logger, s.txInfoMap, s.headerMap)
 	}
 
 	stages := diagnostics.InitStagesFromList(nodeStages)

@@ -36,7 +36,7 @@ import (
 	"github.com/ledgerwatch/erigon/zk/utils"
 )
 
-func SpawnExecuteBlocksStageZk(s *StageState, u Unwinder, tx kv.RwTx, toBlock uint64, ctx context.Context, cfg ExecuteBlockCfg, initialCycle bool, receiptMap *types.ReceiptMap) (err error) {
+func SpawnExecuteBlocksStageZk(s *StageState, u Unwinder, tx kv.RwTx, toBlock uint64, ctx context.Context, cfg ExecuteBlockCfg, initialCycle bool, txInfoMap *types.TxInfoMap, headerMap *types.HeaderMap) (err error) {
 	if cfg.historyV3 {
 		if err = ExecBlockV3(s, u, wrap.TxContainer{Tx: tx}, toBlock, ctx, cfg, initialCycle, log.New()); err != nil {
 			return fmt.Errorf("ExecBlockV3: %w", err)
@@ -215,8 +215,9 @@ Loop:
 		// For X Layer, delete receipts from the map
 		if cfg.zk.XLayer.Kafka.Enable {
 			for _, tx := range block.Transactions() {
-				receiptMap.Delete(tx.Hash())
+				txInfoMap.Delete(tx.Hash())
 			}
+			headerMap.Delete(block.NumberU64())
 		}
 	}
 

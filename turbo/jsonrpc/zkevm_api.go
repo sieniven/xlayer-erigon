@@ -86,6 +86,10 @@ type ZkEvmAPIImpl struct {
 	// For X Layer, split db and ac
 	dbsmt kv.RoDB
 	cache *smt2.SmtCache
+
+	// For X Layer, fast receipt response
+	txInfoMap *eritypes.TxInfoMap
+	headerMap *eritypes.HeaderMap
 }
 
 // NewEthAPI returns ZkEvmAPIImpl instance
@@ -99,6 +103,8 @@ func NewZkEvmAPI(
 	l2SequencerUrl string,
 	dataStreamServer server.DataStreamServer,
 	cache *smt2.SmtCache,
+	txInfoMap *eritypes.TxInfoMap,
+	headerMap *eritypes.HeaderMap,
 ) *ZkEvmAPIImpl {
 
 	a := &ZkEvmAPIImpl{
@@ -112,6 +118,9 @@ func NewZkEvmAPI(
 		// For X Layer, split db and ac
 		dbsmt: dbsmt,
 		cache: cache,
+		// For X Layer, fast receipt response
+		txInfoMap: txInfoMap,
+		headerMap: headerMap,
 	}
 
 	return a

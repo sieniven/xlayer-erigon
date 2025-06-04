@@ -140,7 +140,7 @@ func FlushDataToDB(ctx context.Context, db *mdbx.MdbxKV, logger log.Logger, cach
 	cache.TruncateSmtCacheList(saveData.BlockHeight)
 }
 
-func ListenTxKafka(ctx context.Context, txKafkaConsumer *kafka.KafkaConsumer, config ethconfig.XLayerConfig, logger log.Logger, receiptMap *types.ReceiptMap) {
+func ListenTxKafka(ctx context.Context, txKafkaConsumer *kafka.KafkaConsumer, config ethconfig.XLayerConfig, logger log.Logger, txInfoMap *types.TxInfoMap, headerMap *types.HeaderMap) {
 	if sequencer.IsSequencer() {
 		logger.Info("txKafkaConsumer is disabled on sequencer, skipping")
 		return
@@ -162,7 +162,7 @@ func ListenTxKafka(ctx context.Context, txKafkaConsumer *kafka.KafkaConsumer, co
 		case <-ctx.Done():
 			return
 		case header := <-headersChan:
-			// TODO: add handling header
+			headerMap.Put(header.Number.Uint64(), &header)
 
 			// TODO: remove this log
 			logger.Info("XXX Received header message", "header", header)
@@ -172,7 +172,7 @@ func ListenTxKafka(ctx context.Context, txKafkaConsumer *kafka.KafkaConsumer, co
 				logger.Error("failed to consume transaction message from kafka", "error", err)
 				continue
 			}
-			receiptMap.Put(tx.Hash(), receipt)
+			txInfoMap.Put(tx.Hash(), tx, receipt)
 
 			// TODO: remove this log
 			logger.Info("XXX Received transaction message", "tx", tx, "blockNumber", blockNumber, "receipt", receipt)

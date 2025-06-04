@@ -4,34 +4,39 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/holiman/uint256"
 	"github.com/ledgerwatch/erigon-lib/common"
 	"github.com/stretchr/testify/assert"
 )
 
-func TestReceiptMap(t *testing.T) {
-	rm := NewReceiptMap()
+func TestTxInfoMap(t *testing.T) {
+	tm := NewTxInfoMap()
 
 	txHash := common.HexToHash("0x123")
+	value := uint256.NewInt(0)
+	gasPrice := uint256.NewInt(0)
+	tx := NewTransaction(0, common.Address{}, value, 0, gasPrice, nil)
 	receipt := &Receipt{
 		Status: 1,
 	}
 
 	t.Run("Put and Get", func(t *testing.T) {
-		rm.Put(txHash, receipt)
-		got, exists := rm.Get(txHash)
+		tm.Put(txHash, tx, receipt)
+		gotTx, gotReceipt, exists := tm.Get(txHash)
 		assert.True(t, exists)
-		assert.Equal(t, receipt, got)
+		assert.Equal(t, tx, gotTx)
+		assert.Equal(t, receipt, gotReceipt)
 	})
 
 	t.Run("Get non-existent", func(t *testing.T) {
 		nonExistentHash := common.HexToHash("0x456")
-		_, exists := rm.Get(nonExistentHash)
+		_, _, exists := tm.Get(nonExistentHash)
 		assert.False(t, exists)
 	})
 
 	t.Run("Delete", func(t *testing.T) {
-		rm.Delete(txHash)
-		_, exists := rm.Get(txHash)
+		tm.Delete(txHash)
+		_, _, exists := tm.Get(txHash)
 		assert.False(t, exists)
 	})
 
@@ -45,18 +50,22 @@ func TestReceiptMap(t *testing.T) {
 				defer wg.Done()
 
 				hash := common.HexToHash(string(rune(i + 100)))
+				value := uint256.NewInt(uint64(i))
+				gasPrice := uint256.NewInt(uint64(i))
+				tx := NewTransaction(uint64(i), common.Address{}, value, uint64(i), gasPrice, nil)
 				receipt := &Receipt{Status: uint64(i)}
 
-				rm.Put(hash, receipt)
+				tm.Put(hash, tx, receipt)
 
-				got, exists := rm.Get(hash)
+				gotTx, gotReceipt, exists := tm.Get(hash)
 				assert.True(t, exists)
-				assert.NotNil(t, got)
-				assert.Equal(t, uint64(i), got.Status)
+				assert.NotNil(t, gotTx)
+				assert.NotNil(t, gotReceipt)
+				assert.Equal(t, uint64(i), gotReceipt.Status)
 
-				rm.Delete(hash)
+				tm.Delete(hash)
 
-				_, exists = rm.Get(hash)
+				_, _, exists = tm.Get(hash)
 				assert.False(t, exists)
 			}(i)
 		}
@@ -65,7 +74,7 @@ func TestReceiptMap(t *testing.T) {
 
 		for i := 0; i < goroutines; i++ {
 			hash := common.HexToHash(string(rune(i + 100)))
-			_, exists := rm.Get(hash)
+			_, _, exists := tm.Get(hash)
 			assert.False(t, exists)
 		}
 	})
