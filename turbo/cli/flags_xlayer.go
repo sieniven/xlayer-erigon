@@ -63,10 +63,10 @@ func ApplyFlagsForEthXLayerConfig(ctx *cli.Context, cfg *ethconfig.Config) {
 		TraceLogPath:   ctx.String(utils.TraceLogPath.Name),
 		EnableTraceLog: ctx.Bool(utils.EnableTraceLog.Name),
 		Kafka: ethconfig.KafkaConfig{
-			Enable:           ctx.Bool(utils.EnableTxKafka.Name),
-			BootstrapServers: strings.Split(ctx.String(utils.KafkaBootstrapServers.Name), ","),
-			Topic:            ctx.String(utils.KafkaTopic.Name),
-			ClientID:         ctx.String(utils.KafkaClientID.Name),
+			Enable:           ctx.Bool(utils.KafkaSyncEnableFlag.Name),
+			BootstrapServers: strings.Split(ctx.String(utils.KafkaSyncBootstrapServers.Name), ","),
+			Topic:            ctx.String(utils.KafkaSyncTopic.Name),
+			ClientID:         ctx.String(utils.KafkaSyncClientID.Name),
 		},
 	}
 	if cfg.XLayer.BlockInfoConcurrent {

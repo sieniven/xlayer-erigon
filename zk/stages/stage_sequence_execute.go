@@ -674,7 +674,6 @@ BatchLoop:
 					minedTxHashes = append(minedTxHashes, txHash)
 
 					// Send kafka transaction message
-
 					if cfg.zk.XLayer.Kafka.Enable {
 						cfg.txKafkaProducer.SendKafkaTransaction(ctx, blockNumber, transaction, receipt)
 					}

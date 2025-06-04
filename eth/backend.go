@@ -254,6 +254,7 @@ type Ethereum struct {
 	// For X Layer, kafka
 	txKafkaProducer *kafka.KafkaProducer
 	txKafkaConsumer *kafka.KafkaConsumer
+	receiptMap      *types.ReceiptMap
 }
 
 func splitAddrIntoHostAndPort(addr string) (host string, port int, err error) {
@@ -1278,6 +1279,16 @@ func New(ctx context.Context, stack *node.Node, config *ethconfig.Config, logger
 			}
 			streamClient := initDataStreamClient(ctx, cfg.Zk, uint16(latestForkId))
 
+			// For X Layer, kafka
+			if cfg.Zk.XLayer.Kafka.Enable {
+				kafkaConsumer, err := kafka.NewKafkaConsumer(cfg.Zk.XLayer.Kafka)
+				if err != nil {
+					return nil, err
+				}
+				backend.txKafkaConsumer = kafkaConsumer
+				backend.receiptMap = types.NewReceiptMap()
+			}
+
 			backend.syncStages = stages2.NewDefaultZkStages(
 				backend.sentryCtx,
 				backend.chainDB,
@@ -1294,6 +1305,7 @@ func New(ctx context.Context, stack *node.Node, config *ethconfig.Config, logger
 				streamClient,
 				dataStreamServer,
 				l1InfoTreeUpdater,
+				backend.receiptMap,
 			)
 
 			backend.syncUnwindOrder = zkStages.ZkUnwindOrder
@@ -1983,6 +1995,8 @@ func (s *Ethereum) Start() error {
 		go stages2.AsyncFlushSmtData(s.smtFlushCtx, smtdb, s.stagedSync, s.config.Zk.XLayer, s.logger, s.smtFlushDoneCh)
 
 		go stages2.StageLoop(s.sentryCtx, s.chainDB, s.stagedSync, s.sentriesClient.Hd, s.waitForStageLoopStop, s.config.Sync.LoopThrottle, s.logger, s.blockReader, hook, s.config.ForcePartialCommit)
+
+		go stages2.ListenTxKafka(s.sentryCtx, s.txKafkaConsumer, s.config.Zk.XLayer, s.logger, s.receiptMap)
 	}
 
 	stages := diagnostics.InitStagesFromList(nodeStages)
