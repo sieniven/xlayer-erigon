@@ -20,7 +20,7 @@ sed_inplace() {
 }
 
 docker stop xlayer-seqs; docker rm xlayer-seqs
-sleep 120
+sleep 60
 
 make stop-old
 
