@@ -95,43 +95,50 @@ func ToKafkaTransactionMessage(tx types1.Transaction, receipt *types1.Receipt, b
 	return txMsg, nil
 }
 
-func (msg TransactionMessage) GetTransaction() (types1.Transaction, uint64, *types1.Receipt, error) {
+func (msg TransactionMessage) GetTransaction() (types1.Transaction, uint64, error) {
 	blockNumber := msg.BlockNumber
-	receipt := msg.Receipt
 
 	// Get tx
 	switch msg.Type {
 	case types1.LegacyTxType:
 		tx, err := msg.toLegacyTx()
 		if err != nil {
-			return nil, blockNumber, receipt, err
+			return nil, blockNumber, err
 		}
 
-		return &tx, blockNumber, receipt, nil
+		return &tx, blockNumber, nil
 	case types1.AccessListTxType:
 		tx, err := msg.toAccessListTx()
 		if err != nil {
-			return nil, blockNumber, receipt, err
+			return nil, blockNumber, err
 		}
 
-		return &tx, blockNumber, receipt, nil
+		return &tx, blockNumber, nil
 	case types1.DynamicFeeTxType:
 		tx, err := msg.toDynamicFeeTx()
 		if err != nil {
-			return nil, blockNumber, receipt, err
+			return nil, blockNumber, err
 		}
 
-		return &tx, blockNumber, receipt, nil
+		return &tx, blockNumber, nil
 	case types1.BlobTxType:
 		tx, err := msg.toBlobTx()
 		if err != nil {
-			return nil, blockNumber, receipt, err
+			return nil, blockNumber, err
 		}
 
-		return &tx, blockNumber, receipt, nil
+		return &tx, blockNumber, nil
 	default:
-		return nil, blockNumber, receipt, fmt.Errorf("unsupported transaction type: %d", msg.Type)
+		return nil, blockNumber, fmt.Errorf("unsupported transaction type: %d", msg.Type)
 	}
+}
+
+func (msg TransactionMessage) GetReceipt() (*types1.Receipt, error) {
+	if msg.Receipt == nil {
+		return nil, fmt.Errorf("receipt is nil")
+	}
+
+	return msg.Receipt, nil
 }
 
 func (msg TransactionMessage) MarshalJSON() ([]byte, error) {
@@ -170,19 +177,19 @@ func (msg TransactionMessage) MarshalJSON() ([]byte, error) {
 	enc.GasPrice = msg.GasPrice
 
 	if msg.Receipt != nil {
+		// Handle nil logs
 		receipt := *msg.Receipt
-		if receipt.Logs != nil {
-			logs := make([]*types1.Log, len(receipt.Logs))
-			for i, log := range receipt.Logs {
-				if log != nil {
-					logCopy := *log
-					if logCopy.Topics == nil {
-						logCopy.Topics = []libcommon.Hash{}
-					}
-					logs[i] = &logCopy
+		if receipt.Logs == nil {
+			receipt.Logs = []*types1.Log{}
+		}
+
+		// Handle nil topics
+		for _, log := range receipt.Logs {
+			if log != nil {
+				if log.Topics == nil {
+					log.Topics = []libcommon.Hash{}
 				}
 			}
-			receipt.Logs = logs
 		}
 		enc.Receipt = &receipt
 	}
