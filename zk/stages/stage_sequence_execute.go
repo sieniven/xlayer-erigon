@@ -674,6 +674,10 @@ BatchLoop:
 					minedTxHashes = append(minedTxHashes, txHash)
 
 					// Send kafka transaction message
+
+					if cfg.zk.XLayer.TxKafka.Enable {
+						cfg.txKafkaProducer.SendKafkaTransaction(ctx, blockNumber, transaction, receipt)
+					}
 				}
 
 				// We will only update the processed index in resequence job if there isn't overflow

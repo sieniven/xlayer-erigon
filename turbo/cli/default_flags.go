@@ -369,4 +369,8 @@ var DefaultFlags = []cli.Flag{
 
 	&utils.TraceLogPath,
 	&utils.EnableTraceLog,
+	&utils.EnableTxKafka,
+	&utils.KafkaBootstrapServers,
+	&utils.KafkaTopic,
+	&utils.KafkaClientID,
 }

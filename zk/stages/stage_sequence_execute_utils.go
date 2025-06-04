@@ -33,6 +33,7 @@ import (
 	"github.com/ledgerwatch/erigon/turbo/stages/headerdownload"
 	"github.com/ledgerwatch/erigon/zk/datastream/server"
 	"github.com/ledgerwatch/erigon/zk/hermez_db"
+	"github.com/ledgerwatch/erigon/zk/kafka"
 	"github.com/ledgerwatch/erigon/zk/l1infotree"
 	zktx "github.com/ledgerwatch/erigon/zk/tx"
 	"github.com/ledgerwatch/erigon/zk/txpool"
@@ -94,6 +95,8 @@ type SequenceBlockCfg struct {
 
 	decodedTxCache *expirable.LRU[common.Hash, *types.Transaction]
 	doneHook       DoneHook
+
+	txKafkaProducer *kafka.KafkaProducer
 }
 
 func StageSequenceBlocksCfg(
@@ -124,6 +127,7 @@ func StageSequenceBlocksCfg(
 	yieldSize uint16,
 	infoTreeUpdater *l1infotree.Updater,
 	doneHook DoneHook,
+	txKafkaProducer *kafka.KafkaProducer,
 ) SequenceBlockCfg {
 
 	return SequenceBlockCfg{
@@ -154,6 +158,9 @@ func StageSequenceBlocksCfg(
 
 		// For X Layer, split db and ac
 		dbsmt: dbsmt,
+
+		// For X Layer, kafka
+		txKafkaProducer: txKafkaProducer,
 	}
 }
 
@@ -183,10 +190,10 @@ func (sCfg *SequenceBlockCfg) toErigonExecuteBlockCfg() stagedsync.ExecuteBlockC
 
 func validateIfDatastreamIsAheadOfExecution(
 	s *stagedsync.StageState,
-// u stagedsync.Unwinder,
+	// u stagedsync.Unwinder,
 	ctx context.Context,
 	cfg SequenceBlockCfg,
-// historyCfg stagedsync.HistoryCfg,
+	// historyCfg stagedsync.HistoryCfg,
 ) error {
 	roTx, err := cfg.db.BeginRo(ctx)
 	if err != nil {

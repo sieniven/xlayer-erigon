@@ -132,6 +132,7 @@ import (
 	"github.com/ledgerwatch/erigon/zk/datastream/client"
 	"github.com/ledgerwatch/erigon/zk/datastream/server"
 	"github.com/ledgerwatch/erigon/zk/hermez_db"
+	"github.com/ledgerwatch/erigon/zk/kafka"
 	"github.com/ledgerwatch/erigon/zk/l1_cache"
 	"github.com/ledgerwatch/erigon/zk/l1infotree"
 	zkStages "github.com/ledgerwatch/erigon/zk/stages"
@@ -249,6 +250,10 @@ type Ethereum struct {
 	seqVerSyncer     *syncer.L1Syncer
 	l1InfoTreeSyncer *syncer.L1Syncer
 	l1BlockSyncer    *syncer.L1Syncer
+
+	// For X Layer, kafka
+	txKafkaProducer *kafka.KafkaProducer
+	txKafkaConsumer *kafka.KafkaConsumer
 }
 
 func splitAddrIntoHostAndPort(addr string) (host string, port int, err error) {
@@ -1218,6 +1223,15 @@ func New(ctx context.Context, stack *node.Node, config *ethconfig.Config, logger
 			// For X Layer, apollo
 			backend.l1BlockSyncer = l1BlockSyncer
 
+			// For X Layer, kafka
+			if cfg.Zk.XLayer.TxKafka.Enable {
+				kafkaProducer, err := kafka.NewKafkaProducer(cfg.Zk.XLayer.TxKafka)
+				if err != nil {
+					return nil, err
+				}
+				backend.txKafkaProducer = kafkaProducer
+			}
+
 			backend.syncStages = stages2.NewSequencerZkStages(
 				backend.sentryCtx,
 				backend.chainDB,
@@ -1238,6 +1252,7 @@ func New(ctx context.Context, stack *node.Node, config *ethconfig.Config, logger
 				backend.txPool2DB,
 				l1InfoTreeUpdater,
 				hook,
+				backend.txKafkaProducer,
 			)
 
 			backend.syncUnwindOrder = zkStages.ZkSequencerUnwindOrder
