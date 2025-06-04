@@ -442,3 +442,26 @@ services:
       - ./config/xlayerconfig-mainnet-rpc.yaml:/usr/src/app/config.yaml
     command: >
       cdk-erigon --http.vhosts=* --http.corsdomain=* --ws --config=/usr/src/app/config.yaml
+
+  xlayer-kafka:
+    image: wurstmeister/kafka
+    container_name: xlayer-kafka
+    depends_on:
+      - xlayer-zookeeper
+    expose:
+      - 9093
+    environment:
+      KAFKA_ADVERTISED_LISTENERS: INSIDE://:9092,OUTSIDE://localhost:9123
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: INSIDE:PLAINTEXT,OUTSIDE:PLAINTEXT
+      KAFKA_LISTENERS: INSIDE://0.0.0.0:9092,OUTSIDE://0.0.0.0:9123
+      KAFKA_INTER_BROKER_LISTENER_NAME: INSIDE
+      KAFKA_ZOOKEEPER_CONNECT: xlayer-zookeeper:2181
+      KAFKA_CREATE_TOPICS: "explorer_chainAddressPrice_push:1:1"
+
+  xlayer-zookeeper:
+    image: wurstmeister/zookeeper
+    container_name: xlayer-zookeeper
+    ports:
+      - "2182:2181"
+    expose:
+      - 2182
