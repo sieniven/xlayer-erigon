@@ -2,7 +2,6 @@ package kafka
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 
 	"github.com/IBM/sarama"
@@ -42,7 +41,7 @@ func (client *KafkaProducer) SendKafkaTransaction(ctx context.Context, blockNumb
 	}
 
 	// Marshal message to JSON
-	jsonData, err := json.Marshal(msg)
+	jsonData, err := msg.MarshalJSON()
 	if err != nil {
 		return fmt.Errorf("error marshaling transaction message: %v", err)
 	}

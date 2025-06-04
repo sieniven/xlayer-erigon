@@ -150,7 +150,7 @@ func ListenTxKafka(ctx context.Context, txKafkaConsumer *kafka.KafkaConsumer, co
 	// Start the kafka consumer
 	txMsgsChan := make(chan kafkaTypes.TransactionMessage)
 	errorChan := make(chan error, 1)
-	go txKafkaConsumer.ConsumeKafkaTransactions(ctx, txMsgsChan, errorChan)
+	go txKafkaConsumer.ConsumeKafkaTransactions(ctx, txMsgsChan, errorChan, logger)
 
 	for {
 		select {

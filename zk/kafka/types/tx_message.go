@@ -1,8 +1,10 @@
 package types
 
 import (
+	"encoding/json"
 	"fmt"
 
+	libcommon "github.com/ledgerwatch/erigon-lib/common"
 	types1 "github.com/ledgerwatch/erigon/core/types"
 )
 
@@ -36,7 +38,7 @@ type TransactionMessage struct {
 	BlobVersionedHashes []string `json:"blobVersionedHashes"`
 
 	// Receipt data
-	Receipt *types1.Receipt `json:"rlpReceipt"`
+	Receipt *types1.Receipt `json:"receipt"`
 }
 
 func ToKafkaTransactionMessage(tx types1.Transaction, receipt *types1.Receipt, blockNumber uint64) (txMsg TransactionMessage, err error) {
@@ -130,4 +132,60 @@ func (msg TransactionMessage) GetTransaction() (types1.Transaction, uint64, *typ
 	default:
 		return nil, blockNumber, receipt, fmt.Errorf("unsupported transaction type: %d", msg.Type)
 	}
+}
+
+func (msg TransactionMessage) MarshalJSON() ([]byte, error) {
+	type TransactionMessage struct {
+		BlockNumber uint64          `json:"blockNumber"`
+		Type        uint8           `json:"type"`
+		Hash        string          `json:"hash"`
+		From        string          `json:"from"`
+		ChainID     uint64          `json:"chainId"`
+		Nonce       uint64          `json:"nonce"`
+		Gas         uint64          `json:"gas"`
+		To          string          `json:"to"`
+		Value       string          `json:"value"`
+		Data        string          `json:"data"`
+		R           string          `json:"r"`
+		S           string          `json:"s"`
+		V           string          `json:"v"`
+		GasPrice    string          `json:"gasPrice"`
+		Receipt     *types1.Receipt `json:"receipt"`
+	}
+
+	var enc TransactionMessage
+	enc.BlockNumber = msg.BlockNumber
+	enc.Type = msg.Type
+	enc.Hash = msg.Hash
+	enc.From = msg.From
+	enc.ChainID = msg.ChainID
+	enc.Nonce = msg.Nonce
+	enc.Gas = msg.Gas
+	enc.To = msg.To
+	enc.Value = msg.Value
+	enc.Data = msg.Data
+	enc.R = msg.R
+	enc.S = msg.S
+	enc.V = msg.V
+	enc.GasPrice = msg.GasPrice
+
+	if msg.Receipt != nil {
+		receipt := *msg.Receipt
+		if receipt.Logs != nil {
+			logs := make([]*types1.Log, len(receipt.Logs))
+			for i, log := range receipt.Logs {
+				if log != nil {
+					logCopy := *log
+					if logCopy.Topics == nil {
+						logCopy.Topics = []libcommon.Hash{}
+					}
+					logs[i] = &logCopy
+				}
+			}
+			receipt.Logs = logs
+		}
+		enc.Receipt = &receipt
+	}
+
+	return json.Marshal(&enc)
 }
