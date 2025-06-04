@@ -159,6 +159,8 @@ func ListenTxKafka(ctx context.Context, txKafkaConsumer *kafka.KafkaConsumer, co
 
 	for {
 		select {
+		case <-ctx.Done():
+			return
 		case header := <-headersChan:
 			// TODO: add handling header
 
