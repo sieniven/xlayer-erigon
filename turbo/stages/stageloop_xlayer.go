@@ -23,6 +23,10 @@ import (
 	zkStages "github.com/ledgerwatch/erigon/zk/stages"
 )
 
+const (
+	MaxKafkaChanSize = 10_000
+)
+
 func AsyncFlushSmtData(ctx context.Context,
 	_db kv.RwDB,
 	s *stagedsync.Sync,
@@ -148,9 +152,10 @@ func ListenTxKafka(ctx context.Context, txKafkaConsumer *kafka.KafkaConsumer, co
 	}
 
 	// Start the kafka consumer
-	txMsgsChan := make(chan kafkaTypes.TransactionMessage)
+	headersChan := make(chan types.Header, MaxKafkaChanSize)
+	txMsgsChan := make(chan kafkaTypes.TransactionMessage, MaxKafkaChanSize)
 	errorChan := make(chan error, 1)
-	go txKafkaConsumer.ConsumeKafkaTransactions(ctx, txMsgsChan, errorChan, logger)
+	go txKafkaConsumer.ConsumeKafka(ctx, headersChan, txMsgsChan, errorChan, logger)
 
 	for {
 		select {

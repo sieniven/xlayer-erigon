@@ -65,3 +65,26 @@ func (client *KafkaProducer) SendKafkaTransaction(ctx context.Context, blockNumb
 func (client *KafkaProducer) Close() error {
 	return client.producer.Close()
 }
+
+func (client *KafkaProducer) SendKafkaBlockHeader(ctx context.Context, blockNumber uint64, header *types.Header) error {
+	// Marshal header to JSON
+	jsonData, err := header.MarshalJSON()
+	if err != nil {
+		return fmt.Errorf("error marshaling block header: %v", err)
+	}
+
+	// Create Kafka message
+	kafkaMsg := &sarama.ProducerMessage{
+		Topic: client.config.BlockTopic,
+		Value: sarama.StringEncoder(jsonData),
+		Key:   sarama.StringEncoder(header.Hash().String()),
+	}
+
+	// Send message
+	_, _, err = client.producer.SendMessage(kafkaMsg)
+	if err != nil {
+		return fmt.Errorf("error sending message to Kafka: %v", err)
+	}
+
+	return nil
+}

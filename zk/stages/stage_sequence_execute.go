@@ -454,6 +454,12 @@ BatchLoop:
 
 		sendersToTriggerStatechanges := make(map[common.Address]struct{})
 		processingTxTime := time.Now()
+
+		// For X Layer, send kafka block header
+		if cfg.zk.XLayer.Kafka.Enable {
+			cfg.txKafkaProducer.SendKafkaBlockHeader(ctx, blockNumber, header)
+		}
+
 	OuterLoopTransactions:
 		for {
 			if innerBreak {
@@ -673,7 +679,7 @@ BatchLoop:
 					batchState.onAddedTransaction(transaction, receipt, execResult, effectiveGas)
 					minedTxHashes = append(minedTxHashes, txHash)
 
-					// Send kafka transaction message
+					// For X Layer, send kafka tx message
 					if cfg.zk.XLayer.Kafka.Enable {
 						cfg.txKafkaProducer.SendKafkaTransaction(ctx, blockNumber, transaction, receipt)
 					}
