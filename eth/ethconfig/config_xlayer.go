@@ -51,7 +51,7 @@ type XLayerConfig struct {
 
 	SequencerBatchCounterPercentage int
 
-	TxKafka KafkaConfig
+	Kafka KafkaConfig
 }
 
 var DefaultXLayerConfig = XLayerConfig{}

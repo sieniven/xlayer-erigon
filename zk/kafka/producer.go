@@ -21,6 +21,7 @@ func NewKafkaProducer(config ethconfig.KafkaConfig) (*KafkaProducer, error) {
 	saramaConfig := sarama.NewConfig()
 	saramaConfig.Version = DEFAULT_VERSION
 	saramaConfig.ClientID = config.ClientID
+	saramaConfig.Producer.Return.Successes = true
 
 	// Create sync producer
 	producer, err := sarama.NewSyncProducer(config.BootstrapServers, saramaConfig)

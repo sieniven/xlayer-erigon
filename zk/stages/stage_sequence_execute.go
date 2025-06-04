@@ -675,7 +675,7 @@ BatchLoop:
 
 					// Send kafka transaction message
 
-					if cfg.zk.XLayer.TxKafka.Enable {
+					if cfg.zk.XLayer.Kafka.Enable {
 						cfg.txKafkaProducer.SendKafkaTransaction(ctx, blockNumber, transaction, receipt)
 					}
 				}

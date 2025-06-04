@@ -1224,8 +1224,8 @@ func New(ctx context.Context, stack *node.Node, config *ethconfig.Config, logger
 			backend.l1BlockSyncer = l1BlockSyncer
 
 			// For X Layer, kafka
-			if cfg.Zk.XLayer.TxKafka.Enable {
-				kafkaProducer, err := kafka.NewKafkaProducer(cfg.Zk.XLayer.TxKafka)
+			if cfg.Zk.XLayer.Kafka.Enable {
+				kafkaProducer, err := kafka.NewKafkaProducer(cfg.Zk.XLayer.Kafka)
 				if err != nil {
 					return nil, err
 				}
