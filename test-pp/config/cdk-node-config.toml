@@ -58,3 +58,4 @@ Outputs = ["stderr"]
 [AggSender]
 CertificateSendInterval = "1m"
 CheckSettledInterval = "5s"
+InitSyncBlock=600

@@ -19,6 +19,11 @@ sed_inplace() {
   fi
 }
 
+docker stop xlayer-seqs; docker rm xlayer-seqs
+sleep 120
+
+make stop-old
+
 cd ./xlayer-contracts
 
 CONTRACT_JSON="./artifacts/contracts/verifiers/v4.0.0-rc.3/SP1VerifierPlonk.sol/SP1VerifierPlonk.json"

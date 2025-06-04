@@ -35,7 +35,7 @@ stop-old:
 	docker stop xlayer-agg-db-old; docker rm xlayer-agg-db-old
 	docker stop xlayer-da-db; docker rm xlayer-da-db
 	docker stop xlayer-prover-old; docker rm xlayer-prover-old
-	docker stop xlayer-seqs; docker rm xlayer-seqs
+	#docker stop xlayer-seqs; docker rm xlayer-seqs
 	docker stop xlayer-agg; docker rm xlayer-agg
 	docker stop xlayer-da; docker rm xlayer-da
 
