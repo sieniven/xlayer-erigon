@@ -62,6 +62,12 @@ func ApplyFlagsForEthXLayerConfig(ctx *cli.Context, cfg *ethconfig.Config) {
 
 		TraceLogPath:   ctx.String(utils.TraceLogPath.Name),
 		EnableTraceLog: ctx.Bool(utils.EnableTraceLog.Name),
+		TxKafka: ethconfig.KafkaConfig{
+			Enable:           ctx.Bool(utils.EnableTxKafka.Name),
+			BootstrapServers: strings.Split(ctx.String(utils.KafkaBootstrapServers.Name), ","),
+			Topic:            ctx.String(utils.KafkaTopic.Name),
+			ClientID:         ctx.String(utils.KafkaClientID.Name),
+		},
 	}
 	if cfg.XLayer.BlockInfoConcurrent {
 		blockinfo.SetUseBlockInfoTree(true)

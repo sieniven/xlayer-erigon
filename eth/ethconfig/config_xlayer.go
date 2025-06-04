@@ -50,6 +50,8 @@ type XLayerConfig struct {
 	EnableTraceLog bool
 
 	SequencerBatchCounterPercentage int
+
+	TxKafka KafkaConfig
 }
 
 var DefaultXLayerConfig = XLayerConfig{}
@@ -71,6 +73,7 @@ type ApolloClientConfig struct {
 }
 
 type KafkaConfig struct {
+	Enable           bool
 	BootstrapServers []string
 	Topic            string
 	ClientID         string

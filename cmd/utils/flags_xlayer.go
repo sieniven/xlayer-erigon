@@ -342,6 +342,26 @@ var (
 		Usage: "Enable full trace log",
 		Value: true,
 	}
+	EnableTxKafka = cli.BoolFlag{
+		Name:  "zkevm.enable-tx-kafka",
+		Usage: "Enable tx kafka",
+		Value: true,
+	}
+	KafkaBootstrapServers = cli.StringFlag{
+		Name:  "zkevm.kafka-bootstrap-servers",
+		Usage: "Kafka bootstrap servers",
+		Value: "",
+	}
+	KafkaTopic = cli.StringFlag{
+		Name:  "zkevm.kafka-topic",
+		Usage: "Kafka topic",
+		Value: "",
+	}
+	KafkaClientID = cli.StringFlag{
+		Name:  "zkevm.kafka-client-id",
+		Usage: "Kafka client id",
+		Value: "",
+	}
 )
 
 func setGPOXLayer(ctx *cli.Context, cfg *gaspricecfg.Config) {

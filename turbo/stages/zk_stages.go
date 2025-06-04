@@ -16,6 +16,7 @@ import (
 	"github.com/ledgerwatch/erigon/turbo/shards"
 	"github.com/ledgerwatch/erigon/turbo/snapshotsync/freezeblocks"
 	"github.com/ledgerwatch/erigon/zk/datastream/server"
+	"github.com/ledgerwatch/erigon/zk/kafka"
 	"github.com/ledgerwatch/erigon/zk/l1infotree"
 	zkStages "github.com/ledgerwatch/erigon/zk/stages"
 	"github.com/ledgerwatch/erigon/zk/syncer"
@@ -109,6 +110,7 @@ func NewSequencerZkStages(ctx context.Context,
 	txPoolDb kv.RwDB,
 	infoTreeUpdater *l1infotree.Updater,
 	hook *Hook,
+	txKafkaProducer *kafka.KafkaProducer,
 ) []*stagedsync.Stage {
 	dirs := cfg.Dirs
 	blockReader := freezeblocks.NewBlockReader(snapshots, nil)
@@ -149,6 +151,7 @@ func NewSequencerZkStages(ctx context.Context,
 			uint16(cfg.YieldSize),
 			infoTreeUpdater,
 			hook,
+			txKafkaProducer,
 		),
 		stagedsync.StageHashStateCfg(db, dirs, cfg.HistoryV3, agg),
 		// For X Layer, split db and ac
