@@ -1,6 +1,7 @@
 package kafka
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 
@@ -32,25 +33,31 @@ func NewKafkaConsumer(config ethconfig.KafkaConfig) (*KafkaConsumer, error) {
 }
 
 // ConsumeKafkaTransactions starts consuming transaction messages from the specified topic
-func (client *KafkaConsumer) ConsumeKafkaTransactions(txMsgsChan chan kafkaTypes.TransactionMessage) error {
+func (client *KafkaConsumer) ConsumeKafkaTransactions(ctx context.Context, txMsgsChan chan kafkaTypes.TransactionMessage, errorChan chan error) {
 	// Create a partition consumer for the topic
 	partitionConsumer, err := client.consumer.ConsumePartition(client.config.Topic, 0, sarama.OffsetNewest)
 	if err != nil {
-		return fmt.Errorf("failed to create partition consumer: %v", err)
+		errorChan <- fmt.Errorf("failed to create partition consumer: %v", err)
+		return
 	}
 	defer partitionConsumer.Close()
 
 	// Start consuming messages
 	for {
 		select {
+		case <-ctx.Done():
+			errorChan <- fmt.Errorf("context done - stopping kafka consumer")
+			return
 		case msg := <-partitionConsumer.Messages():
 			var txMsg kafkaTypes.TransactionMessage
 			if err := json.Unmarshal(msg.Value, &txMsg); err != nil {
-				return fmt.Errorf("ConsumeKafkaTransactions error: error unmarshaling transaction message, %v", err)
+				errorChan <- fmt.Errorf("ConsumeKafkaTransactions error: error unmarshaling transaction message, %v", err)
+				return
 			}
 			txMsgsChan <- txMsg
 		case err := <-partitionConsumer.Errors():
-			return fmt.Errorf("ConsumeKafkaTransactions error: %v", err)
+			errorChan <- fmt.Errorf("ConsumeKafkaTransactions error: %v", err)
+			return
 		}
 	}
 }

@@ -136,26 +136,32 @@ func FlushDataToDB(ctx context.Context, db *mdbx.MdbxKV, logger log.Logger, cach
 	cache.TruncateSmtCacheList(saveData.BlockHeight)
 }
 
-func ListenTxKafka(txKafkaConsumer *kafka.KafkaConsumer, receiptMap *types.ReceiptMap, config ethconfig.XLayerConfig, logger log.Logger) {
+func ListenTxKafka(ctx context.Context, txKafkaConsumer *kafka.KafkaConsumer, config ethconfig.XLayerConfig, logger log.Logger, receiptMap *types.ReceiptMap) {
 	if !config.Kafka.Enable {
 		logger.Info("Tx Kafka is disabled, skipping")
 		return
 	}
 
+	// Start the kafka consumer
 	txMsgsChan := make(chan kafkaTypes.TransactionMessage)
-	go txKafkaConsumer.ConsumeKafkaTransactions(txMsgsChan)
+	errorChan := make(chan error, 1)
+	go txKafkaConsumer.ConsumeKafkaTransactions(ctx, txMsgsChan, errorChan)
 
 	for {
 		select {
 		case txMsg := <-txMsgsChan:
 			tx, blockNumber, receipt, err := txMsg.GetTransaction()
 			if err != nil {
-				logger.Error("failed to get transaction", "error", err)
+				logger.Error("failed to consume transaction message from kafka", "error", err)
 				continue
 			}
-			logger.Info("Received transaction message", "tx", tx, "blockNumber", blockNumber, "receipt", receipt)
 			receiptMap.Put(tx.Hash(), receipt)
+
+			// TODO: remove this log
+			logger.Info("XXX Received transaction message", "tx", tx, "blockNumber", blockNumber, "receipt", receipt)
+		case err := <-errorChan:
+			logger.Error("kafka consumer failed", "error", err)
+			return
 		}
 	}
-
 }

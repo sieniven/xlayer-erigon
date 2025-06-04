@@ -1995,7 +1995,7 @@ func (s *Ethereum) Start() error {
 
 		go stages2.StageLoop(s.sentryCtx, s.chainDB, s.stagedSync, s.sentriesClient.Hd, s.waitForStageLoopStop, s.config.Sync.LoopThrottle, s.logger, s.blockReader, hook, s.config.ForcePartialCommit)
 
-		go stages2.ListenTxKafka(s.txKafkaConsumer, s.receiptMap, s.config.Zk.XLayer, s.logger)
+		go stages2.ListenTxKafka(s.sentryCtx, s.txKafkaConsumer, s.config.Zk.XLayer, s.logger, s.receiptMap)
 	}
 
 	stages := diagnostics.InitStagesFromList(nodeStages)
