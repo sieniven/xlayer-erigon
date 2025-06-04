@@ -170,20 +170,24 @@ func (msg TransactionMessage) MarshalJSON() ([]byte, error) {
 	enc.GasPrice = msg.GasPrice
 
 	if msg.Receipt != nil {
+		// Handle nil logs
 		receipt := *msg.Receipt
-		if receipt.Logs != nil {
-			logs := make([]*types1.Log, len(receipt.Logs))
-			for i, log := range receipt.Logs {
-				if log != nil {
-					logCopy := *log
-					if logCopy.Topics == nil {
-						logCopy.Topics = []libcommon.Hash{}
-					}
-					logs[i] = &logCopy
-				}
-			}
-			receipt.Logs = logs
+		if receipt.Logs == nil {
+			receipt.Logs = []*types1.Log{}
 		}
+
+		// Handle nil topics
+		logs := make([]*types1.Log, len(receipt.Logs))
+		for i, log := range receipt.Logs {
+			if log != nil {
+				logCopy := *log
+				if logCopy.Topics == nil {
+					logCopy.Topics = []libcommon.Hash{}
+				}
+				logs[i] = &logCopy
+			}
+		}
+		receipt.Logs = logs
 		enc.Receipt = &receipt
 	}
 

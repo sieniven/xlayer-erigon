@@ -55,8 +55,7 @@ func (h *consumerGroupHandler) Cleanup(_ sarama.ConsumerGroupSession) error {
 }
 
 func (h *consumerGroupHandler) ConsumeClaim(session sarama.ConsumerGroupSession, claim sarama.ConsumerGroupClaim) error {
-	fmt.Printf("Starting kafka consumption for topic %s partition %d offset %d", claim.Topic(), claim.Partition(), claim.InitialOffset())
-	h.logger.Info("Starting kafka consumption for topic %s partition %d offset %d", claim.Topic(), claim.Partition(), claim.InitialOffset())
+	h.logger.Info("Starting kafka consumption", "topic", claim.Topic(), "partition", claim.Partition(), "offset", claim.InitialOffset())
 	for {
 		select {
 		case <-h.ctx.Done():
@@ -71,8 +70,8 @@ func (h *consumerGroupHandler) ConsumeClaim(session sarama.ConsumerGroupSession,
 			case h.blockTopic:
 				var header types1.Header
 				if err := header.UnmarshalJSON(msg.Value); err != nil {
-					h.errorChan <- fmt.Errorf("consume claim error, unmarshaling block header: %v", err)
-					return err
+					h.logger.Warn("consume claim error, unmarshaling block header", "error", err)
+					continue
 				}
 
 				// Send message to channel
@@ -87,8 +86,8 @@ func (h *consumerGroupHandler) ConsumeClaim(session sarama.ConsumerGroupSession,
 			case h.txTopic:
 				var txMsg kafkaTypes.TransactionMessage
 				if err := json.Unmarshal(msg.Value, &txMsg); err != nil {
-					h.errorChan <- fmt.Errorf("consume claim error, unmarshaling transaction message: %v", err)
-					return err
+					h.logger.Warn("consume claim error, unmarshaling transaction message", "error", err)
+					continue
 				}
 
 				// Send message to channel
