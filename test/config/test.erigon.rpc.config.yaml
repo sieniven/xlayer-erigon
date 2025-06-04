@@ -87,3 +87,8 @@ zkevm.standalone-smt-db: true  # true: enalbe split smt db, false: not split
 
 zkevm.enable-trace-log: true
 zkevm.trace-log-path: /home/erigon/data/logs/trace.log
+
+kafka.sync-enable-flag: true
+kafka.sync-bootstrap-servers: "xlayer-kafka:9092"
+kafka.sync-topic: xlayer-tx
+kafka.sync-client-id: "xlayer-consumer"
