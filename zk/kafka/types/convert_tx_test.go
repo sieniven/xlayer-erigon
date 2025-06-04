@@ -117,9 +117,10 @@ func TestLegacyTx(t *testing.T) {
 	assertReceipt(t, msg, rightvrsTxReceipt)
 
 	// Test to
-	convertEmptyTx, convertBlockNumber, err := emptyMsg.GetTransaction()
+	convertEmptyTx, convertBlockNumber, convertReceipt, err := emptyMsg.GetTransaction()
 	assert.NilError(t, err)
 	assert.Equal(t, convertBlockNumber, blockNumber)
+	assertReceipt(t, emptyMsg, convertReceipt)
 	assert.Equal(t, convertEmptyTx.Hash(), emptyTx.Hash())
 	convertSender, ok := convertEmptyTx.GetSender()
 	assert.Equal(t, ok, true)
@@ -140,9 +141,10 @@ func TestLegacyTx(t *testing.T) {
 	assert.Equal(t, convertS.String(), s.String())
 	assert.Equal(t, convertEmptyTx.GetPrice().String(), emptyTx.GetPrice().String())
 
-	convertRightvsTx, convertBlockNumber, err := msg.GetTransaction()
+	convertRightvsTx, convertBlockNumber, convertReceipt, err := msg.GetTransaction()
 	assert.NilError(t, err)
 	assert.Equal(t, convertBlockNumber, blockNumber)
+	assertReceipt(t, msg, convertReceipt)
 	assert.Equal(t, convertRightvsTx.Hash(), rightvrsTx.Hash())
 	convertSender, ok = convertRightvsTx.GetSender()
 	assert.Equal(t, ok, true)
@@ -231,9 +233,10 @@ func TestAccessListTx(t *testing.T) {
 	}
 
 	// Test to
-	convertAccessListTx, convertBlockNumber, err := msg.GetTransaction()
+	convertAccessListTx, convertBlockNumber, convertReceipt, err := msg.GetTransaction()
 	assert.NilError(t, err)
 	assert.Equal(t, convertBlockNumber, blockNumber)
+	assertReceipt(t, msg, convertReceipt)
 	assert.Equal(t, convertAccessListTx.Hash(), signedAccessListTx.Hash())
 	convertSender, ok := convertAccessListTx.GetSender()
 	assert.Equal(t, ok, true)
@@ -317,9 +320,10 @@ func TestDynamicFeeTx(t *testing.T) {
 	}
 
 	// Test to
-	convertDynFeeTx, convertBlockNumber, err := msg.GetTransaction()
+	convertDynFeeTx, convertBlockNumber, convertReceipt, err := msg.GetTransaction()
 	assert.NilError(t, err)
 	assert.Equal(t, convertBlockNumber, blockNumber)
+	assertReceipt(t, msg, convertReceipt)
 	assert.Equal(t, convertDynFeeTx.Hash(), signedDynFeeTx.Hash())
 	convertSender, ok := convertDynFeeTx.GetSender()
 	assert.Equal(t, ok, true)
@@ -404,9 +408,10 @@ func TestFromBlobTx(t *testing.T) {
 	}
 
 	// Test to
-	convertBlobTx, convertBlockNumber, err := msg.GetTransaction()
+	convertBlobTx, convertBlockNumber, convertReceipt, err := msg.GetTransaction()
 	assert.NilError(t, err)
 	assert.Equal(t, convertBlockNumber, blockNumber)
+	assertReceipt(t, msg, convertReceipt)
 	assert.Equal(t, convertBlobTx.Hash(), blobTx.Hash())
 	convertSender, ok := convertBlobTx.GetSender()
 	assert.Equal(t, ok, true)

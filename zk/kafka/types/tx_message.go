@@ -93,40 +93,41 @@ func ToKafkaTransactionMessage(tx types1.Transaction, receipt *types1.Receipt, b
 	return txMsg, nil
 }
 
-func (msg TransactionMessage) GetTransaction() (types1.Transaction, uint64, error) {
+func (msg TransactionMessage) GetTransaction() (types1.Transaction, uint64, *types1.Receipt, error) {
 	blockNumber := msg.BlockNumber
+	receipt := msg.Receipt
 
 	// Get tx
 	switch msg.Type {
 	case types1.LegacyTxType:
 		tx, err := msg.toLegacyTx()
 		if err != nil {
-			return nil, blockNumber, err
+			return nil, blockNumber, receipt, err
 		}
 
-		return &tx, blockNumber, nil
+		return &tx, blockNumber, receipt, nil
 	case types1.AccessListTxType:
 		tx, err := msg.toAccessListTx()
 		if err != nil {
-			return nil, blockNumber, err
+			return nil, blockNumber, receipt, err
 		}
 
-		return &tx, blockNumber, nil
+		return &tx, blockNumber, receipt, nil
 	case types1.DynamicFeeTxType:
 		tx, err := msg.toDynamicFeeTx()
 		if err != nil {
-			return nil, blockNumber, err
+			return nil, blockNumber, receipt, err
 		}
 
-		return &tx, blockNumber, nil
+		return &tx, blockNumber, receipt, nil
 	case types1.BlobTxType:
 		tx, err := msg.toBlobTx()
 		if err != nil {
-			return nil, blockNumber, err
+			return nil, blockNumber, receipt, err
 		}
 
-		return &tx, blockNumber, nil
+		return &tx, blockNumber, receipt, nil
 	default:
-		return nil, blockNumber, fmt.Errorf("unsupported transaction type: %d", msg.Type)
+		return nil, blockNumber, receipt, fmt.Errorf("unsupported transaction type: %d", msg.Type)
 	}
 }
