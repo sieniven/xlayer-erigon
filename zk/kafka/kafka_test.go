@@ -64,7 +64,7 @@ func TestKafkaConsumer(t *testing.T) {
 		case err := <-errorChan:
 			t.Fatalf("Received error from consumer: %v", err)
 		case txMsg := <-txMsgsChan:
-			assert.Equal(t, txMsg.BlockNumber, i)
+			assert.Equal(t, txMsg.BlockNumber, uint64(i))
 			assert.Equal(t, int(txMsg.Type), types1.LegacyTxType)
 			assert.Equal(t, txMsg.Hash, rightvrsTx.Hash().String())
 			assert.Equal(t, txMsg.From, testFromAddr.String())

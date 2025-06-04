@@ -52,11 +52,12 @@ func (h *consumerGroupHandler) Cleanup(_ sarama.ConsumerGroupSession) error {
 
 func (h *consumerGroupHandler) ConsumeClaim(session sarama.ConsumerGroupSession, claim sarama.ConsumerGroupClaim) error {
 	h.logger.Info("Starting kafka consumption for topic %s partition %d offset %d", claim.Topic(), claim.Partition(), claim.InitialOffset())
-	fmt.Printf("XXX Starting kafka consumption for topic %s partition %d offset %d\n", claim.Topic(), claim.Partition(), claim.InitialOffset())
 	for {
 		select {
 		case <-h.ctx.Done():
-			return fmt.Errorf("context done - stopping consume claim")
+			err := fmt.Errorf("context cancelled - stopping consume claim")
+			h.errorChan <- err
+			return err
 		case msg, ok := <-claim.Messages():
 			if !ok {
 				return nil
@@ -66,8 +67,16 @@ func (h *consumerGroupHandler) ConsumeClaim(session sarama.ConsumerGroupSession,
 				h.errorChan <- fmt.Errorf("consume claim error, unmarshaling transaction message: %v", err)
 				return err
 			}
-			h.txMsgsChan <- txMsg
-			session.MarkMessage(msg, "")
+
+			// Send message to channel
+			select {
+			case h.txMsgsChan <- txMsg:
+				session.MarkMessage(msg, "")
+			case <-h.ctx.Done():
+				err := fmt.Errorf("context cancelled - stopping consume claim")
+				h.errorChan <- err
+				return err
+			}
 		}
 	}
 }

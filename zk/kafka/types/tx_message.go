@@ -38,7 +38,7 @@ type TransactionMessage struct {
 	BlobVersionedHashes []string `json:"blobVersionedHashes"`
 
 	// Receipt data
-	Receipt *types1.Receipt `json:"rlpReceipt"`
+	Receipt *types1.Receipt `json:"receipt"`
 }
 
 func ToKafkaTransactionMessage(tx types1.Transaction, receipt *types1.Receipt, blockNumber uint64) (txMsg TransactionMessage, err error) {
