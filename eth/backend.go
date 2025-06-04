@@ -1305,6 +1305,7 @@ func New(ctx context.Context, stack *node.Node, config *ethconfig.Config, logger
 				streamClient,
 				dataStreamServer,
 				l1InfoTreeUpdater,
+				backend.receiptMap,
 			)
 
 			backend.syncUnwindOrder = zkStages.ZkUnwindOrder
