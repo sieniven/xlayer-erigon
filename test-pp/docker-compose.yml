@@ -365,7 +365,7 @@ services:
   
   polygonzkevm-bridge-service:
     container_name: polygonzkevm-bridge-service
-    image: hermeznetwork/zkevm-bridge-service:v0.6.0-RC16
+    image: hermeznetwork/zkevm-bridge-service:v0.6.0
     restart: on-failure
     ports:
       - 8081:8080
