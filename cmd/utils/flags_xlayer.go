@@ -342,24 +342,25 @@ var (
 		Usage: "Enable full trace log",
 		Value: true,
 	}
-	EnableTxKafka = cli.BoolFlag{
-		Name:  "zkevm.enable-tx-kafka",
-		Usage: "Enable tx kafka",
+	// X Layer Kafka
+	KafkaSyncEnableFlag = cli.BoolFlag{
+		Name:  "kafka.sync-enable-flag",
+		Usage: "Kafka sync enable flag",
 		Value: true,
 	}
-	KafkaBootstrapServers = cli.StringFlag{
-		Name:  "zkevm.kafka-bootstrap-servers",
-		Usage: "Kafka bootstrap servers",
+	KafkaSyncBootstrapServers = cli.StringFlag{
+		Name:  "kafka.sync-bootstrap-servers",
+		Usage: "Kafka sync bootstrap servers",
 		Value: "",
 	}
-	KafkaTopic = cli.StringFlag{
-		Name:  "zkevm.kafka-topic",
+	KafkaSyncTopic = cli.StringFlag{
+		Name:  "kafka.sync-topic",
 		Usage: "Kafka topic",
 		Value: "",
 	}
-	KafkaClientID = cli.StringFlag{
-		Name:  "zkevm.kafka-client-id",
-		Usage: "Kafka client id",
+	KafkaSyncClientID = cli.StringFlag{
+		Name:  "kafka.sync-client-id",
+		Usage: "Kafka sync client id",
 		Value: "",
 	}
 )
