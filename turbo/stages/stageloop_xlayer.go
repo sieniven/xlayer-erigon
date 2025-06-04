@@ -12,6 +12,9 @@ import (
 	"github.com/ledgerwatch/log/v3"
 
 	"github.com/ledgerwatch/erigon-lib/kv"
+	"github.com/ledgerwatch/erigon/core/types"
+	"github.com/ledgerwatch/erigon/zk/kafka"
+	kafkaTypes "github.com/ledgerwatch/erigon/zk/kafka/types"
 	"github.com/ledgerwatch/erigon/zk/sequencer"
 
 	"github.com/ledgerwatch/erigon/eth/ethconfig"
@@ -131,4 +134,28 @@ func FlushDataToDB(ctx context.Context, db *mdbx.MdbxKV, logger log.Logger, cach
 		return
 	}
 	cache.TruncateSmtCacheList(saveData.BlockHeight)
+}
+
+func ListenTxKafka(txKafkaConsumer *kafka.KafkaConsumer, receiptMap *types.ReceiptMap, config ethconfig.XLayerConfig, logger log.Logger) {
+	if !config.Kafka.Enable {
+		logger.Info("Tx Kafka is disabled, skipping")
+		return
+	}
+
+	txMsgsChan := make(chan kafkaTypes.TransactionMessage)
+	go txKafkaConsumer.ConsumeKafkaTransactions(txMsgsChan)
+
+	for {
+		select {
+		case txMsg := <-txMsgsChan:
+			tx, blockNumber, receipt, err := txMsg.GetTransaction()
+			if err != nil {
+				logger.Error("failed to get transaction", "error", err)
+				continue
+			}
+			logger.Info("Received transaction message", "tx", tx, "blockNumber", blockNumber, "receipt", receipt)
+			receiptMap.Put(tx.Hash(), receipt)
+		}
+	}
+
 }
