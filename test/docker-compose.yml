@@ -446,8 +446,8 @@ services:
   xlayer-kafka:
     image: bitnami/kafka:latest
     container_name: xlayer-kafka
-    expose:
-      - 9094
+    ports:
+      - 9094:9094
     environment:
       # Configs
       - KAFKA_CFG_NODE_ID=1
@@ -460,12 +460,3 @@ services:
       - KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP=CONTROLLER:PLAINTEXT,EXTERNAL:PLAINTEXT,PLAINTEXT:PLAINTEXT
       - KAFKA_CFG_CONTROLLER_LISTENER_NAMES=CONTROLLER
       - KAFKA_CFG_INTER_BROKER_LISTENER_NAME=PLAINTEXT
-
-  xlayer-kafka-ui:
-    container_name: xlayer-kafka-ui
-    image: provectuslabs/kafka-ui:latest
-    ports:
-    - 8888:8080
-    environment:
-    - KAFKA_CLUSTERS_0_NAME=dev_cluster
-    - KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS=xlayer-kafka:9092
