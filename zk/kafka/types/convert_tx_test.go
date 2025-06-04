@@ -117,7 +117,9 @@ func TestLegacyTx(t *testing.T) {
 	assertReceipt(t, msg, rightvrsTxReceipt)
 
 	// Test to
-	convertEmptyTx, convertBlockNumber, convertReceipt, err := emptyMsg.GetTransaction()
+	convertEmptyTx, convertBlockNumber, err := emptyMsg.GetTransaction()
+	assert.NilError(t, err)
+	convertReceipt, err := emptyMsg.GetReceipt()
 	assert.NilError(t, err)
 	assert.Equal(t, convertBlockNumber, blockNumber)
 	assertReceipt(t, emptyMsg, convertReceipt)
@@ -141,7 +143,9 @@ func TestLegacyTx(t *testing.T) {
 	assert.Equal(t, convertS.String(), s.String())
 	assert.Equal(t, convertEmptyTx.GetPrice().String(), emptyTx.GetPrice().String())
 
-	convertRightvsTx, convertBlockNumber, convertReceipt, err := msg.GetTransaction()
+	convertRightvsTx, convertBlockNumber, err := msg.GetTransaction()
+	assert.NilError(t, err)
+	convertReceipt, err = msg.GetReceipt()
 	assert.NilError(t, err)
 	assert.Equal(t, convertBlockNumber, blockNumber)
 	assertReceipt(t, msg, convertReceipt)
@@ -233,7 +237,9 @@ func TestAccessListTx(t *testing.T) {
 	}
 
 	// Test to
-	convertAccessListTx, convertBlockNumber, convertReceipt, err := msg.GetTransaction()
+	convertAccessListTx, convertBlockNumber, err := msg.GetTransaction()
+	assert.NilError(t, err)
+	convertReceipt, err := msg.GetReceipt()
 	assert.NilError(t, err)
 	assert.Equal(t, convertBlockNumber, blockNumber)
 	assertReceipt(t, msg, convertReceipt)
@@ -320,7 +326,9 @@ func TestDynamicFeeTx(t *testing.T) {
 	}
 
 	// Test to
-	convertDynFeeTx, convertBlockNumber, convertReceipt, err := msg.GetTransaction()
+	convertDynFeeTx, convertBlockNumber, err := msg.GetTransaction()
+	assert.NilError(t, err)
+	convertReceipt, err := msg.GetReceipt()
 	assert.NilError(t, err)
 	assert.Equal(t, convertBlockNumber, blockNumber)
 	assertReceipt(t, msg, convertReceipt)
@@ -408,7 +416,9 @@ func TestFromBlobTx(t *testing.T) {
 	}
 
 	// Test to
-	convertBlobTx, convertBlockNumber, convertReceipt, err := msg.GetTransaction()
+	convertBlobTx, convertBlockNumber, err := msg.GetTransaction()
+	assert.NilError(t, err)
+	convertReceipt, err := msg.GetReceipt()
 	assert.NilError(t, err)
 	assert.Equal(t, convertBlockNumber, blockNumber)
 	assertReceipt(t, msg, convertReceipt)

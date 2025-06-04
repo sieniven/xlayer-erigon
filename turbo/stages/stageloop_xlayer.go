@@ -167,9 +167,14 @@ func ListenTxKafka(ctx context.Context, txKafkaConsumer *kafka.KafkaConsumer, co
 			// TODO: remove this log
 			logger.Info("XXX Received header message", "header", header)
 		case txMsg := <-txMsgsChan:
-			tx, blockNumber, receipt, err := txMsg.GetTransaction()
+			tx, blockNumber, err := txMsg.GetTransaction()
 			if err != nil {
 				logger.Error("failed to consume transaction message from kafka", "error", err)
+				continue
+			}
+			receipt, err := txMsg.GetReceipt()
+			if err != nil {
+				logger.Error("failed to consume tx receipt message from kafka", "error", err)
 				continue
 			}
 			txInfoMap.Put(tx.Hash(), tx, receipt)
