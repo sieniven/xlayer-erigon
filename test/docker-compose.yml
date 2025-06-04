@@ -444,24 +444,28 @@ services:
       cdk-erigon --http.vhosts=* --http.corsdomain=* --ws --config=/usr/src/app/config.yaml
 
   xlayer-kafka:
-    image: wurstmeister/kafka
+    image: bitnami/kafka:latest
     container_name: xlayer-kafka
-    depends_on:
-      - xlayer-zookeeper
     expose:
-      - 9093
+      - 9094
     environment:
-      KAFKA_ADVERTISED_LISTENERS: INSIDE://:9092,OUTSIDE://localhost:9123
-      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: INSIDE:PLAINTEXT,OUTSIDE:PLAINTEXT
-      KAFKA_LISTENERS: INSIDE://0.0.0.0:9092,OUTSIDE://0.0.0.0:9123
-      KAFKA_INTER_BROKER_LISTENER_NAME: INSIDE
-      KAFKA_ZOOKEEPER_CONNECT: xlayer-zookeeper:2181
-      KAFKA_CREATE_TOPICS: "explorer_chainAddressPrice_push:1:1"
+      # Configs
+      - KAFKA_CFG_NODE_ID=1
+      - KAFKA_CFG_PROCESS_ROLES=controller,broker
+      - KAFKA_CFG_CONTROLLER_QUORUM_VOTERS=1@xlayer-kafka:9093
+      - KAFKA_MESSAGE_MAX_BYTES=30000000
+      # Listeners
+      - KAFKA_CFG_LISTENERS=PLAINTEXT://:9092,CONTROLLER://:9093,EXTERNAL://:9094
+      - KAFKA_CFG_ADVERTISED_LISTENERS=PLAINTEXT://:9092,EXTERNAL://localhost:9094
+      - KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP=CONTROLLER:PLAINTEXT,EXTERNAL:PLAINTEXT,PLAINTEXT:PLAINTEXT
+      - KAFKA_CFG_CONTROLLER_LISTENER_NAMES=CONTROLLER
+      - KAFKA_CFG_INTER_BROKER_LISTENER_NAME=PLAINTEXT
 
-  xlayer-zookeeper:
-    image: wurstmeister/zookeeper
-    container_name: xlayer-zookeeper
+  xlayer-kafka-ui:
+    container_name: xlayer-kafka-ui
+    image: provectuslabs/kafka-ui:latest
     ports:
-      - "2182:2181"
-    expose:
-      - 2182
+    - 8888:8080
+    environment:
+    - KAFKA_CLUSTERS_0_NAME=dev_cluster
+    - KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS=xlayer-kafka:9092
