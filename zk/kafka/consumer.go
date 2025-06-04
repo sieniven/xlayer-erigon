@@ -40,6 +40,8 @@ type consumerGroupHandler struct {
 	txMsgsChan chan kafkaTypes.TransactionMessage
 	errorChan  chan error
 	logger     log.Logger
+	txTopic    string
+	blockTopic string
 }
 
 func (h *consumerGroupHandler) Setup(session sarama.ConsumerGroupSession) error {
@@ -62,18 +64,26 @@ func (h *consumerGroupHandler) ConsumeClaim(session sarama.ConsumerGroupSession,
 			if !ok {
 				return nil
 			}
-			var txMsg kafkaTypes.TransactionMessage
-			if err := json.Unmarshal(msg.Value, &txMsg); err != nil {
-				h.errorChan <- fmt.Errorf("consume claim error, unmarshaling transaction message: %v", err)
-				return err
-			}
+			switch msg.Topic {
+			case h.blockTopic:
+			case h.txTopic:
+				var txMsg kafkaTypes.TransactionMessage
+				if err := json.Unmarshal(msg.Value, &txMsg); err != nil {
+					h.errorChan <- fmt.Errorf("consume claim error, unmarshaling transaction message: %v", err)
+					return err
+				}
 
-			// Send message to channel
-			select {
-			case h.txMsgsChan <- txMsg:
-				session.MarkMessage(msg, "")
-			case <-h.ctx.Done():
-				err := fmt.Errorf("context cancelled - stopping consume claim")
+				// Send message to channel
+				select {
+				case h.txMsgsChan <- txMsg:
+					session.MarkMessage(msg, "")
+				case <-h.ctx.Done():
+					err := fmt.Errorf("context cancelled - stopping consume claim")
+					h.errorChan <- err
+					return err
+				}
+			default:
+				err := fmt.Errorf("unknown topic: %s", msg.Topic)
 				h.errorChan <- err
 				return err
 			}
@@ -88,9 +98,11 @@ func (client *KafkaConsumer) ConsumeKafkaTransactions(ctx context.Context, txMsg
 		txMsgsChan: txMsgsChan,
 		errorChan:  errorChan,
 		logger:     logger,
+		txTopic:    client.config.TxTopic,
+		blockTopic: client.config.BlockTopic,
 	}
 
-	topics := []string{client.config.Topic}
+	topics := []string{client.config.TxTopic, client.config.BlockTopic}
 	err := client.consumer.Consume(ctx, topics, handler)
 	if err != nil {
 		errorChan <- fmt.Errorf("ConsumeKafkaTransactions error: %v", err)

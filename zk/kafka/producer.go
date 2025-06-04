@@ -48,7 +48,7 @@ func (client *KafkaProducer) SendKafkaTransaction(ctx context.Context, blockNumb
 
 	// Create Kafka message
 	kafkaMsg := &sarama.ProducerMessage{
-		Topic: client.config.Topic,
+		Topic: client.config.TxTopic,
 		Value: sarama.StringEncoder(jsonData),
 		Key:   sarama.StringEncoder(tx.Hash().String()),
 	}

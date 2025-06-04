@@ -43,12 +43,13 @@ var (
 	}
 )
 
-func TestKafkaConsumer(t *testing.T) {
+func TestKafkaConsumerGetTx(t *testing.T) {
 	rightvrsTx.SetSender(testFromAddr)
 	cfg := ethconfig.KafkaConfig{
 		Enable:           true,
 		BootstrapServers: []string{"0.0.0.0:9094"},
-		Topic:            "xlayer-test",
+		BlockTopic:       "xlayer-test-block",
+		TxTopic:          "xlayer-test-tx",
 		ClientID:         "xlayer-test-consumer",
 	}
 	consumer, err := NewKafkaConsumer(cfg)
@@ -87,13 +88,14 @@ func TestKafkaConsumer(t *testing.T) {
 	assert.NilError(t, err)
 }
 
-func TestKafkaProducer(t *testing.T) {
+func TestKafkaProducerSendTx(t *testing.T) {
 	rightvrsTx.SetSender(testFromAddr)
 	cfg := ethconfig.KafkaConfig{
 		Enable:           true,
 		BootstrapServers: []string{"0.0.0.0:9094"},
-		Topic:            "xlayer-test",
-		ClientID:         "xlayer-test-producer",
+		BlockTopic:       "xlayer-test-block",
+		TxTopic:          "xlayer-test-tx",
+		ClientID:         "xlayer-test-consumer",
 	}
 	producer, err := NewKafkaProducer(cfg)
 	assert.NilError(t, err)

@@ -353,9 +353,14 @@ var (
 		Usage: "Kafka sync bootstrap servers",
 		Value: "",
 	}
-	KafkaSyncTopic = cli.StringFlag{
-		Name:  "kafka.sync-topic",
-		Usage: "Kafka topic",
+	KafkaSyncBlockTopic = cli.StringFlag{
+		Name:  "kafka.sync-block-topic",
+		Usage: "Kafka block topic",
+		Value: "",
+	}
+	KafkaSyncTxTopic = cli.StringFlag{
+		Name:  "kafka.sync-tx-topic",
+		Usage: "Kafka tx topic",
 		Value: "",
 	}
 	KafkaSyncClientID = cli.StringFlag{

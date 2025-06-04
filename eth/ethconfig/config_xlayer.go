@@ -75,6 +75,7 @@ type ApolloClientConfig struct {
 type KafkaConfig struct {
 	Enable           bool
 	BootstrapServers []string
-	Topic            string
+	BlockTopic       string
+	TxTopic          string
 	ClientID         string
 }

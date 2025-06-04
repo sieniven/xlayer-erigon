@@ -65,7 +65,8 @@ func ApplyFlagsForEthXLayerConfig(ctx *cli.Context, cfg *ethconfig.Config) {
 		Kafka: ethconfig.KafkaConfig{
 			Enable:           ctx.Bool(utils.KafkaSyncEnableFlag.Name),
 			BootstrapServers: strings.Split(ctx.String(utils.KafkaSyncBootstrapServers.Name), ","),
-			Topic:            ctx.String(utils.KafkaSyncTopic.Name),
+			BlockTopic:       ctx.String(utils.KafkaSyncBlockTopic.Name),
+			TxTopic:          ctx.String(utils.KafkaSyncTxTopic.Name),
 			ClientID:         ctx.String(utils.KafkaSyncClientID.Name),
 		},
 	}
