@@ -68,6 +68,10 @@ sed -i '/zkevm\.sequencer-initial-fork-id/d' ./templates/cdk-erigon/config.yml
 sed -i '/sentry.drop-useless-peers:/d' templates/cdk-erigon/config.yml
 sed -i '/zkevm\.pool-manager-url/d' ./templates/cdk-erigon/config.yml
 sed -i '/zkevm.l2-datastreamer-timeout:/d' templates/cdk-erigon/config.yml
+sed -i '/zkevm.rpc-get-batch-witness-concurrency-limit: 1/d' templates/cdk-erigon/config.yml
+
+# Add new flags for dev-pp
+echo 'zkevm.executor-mock: true' >> templates/cdk-erigon/config.yml
 
 # Add specific configuration based on AC_SPLIT setting
 if [ "$AC_SPLIT" = "ac-split" ]; then
@@ -83,7 +87,7 @@ echo 'args:' > params.yml
 echo '  cdk_erigon_node_image: cdk-erigon:local' >> params.yml
 echo '  el-1-geth-lighthouse: ethpandaops/lighthouse@sha256:4902d9e4a6b6b8d4c136ea54f0e51582a32f356f3dec7194a1adee13ed2d662e' >> params.yml
 
-yq -i -y ".args.data_availability_mode = \"cdk-validium\"" params.yml
+yq -i  ".args.data_availability_mode = \"cdk-validium\"" params.yml
 
 # Modify chainspec.json file (same as in CI)
 echo "Modifying chainspec.json..."
