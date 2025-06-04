@@ -137,6 +137,11 @@ func FlushDataToDB(ctx context.Context, db *mdbx.MdbxKV, logger log.Logger, cach
 }
 
 func ListenTxKafka(ctx context.Context, txKafkaConsumer *kafka.KafkaConsumer, config ethconfig.XLayerConfig, logger log.Logger, receiptMap *types.ReceiptMap) {
+	if sequencer.IsSequencer() {
+		logger.Info("txKafkaConsumer is disabled on sequencer, skipping")
+		return
+	}
+
 	if !config.Kafka.Enable {
 		logger.Info("Tx Kafka is disabled, skipping")
 		return
