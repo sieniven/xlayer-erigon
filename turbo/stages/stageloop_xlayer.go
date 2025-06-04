@@ -159,6 +159,11 @@ func ListenTxKafka(ctx context.Context, txKafkaConsumer *kafka.KafkaConsumer, co
 
 	for {
 		select {
+		case header := <-headersChan:
+			// TODO: add handling header
+
+			// TODO: remove this log
+			logger.Info("XXX Received header message", "header", header)
 		case txMsg := <-txMsgsChan:
 			tx, blockNumber, receipt, err := txMsg.GetTransaction()
 			if err != nil {
