@@ -178,24 +178,19 @@ func (msg TransactionMessage) MarshalJSON() ([]byte, error) {
 
 	if msg.Receipt != nil {
 		// Handle nil logs
-		// Handle nil logs
 		receipt := *msg.Receipt
 		if receipt.Logs == nil {
 			receipt.Logs = []*types1.Log{}
 		}
 
 		// Handle nil topics
-		logs := make([]*types1.Log, len(receipt.Logs))
-		for i, log := range receipt.Logs {
+		for _, log := range receipt.Logs {
 			if log != nil {
-				logCopy := *log
-				if logCopy.Topics == nil {
-					logCopy.Topics = []libcommon.Hash{}
+				if log.Topics == nil {
+					log.Topics = []libcommon.Hash{}
 				}
-				logs[i] = &logCopy
 			}
 		}
-		receipt.Logs = logs
 		enc.Receipt = &receipt
 	}
 
