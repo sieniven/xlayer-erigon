@@ -8,6 +8,7 @@ import (
 	"github.com/ledgerwatch/erigon/core/types"
 	"github.com/ledgerwatch/erigon/eth/ethconfig"
 	kafkaTypes "github.com/ledgerwatch/erigon/zk/kafka/types"
+	zktypes "github.com/ledgerwatch/erigon/zk/types"
 )
 
 // KafkaProducer represents a Kafka producer client for sending transaction messages
@@ -34,8 +35,8 @@ func NewKafkaProducer(config ethconfig.KafkaConfig) (*KafkaProducer, error) {
 	}, nil
 }
 
-func (client *KafkaProducer) SendKafkaTransaction(ctx context.Context, blockNumber uint64, tx types.Transaction, receipt *types.Receipt) error {
-	msg, err := kafkaTypes.ToKafkaTransactionMessage(tx, receipt, blockNumber)
+func (client *KafkaProducer) SendKafkaTransaction(ctx context.Context, blockNumber uint64, tx types.Transaction, receipt *types.Receipt, innerTxs []*zktypes.InnerTx) error {
+	msg, err := kafkaTypes.ToKafkaTransactionMessage(tx, receipt, innerTxs, blockNumber)
 	if err != nil {
 		return fmt.Errorf("SendKafkaTransaction error: %v", err)
 	}

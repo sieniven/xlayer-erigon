@@ -612,7 +612,7 @@ BatchLoop:
 
 				effectiveGas := batchState.blockState.getL1EffectiveGases(cfg, i)
 
-				receipt, execResult, anyOverflow, err := attemptAddTransaction(cfg, sdb, ibs, &blockContext, header, transaction, effectiveGas, batchState.isL1Recovery(), batchState.forkId, l1TreeUpdateIndex, ethBlockGasPool)
+				receipt, execResult, innerTxs, anyOverflow, err := attemptAddTransaction(cfg, sdb, ibs, &blockContext, header, transaction, effectiveGas, batchState.isL1Recovery(), batchState.forkId, l1TreeUpdateIndex, ethBlockGasPool)
 				if err != nil {
 					metrics.GetLogStatistics().CumulativeCounting(metrics.ProcessingInvalidTxCounter)
 					if batchState.isLimboRecovery() {
@@ -681,7 +681,7 @@ BatchLoop:
 
 					// For X Layer, send kafka tx message
 					if cfg.zk.XLayer.Kafka.Enable {
-						cfg.txKafkaProducer.SendKafkaTransaction(ctx, blockNumber, transaction, receipt)
+						cfg.txKafkaProducer.SendKafkaTransaction(ctx, blockNumber, transaction, receipt, innerTxs)
 					}
 				}
 

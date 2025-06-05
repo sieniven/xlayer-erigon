@@ -6,6 +6,7 @@ import (
 
 	libcommon "github.com/ledgerwatch/erigon-lib/common"
 	types1 "github.com/ledgerwatch/erigon/core/types"
+	zktypes "github.com/ledgerwatch/erigon/zk/types"
 )
 
 // TransactionMessage represents the structure of the transaction message to be sent to Kafka
@@ -39,9 +40,12 @@ type TransactionMessage struct {
 
 	// Receipt data
 	Receipt *types1.Receipt `json:"receipt"`
+
+	// Inner transactions
+	InnerTxs []*zktypes.InnerTx `json:"innerTxs"`
 }
 
-func ToKafkaTransactionMessage(tx types1.Transaction, receipt *types1.Receipt, blockNumber uint64) (txMsg TransactionMessage, err error) {
+func ToKafkaTransactionMessage(tx types1.Transaction, receipt *types1.Receipt, innerTxs []*zktypes.InnerTx, blockNumber uint64) (txMsg TransactionMessage, err error) {
 	// Parse tx
 	switch tx.Type() {
 	case types1.LegacyTxType:
@@ -91,6 +95,7 @@ func ToKafkaTransactionMessage(tx types1.Transaction, receipt *types1.Receipt, b
 
 	// Parse receipt
 	txMsg.Receipt = receipt
+	txMsg.InnerTxs = innerTxs
 
 	return txMsg, nil
 }
@@ -143,21 +148,22 @@ func (msg TransactionMessage) GetReceipt() (*types1.Receipt, error) {
 
 func (msg TransactionMessage) MarshalJSON() ([]byte, error) {
 	type TransactionMessage struct {
-		BlockNumber uint64          `json:"blockNumber"`
-		Type        uint8           `json:"type"`
-		Hash        string          `json:"hash"`
-		From        string          `json:"from"`
-		ChainID     uint64          `json:"chainId"`
-		Nonce       uint64          `json:"nonce"`
-		Gas         uint64          `json:"gas"`
-		To          string          `json:"to"`
-		Value       string          `json:"value"`
-		Data        string          `json:"data"`
-		R           string          `json:"r"`
-		S           string          `json:"s"`
-		V           string          `json:"v"`
-		GasPrice    string          `json:"gasPrice"`
-		Receipt     *types1.Receipt `json:"receipt"`
+		BlockNumber uint64             `json:"blockNumber"`
+		Type        uint8              `json:"type"`
+		Hash        string             `json:"hash"`
+		From        string             `json:"from"`
+		ChainID     uint64             `json:"chainId"`
+		Nonce       uint64             `json:"nonce"`
+		Gas         uint64             `json:"gas"`
+		To          string             `json:"to"`
+		Value       string             `json:"value"`
+		Data        string             `json:"data"`
+		R           string             `json:"r"`
+		S           string             `json:"s"`
+		V           string             `json:"v"`
+		GasPrice    string             `json:"gasPrice"`
+		Receipt     *types1.Receipt    `json:"receipt"`
+		InnerTxs    []*zktypes.InnerTx `json:"innerTxs"`
 	}
 
 	var enc TransactionMessage
@@ -175,6 +181,7 @@ func (msg TransactionMessage) MarshalJSON() ([]byte, error) {
 	enc.S = msg.S
 	enc.V = msg.V
 	enc.GasPrice = msg.GasPrice
+	enc.InnerTxs = msg.InnerTxs
 
 	if msg.Receipt != nil {
 		// Handle nil logs
