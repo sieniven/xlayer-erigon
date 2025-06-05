@@ -2,7 +2,6 @@ package kafka
 
 import (
 	"context"
-	"encoding/hex"
 	"math/big"
 	"testing"
 
@@ -98,22 +97,9 @@ func TestKafkaConsumer(t *testing.T) {
 		case err := <-errorChan:
 			t.Fatalf("Received error from consumer: %v", err)
 		case txMsg := <-txMsgsChan:
-			assert.Equal(t, txMsg.BlockNumber, uint64(i))
-			assert.Equal(t, int(txMsg.Type), types1.LegacyTxType)
-			assert.Equal(t, txMsg.Hash, rightvrsTx.Hash())
-			assert.Equal(t, txMsg.From, testFromAddr)
-			assert.Equal(t, *txMsg.ChainID, *rightvrsTx.GetChainID())
-			assert.Equal(t, txMsg.Nonce, rightvrsTx.GetNonce())
-			assert.Equal(t, txMsg.Gas, uint64(2000))
-			assert.Equal(t, *txMsg.To, testToAddr)
-			assert.Equal(t, *txMsg.Value, *uint256.NewInt(10))
-			assert.Equal(t, hex.EncodeToString(txMsg.Data), "5544")
-			v, r, s := rightvrsTx.RawSignatureValues()
-			assert.Equal(t, txMsg.R, *r)
-			assert.Equal(t, txMsg.S, *s)
-			assert.Equal(t, txMsg.V, *v)
-			assert.Equal(t, txMsg.GasPrice, "1")
-			assertReceipt(t, txMsg, rightvrsTxReceipt)
+			kafkaTypes.AssertCommonTx(t, txMsg, rightvrsTx, uint64(i), types1.LegacyTxType)
+			kafkaTypes.AssertReceipt(t, txMsg, rightvrsTxReceipt)
+			kafkaTypes.AssertInnerTxs(t, txMsg, rightvrsTxInnerTxs)
 		}
 	}
 
@@ -123,7 +109,7 @@ func TestKafkaConsumer(t *testing.T) {
 		case err := <-errorChan:
 			t.Fatalf("Received error from consumer: %v", err)
 		case rcvHeader := <-headersChan:
-			assertHeader(t, blockHeader, &rcvHeader)
+			kafkaTypes.AssertHeader(t, blockHeader, &rcvHeader)
 		}
 	}
 
@@ -154,49 +140,4 @@ func TestKafkaProducer(t *testing.T) {
 
 	err = producer.Close()
 	assert.NilError(t, err)
-}
-
-func assertHeader(t *testing.T, header *types1.Header, rcvHeader *types1.Header) {
-	assert.Equal(t, header.ParentHash, rcvHeader.ParentHash)
-	assert.Equal(t, header.UncleHash, rcvHeader.UncleHash)
-	assert.Equal(t, header.Coinbase, rcvHeader.Coinbase)
-	assert.Equal(t, header.Root, rcvHeader.Root)
-	assert.Equal(t, header.TxHash, rcvHeader.TxHash)
-	assert.Equal(t, header.ReceiptHash, rcvHeader.ReceiptHash)
-	assert.Equal(t, header.Bloom, rcvHeader.Bloom)
-	assert.Equal(t, header.Number.String(), rcvHeader.Number.String())
-	assert.Equal(t, header.Difficulty.String(), rcvHeader.Difficulty.String())
-	assert.Equal(t, header.GasLimit, rcvHeader.GasLimit)
-	assert.Equal(t, header.GasUsed, rcvHeader.GasUsed)
-	assert.Equal(t, header.Time, rcvHeader.Time)
-	assert.Equal(t, string(header.Extra), string(rcvHeader.Extra))
-	assert.Equal(t, header.BaseFee.String(), rcvHeader.BaseFee.String())
-	assert.Equal(t, header.AuRaStep, rcvHeader.AuRaStep)
-	assert.Equal(t, string(header.AuRaSeal), string(rcvHeader.AuRaSeal))
-	assert.Equal(t, header.BlobGasUsed, rcvHeader.BlobGasUsed)
-	assert.Equal(t, header.ExcessBlobGas, rcvHeader.ExcessBlobGas)
-}
-
-func assertReceipt(t *testing.T, msg kafkaTypes.TransactionMessage, receipt *types1.Receipt) {
-	assert.Equal(t, msg.Receipt.Type, receipt.Type)
-	assert.Equal(t, string(msg.Receipt.PostState), string(receipt.PostState))
-	assert.Equal(t, msg.Receipt.Status, receipt.Status)
-	assert.Equal(t, msg.Receipt.CumulativeGasUsed, receipt.CumulativeGasUsed)
-	assert.Equal(t, msg.Receipt.Bloom, receipt.Bloom)
-	assert.Equal(t, len(msg.Receipt.Logs), len(receipt.Logs))
-	for i := range msg.Receipt.Logs {
-		assert.Equal(t, msg.Receipt.Logs[i].Address.String(), receipt.Logs[i].Address.String())
-		assert.Equal(t, len(msg.Receipt.Logs[i].Topics), len(receipt.Logs[i].Topics))
-		for j := range msg.Receipt.Logs[i].Topics {
-			assert.Equal(t, msg.Receipt.Logs[i].Topics[j].String(), receipt.Logs[i].Topics[j].String())
-		}
-		assert.Equal(t, string(msg.Receipt.Logs[i].Data), string(receipt.Logs[i].Data))
-	}
-
-	assert.Equal(t, msg.Receipt.TxHash, receipt.TxHash)
-	assert.Equal(t, msg.Receipt.ContractAddress.String(), receipt.ContractAddress.String())
-	assert.Equal(t, msg.Receipt.GasUsed, receipt.GasUsed)
-	assert.Equal(t, msg.Receipt.BlockHash, receipt.BlockHash)
-	assert.Equal(t, msg.Receipt.BlockNumber, receipt.BlockNumber)
-	assert.Equal(t, msg.Receipt.TransactionIndex, receipt.TransactionIndex)
 }
