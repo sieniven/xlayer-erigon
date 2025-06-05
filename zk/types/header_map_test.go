@@ -5,6 +5,7 @@ import (
 	"sync"
 	"testing"
 
+	ethTypes "github.com/ledgerwatch/erigon/core/types"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -12,7 +13,7 @@ func TestHeaderMap(t *testing.T) {
 	hm := NewHeaderMap()
 
 	blockNum := uint64(1)
-	header := &Header{
+	header := &ethTypes.Header{
 		Number: big.NewInt(1),
 		Time:   1000,
 	}
@@ -46,7 +47,7 @@ func TestHeaderMap(t *testing.T) {
 				defer wg.Done()
 
 				blockNum := uint64(i)
-				header := &Header{
+				header := &ethTypes.Header{
 					Number: big.NewInt(int64(i)),
 					Time:   uint64(i * 1000),
 				}

@@ -21,6 +21,7 @@ import (
 	"github.com/ledgerwatch/erigon/eth/stagedsync"
 	"github.com/ledgerwatch/erigon/zk/smt"
 	zkStages "github.com/ledgerwatch/erigon/zk/stages"
+	zktypes "github.com/ledgerwatch/erigon/zk/types"
 )
 
 const (
@@ -140,7 +141,7 @@ func FlushDataToDB(ctx context.Context, db *mdbx.MdbxKV, logger log.Logger, cach
 	cache.TruncateSmtCacheList(saveData.BlockHeight)
 }
 
-func ListenTxKafka(ctx context.Context, txKafkaConsumer *kafka.KafkaConsumer, config ethconfig.XLayerConfig, logger log.Logger, txInfoMap *types.TxInfoMap, headerMap *types.HeaderMap) {
+func ListenTxKafka(ctx context.Context, txKafkaConsumer *kafka.KafkaConsumer, config ethconfig.XLayerConfig, logger log.Logger, txInfoMap *zktypes.TxInfoMap, headerMap *zktypes.HeaderMap) {
 	if sequencer.IsSequencer() {
 		logger.Info("txKafkaConsumer is disabled on sequencer, skipping")
 		return
@@ -177,7 +178,12 @@ func ListenTxKafka(ctx context.Context, txKafkaConsumer *kafka.KafkaConsumer, co
 				logger.Error("failed to consume tx receipt message from kafka", "error", err)
 				continue
 			}
-			txInfoMap.Put(tx.Hash(), tx, receipt)
+			innerTxs, err := txMsg.GetInnerTxs()
+			if err != nil {
+				logger.Error("failed to consume tx innerTxs message from kafka", "error", err)
+				continue
+			}
+			txInfoMap.Put(tx.Hash(), tx, receipt, innerTxs)
 
 			// TODO: remove this log
 			logger.Info("XXX Received transaction message", "tx", tx, "blockNumber", blockNumber, "receipt", receipt)

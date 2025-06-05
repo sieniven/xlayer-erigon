@@ -4,11 +4,13 @@ import (
 	"sync"
 
 	"github.com/ledgerwatch/erigon-lib/common"
+	ethTypes "github.com/ledgerwatch/erigon/core/types"
 )
 
 type TxInfo struct {
-	tx      Transaction
-	receipt *Receipt
+	tx       ethTypes.Transaction
+	receipt  *ethTypes.Receipt
+	innerTxs []*InnerTx
 }
 
 type TxInfoMap struct {
@@ -22,25 +24,23 @@ func NewTxInfoMap() *TxInfoMap {
 	}
 }
 
-// Get 根据交易哈希获取收据
-func (rm *TxInfoMap) Get(txHash common.Hash) (Transaction, *Receipt, bool) {
+func (rm *TxInfoMap) Get(txHash common.Hash) (ethTypes.Transaction, *ethTypes.Receipt, []*InnerTx, bool) {
 	rm.mu.RLock()
 	defer rm.mu.RUnlock()
 	txInfo, exists := rm.txInfos[txHash]
-	return txInfo.tx, txInfo.receipt, exists
+	return txInfo.tx, txInfo.receipt, txInfo.innerTxs, exists
 }
 
-// Put 插入交易哈希到收据的映射
-func (rm *TxInfoMap) Put(txHash common.Hash, tx Transaction, receipt *Receipt) {
+func (rm *TxInfoMap) Put(txHash common.Hash, tx ethTypes.Transaction, receipt *ethTypes.Receipt, innerTxs []*InnerTx) {
 	rm.mu.Lock()
 	defer rm.mu.Unlock()
 	rm.txInfos[txHash] = TxInfo{
-		tx:      tx,
-		receipt: receipt,
+		tx:       tx,
+		receipt:  receipt,
+		innerTxs: innerTxs,
 	}
 }
 
-// Delete 删除指定交易哈希的收据
 func (rm *TxInfoMap) Delete(txHash common.Hash) {
 	rm.mu.Lock()
 	defer rm.mu.Unlock()

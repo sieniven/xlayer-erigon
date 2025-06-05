@@ -2,27 +2,29 @@ package types
 
 import (
 	"sync"
+
+	ethTypes "github.com/ledgerwatch/erigon/core/types"
 )
 
 type HeaderMap struct {
-	headers map[uint64]*Header
+	headers map[uint64]*ethTypes.Header
 	mu      sync.RWMutex
 }
 
 func NewHeaderMap() *HeaderMap {
 	return &HeaderMap{
-		headers: make(map[uint64]*Header),
+		headers: make(map[uint64]*ethTypes.Header),
 	}
 }
 
-func (hm *HeaderMap) Get(blockNum uint64) (*Header, bool) {
+func (hm *HeaderMap) Get(blockNum uint64) (*ethTypes.Header, bool) {
 	hm.mu.RLock()
 	defer hm.mu.RUnlock()
 	header, exists := hm.headers[blockNum]
 	return header, exists
 }
 
-func (hm *HeaderMap) Put(blockNum uint64, header *Header) {
+func (hm *HeaderMap) Put(blockNum uint64, header *ethTypes.Header) {
 	hm.mu.Lock()
 	defer hm.mu.Unlock()
 	hm.headers[blockNum] = header

@@ -139,6 +139,7 @@ import (
 	"github.com/ledgerwatch/erigon/zk/syncer"
 	txpool2 "github.com/ledgerwatch/erigon/zk/txpool"
 	"github.com/ledgerwatch/erigon/zk/txpool/txpooluitl"
+	zktypes "github.com/ledgerwatch/erigon/zk/types"
 	"github.com/ledgerwatch/erigon/zk/utils"
 	"github.com/ledgerwatch/erigon/zkevm/etherman"
 )
@@ -254,8 +255,8 @@ type Ethereum struct {
 	// For X Layer, kafka
 	txKafkaProducer *kafka.KafkaProducer
 	txKafkaConsumer *kafka.KafkaConsumer
-	txInfoMap       *types.TxInfoMap
-	headerMap       *types.HeaderMap
+	txInfoMap       *zktypes.TxInfoMap
+	headerMap       *zktypes.HeaderMap
 }
 
 func splitAddrIntoHostAndPort(addr string) (host string, port int, err error) {
@@ -1287,8 +1288,8 @@ func New(ctx context.Context, stack *node.Node, config *ethconfig.Config, logger
 					return nil, err
 				}
 				backend.txKafkaConsumer = kafkaConsumer
-				backend.txInfoMap = types.NewTxInfoMap()
-				backend.headerMap = types.NewHeaderMap()
+				backend.txInfoMap = zktypes.NewTxInfoMap()
+				backend.headerMap = zktypes.NewHeaderMap()
 			}
 
 			backend.syncStages = stages2.NewDefaultZkStages(

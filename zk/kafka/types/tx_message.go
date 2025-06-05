@@ -146,6 +146,14 @@ func (msg TransactionMessage) GetReceipt() (*types1.Receipt, error) {
 	return msg.Receipt, nil
 }
 
+func (msg TransactionMessage) GetInnerTxs() ([]*zktypes.InnerTx, error) {
+	if msg.InnerTxs == nil {
+		return nil, fmt.Errorf("innerTxs is nil")
+	}
+
+	return msg.InnerTxs, nil
+}
+
 func (msg TransactionMessage) MarshalJSON() ([]byte, error) {
 	type TransactionMessage struct {
 		BlockNumber uint64             `json:"blockNumber"`

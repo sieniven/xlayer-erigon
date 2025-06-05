@@ -8,7 +8,6 @@ import (
 	"github.com/ledgerwatch/erigon-lib/state"
 	"github.com/ledgerwatch/erigon/consensus"
 	"github.com/ledgerwatch/erigon/core/rawdb/blockio"
-	"github.com/ledgerwatch/erigon/core/types"
 	"github.com/ledgerwatch/erigon/core/vm"
 	"github.com/ledgerwatch/erigon/eth/ethconfig"
 	"github.com/ledgerwatch/erigon/eth/stagedsync"
@@ -22,6 +21,7 @@ import (
 	zkStages "github.com/ledgerwatch/erigon/zk/stages"
 	"github.com/ledgerwatch/erigon/zk/syncer"
 	"github.com/ledgerwatch/erigon/zk/txpool"
+	zktypes "github.com/ledgerwatch/erigon/zk/types"
 )
 
 // NewDefaultZkStages creates stages for zk syncer (RPC mode)
@@ -40,8 +40,8 @@ func NewDefaultZkStages(ctx context.Context,
 	datastreamClient zkStages.DatastreamClient,
 	dataStreamServer server.DataStreamServer,
 	infoTreeUpdater *l1infotree.Updater,
-	txInfoMap *types.TxInfoMap,
-	headerMap *types.HeaderMap,
+	txInfoMap *zktypes.TxInfoMap,
+	headerMap *zktypes.HeaderMap,
 ) []*stagedsync.Stage {
 	dirs := cfg.Dirs
 	blockWriter := blockio.NewBlockWriter(cfg.HistoryV3)

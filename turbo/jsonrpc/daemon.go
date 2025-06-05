@@ -1,7 +1,6 @@
 package jsonrpc
 
 import (
-	"github.com/ledgerwatch/erigon/core/types"
 	"github.com/ledgerwatch/erigon/zk/smt"
 	"github.com/ledgerwatch/log/v3"
 
@@ -23,6 +22,7 @@ import (
 	"github.com/ledgerwatch/erigon/zk/sequencer"
 	"github.com/ledgerwatch/erigon/zk/syncer"
 	txpool2 "github.com/ledgerwatch/erigon/zk/txpool"
+	zktypes "github.com/ledgerwatch/erigon/zk/types"
 )
 
 // APIList describes the list of available RPC apis
@@ -32,8 +32,8 @@ func APIList(db kv.RoDB, dbsmt kv.RoDB, eth rpchelper.ApiBackend, txPool txpool.
 	ethCfg *ethconfig.Config, l1Syncer *syncer.L1Syncer, logger log.Logger, dataStreamServer server.DataStreamServer,
 	gasTracker *RecurringL1GasPriceTracker,
 	cache *smt.SmtCache,
-	txInfoMap *types.TxInfoMap,
-	headerMap *types.HeaderMap,
+	txInfoMap *zktypes.TxInfoMap,
+	headerMap *zktypes.HeaderMap,
 ) (list []rpc.API, gpCache *GasPriceCache) {
 	// non-sequencer nodes should forward on requests to the sequencer
 	rpcUrl := ""
