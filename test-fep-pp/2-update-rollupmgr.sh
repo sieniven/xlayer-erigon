@@ -28,7 +28,7 @@ cd "./xlayer-contracts"
 
 git stash
 git pull
-git checkout zjg/v10.0.0-rc.6; git pull
+git checkout zjg/v10.0.0-rc.6-v2; git pull
 git stash apply
 rm -rf artifacts cache node_modules
 npm i
