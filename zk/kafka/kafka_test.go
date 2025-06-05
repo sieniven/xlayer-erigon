@@ -2,6 +2,7 @@ package kafka
 
 import (
 	"context"
+	"encoding/hex"
 	"math/big"
 	"testing"
 
@@ -99,18 +100,18 @@ func TestKafkaConsumer(t *testing.T) {
 		case txMsg := <-txMsgsChan:
 			assert.Equal(t, txMsg.BlockNumber, uint64(i))
 			assert.Equal(t, int(txMsg.Type), types1.LegacyTxType)
-			assert.Equal(t, txMsg.Hash, rightvrsTx.Hash().String())
-			assert.Equal(t, txMsg.From, testFromAddr.String())
-			assert.Equal(t, txMsg.ChainID, rightvrsTx.GetChainID().Uint64())
+			assert.Equal(t, txMsg.Hash, rightvrsTx.Hash())
+			assert.Equal(t, txMsg.From, testFromAddr)
+			assert.Equal(t, *txMsg.ChainID, *rightvrsTx.GetChainID())
 			assert.Equal(t, txMsg.Nonce, rightvrsTx.GetNonce())
 			assert.Equal(t, txMsg.Gas, uint64(2000))
-			assert.Equal(t, txMsg.To, testToAddr.String())
-			assert.Equal(t, txMsg.Value, "10")
-			assert.Equal(t, txMsg.Data, "5544")
+			assert.Equal(t, *txMsg.To, testToAddr)
+			assert.Equal(t, *txMsg.Value, *uint256.NewInt(10))
+			assert.Equal(t, hex.EncodeToString(txMsg.Data), "5544")
 			v, r, s := rightvrsTx.RawSignatureValues()
-			assert.Equal(t, txMsg.R, r.Hex())
-			assert.Equal(t, txMsg.S, s.Hex())
-			assert.Equal(t, txMsg.V, v.Hex())
+			assert.Equal(t, txMsg.R, *r)
+			assert.Equal(t, txMsg.S, *s)
+			assert.Equal(t, txMsg.V, *v)
 			assert.Equal(t, txMsg.GasPrice, "1")
 			assertReceipt(t, txMsg, rightvrsTxReceipt)
 		}
