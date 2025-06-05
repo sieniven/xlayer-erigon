@@ -7,13 +7,26 @@ GREEN='\033[0;32m'
 RED='\033[0;31m'
 NC='\033[0m' # No Color
 
+BASE_NAME="base-xlayer-erigon-ci"
+cleanup() {
+    echo -e "${NC}Cleaning up Docker containers..."
+    docker kill $BASE_NAME
+    docker rm $BASE_NAME
+    docker kill registry
+    docker rm registry
+    echo ""
+    exit 0
+}
+trap cleanup EXIT
+trap cleanup SIGINT
+
 if [ $# -lt 1 ]; then
     echo "Usage: $0 <event>"
     echo "Valid events: pull_request, push, release."
     exit 1
 fi
 EVENT=$1
-if [ "$EVENT" != "pull_request" ] && [ "$EVENT" != "push" ] && [ "$EVENT" != "release" ]; then
+if [ "$EVENT" != "pull_request" ] && [ "$EVENT" != "push" ] && [ "$EVENT" != "release" ] && [ "$EVENT" != "custom" ]; then
     echo "Error: Invalid event $EVENT. Valid events are: pull_request, push, release."
     exit 1
 fi
@@ -106,7 +119,6 @@ done
 
 # *** Run DinD (Docker-in-Docker) Docker Compose tasks
 # DinD Docker command
-BASE_NAME="base-xlayer-erigon-ci"
 docker run -d --name $BASE_NAME --privileged xlayer-erigon-ci:latest sh -c "./ci/utils/docker-setup-start.sh $DOCKER_REGISTRY_IP_PORT"
 sleep 5
 docker exec $BASE_NAME sh -c "cd ./ci/utils && ./docker-cache-pull.sh $DOCKER_REGISTRY_IP_PORT" > $LOGSDIR/docker-cache-pull.log 2>&1
@@ -160,3 +172,5 @@ for task in "${!tasks_status[@]}"; do
 done
 
 echo -e "All tasks completed. Logs are in ${GREEN}$LOGSDIR${NC}."
+
+cleanup
