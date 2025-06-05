@@ -1,36 +1,31 @@
 # How to run
 ```shell
-make build-docker;
-make run; 
-
-
-cast send -f 0x8f8E2d6cF621f30e9a11309D6A56A876281Fd534  --private-key 0x815405dddb0e2a99b12af775fd2929e526704e1d1aea6a0b4e74dc33e2f7fcd2 --value 0.01ether 0xA6f7A6b2E9B4d41C582D4Aaf907F45321e2Ca847 --legacy --rpc-url http://127.0.0.1:8124
-```
-
-# Important
-To check the consistency state, turn on the following switch
-``` shell
-vim config/test.erigon.seq.config.yaml
-# modify executor-strict to true
-zkevm.executor-strict: true
+./1-init-fep.sh
+./2-update-rollupmgr.sh
+./3-update-pp.sh
+./4-restart-service.sh
 ```
 
 # How to use bridge
 ```
-make all;
-
 http://127.0.0.1:8090/
-L1 OKB Token: 0x5FbDB2315678afecb367f032d93F642f64180aa3
-L2 WETH Token: 0x95076baf95000f2e67b2f88998a26d82140308ca
+L1 OKB Token: ?
+L2 WETH Token: 0x17a2a2e444a7f3446877d1b71eaa2b2ae7533baf
 L2 admin: 0x8f8E2d6cF621f30e9a11309D6A56A876281Fd534
 
+
+EOA1:
+0x8f8E2d6cF621f30e9a11309D6A56A876281Fd534
+0x815405dddb0e2a99b12af775fd2929e526704e1d1aea6a0b4e74dc33e2f7fcd2
+
+EOA2:
+0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266
+0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80
+
 ```
 
-# Get metrics
+# How to use true prover
 ```
-curl http://127.0.0.1:9092/debug/metrics/prometheus
-curl http://127.0.0.1:9092/debug/metrics
+vim .env
+PROVER_TYPE=true
 ```
-
-# true cpu
-https://github.com/okx/xlayer-erigon/commit/63578ebaa015fa39625c9f6bc121d18275b3688a

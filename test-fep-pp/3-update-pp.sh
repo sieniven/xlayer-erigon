@@ -21,6 +21,8 @@ else
     exit 1
 fi
 
+echo "Using ProverType: $PROVER_TYPE"
+
 CONFIG_FILE_1="./config/agglayer-config.toml"
 CONFIG_FILE_2="./config/agglayer-prover-config.toml"
 CONTRACT_JSON="./artifacts/contracts/mocks/VerifierRollupHelperMock.sol/VerifierRollupHelperMock.json"
