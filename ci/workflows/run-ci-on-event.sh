@@ -172,5 +172,3 @@ for task in "${!tasks_status[@]}"; do
 done
 
 echo -e "All tasks completed. Logs are in ${GREEN}$LOGSDIR${NC}."
-
-cleanup
