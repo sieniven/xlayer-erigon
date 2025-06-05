@@ -76,7 +76,9 @@ func APIList(db kv.RoDB, dbsmt kv.RoDB, eth rpchelper.ApiBackend, txPool txpool.
 	gqlImpl := NewGraphQLAPI(base, db)
 	overlayImpl := NewOverlayAPI(base, db, cfg.Gascap, cfg.OverlayGetLogsTimeout, cfg.OverlayReplayBlockTimeout, otsImpl)
 	// For X Layer, split db and ac
-	zkEvmImpl := NewZkEvmAPI(ethImpl, db, dbsmt, cfg.ReturnDataLimit, ethCfg, l1Syncer, rpcUrl, dataStreamServer, cache, txInfoMap, headerMap)
+	zkEvmImpl := NewZkEvmAPI(ethImpl, db, dbsmt, cfg.ReturnDataLimit, ethCfg, l1Syncer, rpcUrl, dataStreamServer, cache)
+	// For X Layer, realtime response
+	realtimeImpl := NewRealtimeAPI(ethImpl, txInfoMap, headerMap)
 
 	if cfg.GraphQLEnabled {
 		list = append(list, rpc.API{
@@ -180,6 +182,13 @@ func APIList(db kv.RoDB, dbsmt kv.RoDB, eth rpchelper.ApiBackend, txPool txpool.
 				Namespace: "zkevm",
 				Public:    true,
 				Service:   ZkEvmAPI(zkEvmImpl),
+				Version:   "1.0",
+			})
+		case "realtime":
+			list = append(list, rpc.API{
+				Namespace: "realtime",
+				Public:    true,
+				Service:   RealtimeAPI(realtimeImpl),
 				Version:   "1.0",
 			})
 		case "clique":

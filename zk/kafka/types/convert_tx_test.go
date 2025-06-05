@@ -282,9 +282,9 @@ func assertCommonTx(t *testing.T, msg TransactionMessage, tx types1.Transaction,
 	assert.Equal(t, msg.Value.String(), tx.GetValue().String())
 	assert.Equal(t, string(msg.Data), string(tx.GetData()))
 	v, r, s := tx.RawSignatureValues()
-	assert.Equal(t, msg.R.Hex(), r.Hex())
-	assert.Equal(t, msg.S.Hex(), s.Hex())
-	assert.Equal(t, msg.V.Hex(), v.Hex())
+	assert.Equal(t, msg.R, *r)
+	assert.Equal(t, msg.S, *s)
+	assert.Equal(t, msg.V, *v)
 }
 
 func assertAccessList(t *testing.T, msgAccessList []AccessTupleMessage) {
