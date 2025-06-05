@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"github.com/holiman/uint256"
+	"github.com/ledgerwatch/erigon-lib/common"
 	libcommon "github.com/ledgerwatch/erigon-lib/common"
 	types1 "github.com/ledgerwatch/erigon/core/types"
 	zktypes "github.com/ledgerwatch/erigon/zk/types"
@@ -15,18 +17,18 @@ type TransactionMessage struct {
 	BlockNumber uint64 `json:"blockNumber"`
 
 	// Common tx fields
-	Type    uint8  `json:"type"`
-	Hash    string `json:"hash"`
-	From    string `json:"from"`
-	ChainID uint64 `json:"chainId"`
-	Nonce   uint64 `json:"nonce"`
-	Gas     uint64 `json:"gas"`
-	To      string `json:"to"`
-	Value   string `json:"value"`
-	Data    string `json:"data"`
-	V       string `json:"v"`
-	R       string `json:"r"`
-	S       string `json:"s"`
+	Type    uint8              `json:"type"`
+	Hash    common.Hash        `json:"hash"`
+	From    libcommon.Address  `json:"from"`
+	ChainID *uint256.Int       `json:"chainId"`
+	Nonce   uint64             `json:"nonce"`
+	Gas     uint64             `json:"gas"`
+	To      *libcommon.Address `json:"to"`
+	Value   *uint256.Int       `json:"value"`
+	Data    []byte             `json:"data"`
+	V       uint256.Int        `json:"v"`
+	R       uint256.Int        `json:"r"`
+	S       uint256.Int        `json:"s"`
 
 	// For legacy txs
 	GasPrice string `json:"gasPrice"`
@@ -158,17 +160,17 @@ func (msg TransactionMessage) MarshalJSON() ([]byte, error) {
 	type TransactionMessage struct {
 		BlockNumber uint64             `json:"blockNumber"`
 		Type        uint8              `json:"type"`
-		Hash        string             `json:"hash"`
-		From        string             `json:"from"`
-		ChainID     uint64             `json:"chainId"`
+		Hash        common.Hash        `json:"hash"`
+		From        libcommon.Address  `json:"from"`
+		ChainID     *uint256.Int       `json:"chainId"`
 		Nonce       uint64             `json:"nonce"`
 		Gas         uint64             `json:"gas"`
-		To          string             `json:"to"`
-		Value       string             `json:"value"`
-		Data        string             `json:"data"`
-		R           string             `json:"r"`
-		S           string             `json:"s"`
-		V           string             `json:"v"`
+		To          *libcommon.Address `json:"to"`
+		Value       *uint256.Int       `json:"value"`
+		Data        []byte             `json:"data"`
+		V           uint256.Int        `json:"v"`
+		R           uint256.Int        `json:"r"`
+		S           uint256.Int        `json:"s"`
 		GasPrice    string             `json:"gasPrice"`
 		Receipt     *types1.Receipt    `json:"receipt"`
 		InnerTxs    []*zktypes.InnerTx `json:"innerTxs"`

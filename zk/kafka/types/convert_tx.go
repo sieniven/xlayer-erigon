@@ -1,7 +1,6 @@
 package types
 
 import (
-	"encoding/hex"
 	"fmt"
 	"math/big"
 
@@ -15,25 +14,25 @@ func fromCommonTxMessage(tx types1.Transaction, blockNumber uint64) (Transaction
 	msg := TransactionMessage{
 		BlockNumber: blockNumber,
 		Type:        tx.Type(),
-		Hash:        tx.Hash().String(),
-		ChainID:     tx.GetChainID().Uint64(),
+		Hash:        tx.Hash(),
+		ChainID:     tx.GetChainID(),
 		Nonce:       tx.GetNonce(),
 		Gas:         tx.GetGas(),
-		To:          tx.GetTo().String(),
-		Value:       tx.GetValue().String(),
-		Data:        hex.EncodeToString(tx.GetData()),
+		To:          tx.GetTo(),
+		Value:       tx.GetValue(),
+		Data:        tx.GetData(),
 	}
 
 	txSender, ok := tx.GetSender()
 	if !ok {
 		return TransactionMessage{}, fmt.Errorf("failed to recover sender from transaction")
 	}
-	msg.From = txSender.String()
+	msg.From = txSender
 
 	v, r, s := tx.RawSignatureValues()
-	msg.V = v.Hex()
-	msg.R = r.Hex()
-	msg.S = s.Hex()
+	msg.V = *v
+	msg.R = *r
+	msg.S = *s
 
 	return msg, nil
 }
@@ -110,49 +109,21 @@ func fromBlobTxMessage(tx types1.Transaction, blockNumber uint64) (TransactionMe
 }
 
 func (msg TransactionMessage) toCommonTx() (types1.CommonTx, error) {
-	// Get sender address
-	toAddress := libcommon.HexToAddress(msg.To)
-
 	tx := types1.CommonTx{
 		TransactionMisc: types1.TransactionMisc{},
-		ChainID:         new(uint256.Int).SetUint64(msg.ChainID),
+		ChainID:         msg.ChainID,
 		Nonce:           msg.Nonce,
 		Gas:             msg.Gas,
-		To:              &toAddress,
-		Data:            libcommon.FromHex(msg.Data),
-	}
-
-	// Get value
-	value, ok := new(big.Int).SetString(msg.Value, 10)
-	if !ok {
-		return types1.CommonTx{}, fmt.Errorf("convert to common tx error, invalid value: %s", msg.Value)
-	}
-	overflow := false
-	tx.Value, overflow = uint256.FromBig(value)
-	if overflow {
-		return types1.CommonTx{}, fmt.Errorf("convert to common tx error, value overflow: %s", msg.Value)
-	}
-
-	// Set v
-	err := tx.V.SetFromHex(msg.V)
-	if err != nil {
-		return types1.CommonTx{}, fmt.Errorf("convert to common tx error, invalid v : %s", msg.V)
-	}
-
-	// Set r
-	err = tx.R.SetFromHex(msg.R)
-	if err != nil {
-		return types1.CommonTx{}, fmt.Errorf("convert to common tx error, invalid r : %s", msg.R)
-	}
-
-	// Set s
-	err = tx.S.SetFromHex(msg.S)
-	if err != nil {
-		return types1.CommonTx{}, fmt.Errorf("convert to common tx error, invalid s : %s", msg.S)
+		To:              msg.To,
+		Value:           msg.Value,
+		Data:            msg.Data,
+		V:               msg.V,
+		R:               msg.R,
+		S:               msg.S,
 	}
 
 	// Set sender address
-	tx.SetSender(libcommon.HexToAddress(msg.From))
+	tx.SetSender(msg.From)
 
 	return tx, nil
 }
@@ -191,7 +162,7 @@ func (msg TransactionMessage) toAccessListTx() (types1.AccessListTx, error) {
 
 	tx := types1.AccessListTx{
 		LegacyTx: legacyTx,
-		ChainID:  new(uint256.Int).SetUint64(msg.ChainID),
+		ChainID:  msg.ChainID,
 	}
 
 	// Set access list
@@ -212,7 +183,7 @@ func (msg TransactionMessage) toDynamicFeeTx() (types1.DynamicFeeTransaction, er
 
 	tx := types1.DynamicFeeTransaction{
 		CommonTx: commonTx,
-		ChainID:  new(uint256.Int).SetUint64(msg.ChainID),
+		ChainID:  msg.ChainID,
 	}
 
 	// Set access list
