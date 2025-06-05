@@ -5,7 +5,6 @@ import (
 	"fmt"
 
 	"github.com/holiman/uint256"
-	"github.com/ledgerwatch/erigon-lib/common"
 	libcommon "github.com/ledgerwatch/erigon-lib/common"
 	types1 "github.com/ledgerwatch/erigon/core/types"
 	zktypes "github.com/ledgerwatch/erigon/zk/types"
@@ -18,7 +17,7 @@ type TransactionMessage struct {
 
 	// Common tx fields
 	Type    uint8              `json:"type"`
-	Hash    common.Hash        `json:"hash"`
+	Hash    libcommon.Hash     `json:"hash"`
 	From    libcommon.Address  `json:"from"`
 	ChainID *uint256.Int       `json:"chainId"`
 	Nonce   uint64             `json:"nonce"`
@@ -160,7 +159,7 @@ func (msg TransactionMessage) MarshalJSON() ([]byte, error) {
 	type TransactionMessage struct {
 		BlockNumber uint64             `json:"blockNumber"`
 		Type        uint8              `json:"type"`
-		Hash        common.Hash        `json:"hash"`
+		Hash        libcommon.Hash     `json:"hash"`
 		From        libcommon.Address  `json:"from"`
 		ChainID     *uint256.Int       `json:"chainId"`
 		Nonce       uint64             `json:"nonce"`
