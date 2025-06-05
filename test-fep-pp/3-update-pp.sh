@@ -2,6 +2,34 @@
 set -e
 # set -x
 
+sed_inplace() {
+  if [[ "$OSTYPE" == "darwin"* ]]; then
+    sed -i '' "$@"
+  else
+    sed -i "$@"
+  fi
+}
+
+if [ -f .env ]; then
+    source .env
+    if [ "$PROVER_TYPE" != "mock" ] && [ "$PROVER_TYPE" != "true" ]; then
+      echo "Error: Invalid ProverType '$1'. Only 'mock' or 'true' are allowed."
+      exit 1
+    fi
+else
+    echo "Error: .env file not found"
+    exit 1
+fi
+
+CONFIG_FILE_1="./config/agglayer-config.toml"
+CONFIG_FILE_2="./config/agglayer-prover-config.toml"
+CONTRACT_JSON="./artifacts/contracts/mocks/VerifierRollupHelperMock.sol/VerifierRollupHelperMock.json"
+if [ "$PROVER_TYPE" == "true" ]; then
+    CONTRACT_JSON="./artifacts/contracts/verifiers/v4.0.0-rc.3/SP1VerifierPlonk.sol/SP1VerifierPlonk.json"
+    sed_inplace "s|mock-verifier *= *true|mock-verifier = false|g" "$CONFIG_FILE_1"
+    sed_inplace "s|\[primary-prover\.mock-prover\]|\[primary-prover.cpu-prover\]|g" "$CONFIG_FILE_2"
+fi
+
 DEPLOYER_ADDRESS="0x8f8E2d6cF621f30e9a11309D6A56A876281Fd534"
 DEPLOYER_PRIVATE_KEY="0x815405dddb0e2a99b12af775fd2929e526704e1d1aea6a0b4e74dc33e2f7fcd2"
 TIME_LOCK_ADDRESS="0xEA8DCb15a6AC928C1Bf07bD677682d59d48d9eC8"
@@ -11,22 +39,12 @@ L1_RPC_URL="http://127.0.0.1:8545"
 PWD_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(dirname "$PWD_DIR")"
 
-sed_inplace() {
-  if [[ "$OSTYPE" == "darwin"* ]]; then
-    sed -i '' "$@"
-  else
-    sed -i "$@"
-  fi
-}
-
 docker stop xlayer-seqs; docker rm xlayer-seqs
 sleep 60
 
 make stop-old
 
 cd ./xlayer-contracts
-
-CONTRACT_JSON="./artifacts/contracts/verifiers/v4.0.0-rc.3/SP1VerifierPlonk.sol/SP1VerifierPlonk.json"
 
 BYTECODE=$(jq -r '.bytecode' "$CONTRACT_JSON")
 sp1_contract_address=$(cast send --private-key $DEPLOYER_PRIVATE_KEY --create  "$BYTECODE" | awk '/contractAddress/ {print $2}')
@@ -87,8 +105,6 @@ cat > ./tools/updateRollup/updateRollup.json << EOF
     ]
 }
 EOF
-
-# sed_inplace '97,100s/^/\/\//' tools/updateRollup/updateRollup.ts
 
 echo "Before updateRollup.ts"
 cast call 0x2d42E2899662EFf08b13eeb65b154b904C7a1c8a "rollupIDToRollupData(uint32)(address,uint64,address,uint64,bytes32,uint64,uint64,uint64,uint64,uint64,uint64,uint8)" 1 
