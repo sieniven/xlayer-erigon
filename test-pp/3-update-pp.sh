@@ -26,7 +26,7 @@ make stop-old
 
 cd ./xlayer-contracts
 
-CONTRACT_JSON="./artifacts/contracts/verifiers/v4.0.0-rc.3/SP1VerifierPlonk.sol/SP1VerifierPlonk.json"
+CONTRACT_JSON="./artifacts/contracts/mocks/VerifierRollupHelperMock.sol/VerifierRollupHelperMock.json"
 
 BYTECODE=$(jq -r '.bytecode' "$CONTRACT_JSON")
 sp1_contract_address=$(cast send --private-key $DEPLOYER_PRIVATE_KEY --create  "$BYTECODE" | awk '/contractAddress/ {print $2}')

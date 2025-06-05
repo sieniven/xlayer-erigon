@@ -14,7 +14,7 @@ format = "json"
 prometheus-addr = "0.0.0.0:9093"
 
 
-[primary-prover.cpu-prover]
+[primary-prover.mock-prover]
 
 proving-timeout = 900
 
