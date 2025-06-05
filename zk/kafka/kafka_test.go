@@ -10,8 +10,10 @@ import (
 	"github.com/ledgerwatch/erigon/common"
 	"github.com/ledgerwatch/erigon/common/u256"
 	types1 "github.com/ledgerwatch/erigon/core/types"
+	"github.com/ledgerwatch/erigon/core/vm"
 	"github.com/ledgerwatch/erigon/eth/ethconfig"
 	kafkaTypes "github.com/ledgerwatch/erigon/zk/kafka/types"
+	zktypes "github.com/ledgerwatch/erigon/zk/types"
 	"github.com/ledgerwatch/log/v3"
 	"gotest.tools/v3/assert"
 )
@@ -43,6 +45,13 @@ var (
 		TxHash:          rightvrsTx.Hash(),
 		ContractAddress: libcommon.BytesToAddress([]byte{0x02, 0x22, 0x22}),
 		GasUsed:         2,
+	}
+
+	rightvrsTxInnerTxs = []*zktypes.InnerTx{
+		{
+			Name:     "innerTx1",
+			CallType: vm.CALL_TYP,
+		},
 	}
 
 	difficulty, _ = new(big.Int).SetString("8398142613866510000000000000000000000000000000", 10)
@@ -135,7 +144,7 @@ func TestKafkaProducer(t *testing.T) {
 	assert.NilError(t, err)
 
 	for i := 0; i < 10; i++ {
-		err = producer.SendKafkaTransaction(context.Background(), uint64(i), rightvrsTx, rightvrsTxReceipt)
+		err = producer.SendKafkaTransaction(context.Background(), uint64(i), rightvrsTx, rightvrsTxReceipt, rightvrsTxInnerTxs)
 		assert.NilError(t, err)
 
 		err = producer.SendKafkaBlockHeader(context.Background(), blockHeader)

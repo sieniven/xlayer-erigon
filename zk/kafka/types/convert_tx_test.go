@@ -9,6 +9,8 @@ import (
 	types2 "github.com/ledgerwatch/erigon-lib/types"
 	"github.com/ledgerwatch/erigon/common/u256"
 	types1 "github.com/ledgerwatch/erigon/core/types"
+	"github.com/ledgerwatch/erigon/core/vm"
+	zktypes "github.com/ledgerwatch/erigon/zk/types"
 	"gotest.tools/v3/assert"
 )
 
@@ -52,7 +54,7 @@ func TestLegacyTx(t *testing.T) {
 	emptyTxReceipt := types1.NewReceipt(false, 1000)
 
 	blockNumber := uint64(100)
-	emptyMsg, err := ToKafkaTransactionMessage(emptyTx, emptyTxReceipt, blockNumber)
+	emptyMsg, err := ToKafkaTransactionMessage(emptyTx, emptyTxReceipt, nil, blockNumber)
 	assert.NilError(t, err)
 	assert.Equal(t, emptyMsg.BlockNumber, blockNumber)
 	assert.Equal(t, int(emptyMsg.Type), types1.LegacyTxType)
@@ -70,6 +72,7 @@ func TestLegacyTx(t *testing.T) {
 	assert.Equal(t, emptyMsg.V, v.Hex())
 	assert.Equal(t, emptyMsg.GasPrice, "10")
 	assertReceipt(t, emptyMsg, emptyTxReceipt)
+	assertInnerTxs(t, emptyMsg, nil)
 
 	sigBytes := "98ff921201554726367d2be8c804a7ff89ccf285ebc57dff8ae4c44b9c19ac4a8887321be575c8095f789dd4c743dfe42c1820f9231f98a962b210e3ac2452a301"
 	rightvrsTx, _ := types1.NewTransaction(
@@ -97,7 +100,14 @@ func TestLegacyTx(t *testing.T) {
 		GasUsed:         2,
 	}
 
-	msg, err := ToKafkaTransactionMessage(rightvrsTx, rightvrsTxReceipt, blockNumber)
+	rightvrsTxInnerTxs := []*zktypes.InnerTx{
+		{
+			Name:     "innerTx1",
+			CallType: vm.CALL_TYP,
+		},
+	}
+
+	msg, err := ToKafkaTransactionMessage(rightvrsTx, rightvrsTxReceipt, rightvrsTxInnerTxs, blockNumber)
 	assert.NilError(t, err)
 	assert.Equal(t, msg.BlockNumber, blockNumber)
 	assert.Equal(t, int(msg.Type), types1.LegacyTxType)
@@ -115,6 +125,7 @@ func TestLegacyTx(t *testing.T) {
 	assert.Equal(t, msg.V, v.Hex())
 	assert.Equal(t, msg.GasPrice, "1")
 	assertReceipt(t, msg, rightvrsTxReceipt)
+	assertInnerTxs(t, msg, rightvrsTxInnerTxs)
 
 	// Test to
 	convertEmptyTx, convertBlockNumber, err := emptyMsg.GetTransaction()
@@ -206,9 +217,15 @@ func TestAccessListTx(t *testing.T) {
 		ContractAddress: libcommon.BytesToAddress([]byte{0x03, 0x33, 0x33}),
 		GasUsed:         3,
 	}
+	signedAccessListTxInnerTxs := []*zktypes.InnerTx{
+		{
+			Name:     "innerTx1",
+			CallType: vm.CALL_TYP,
+		},
+	}
 
 	blockNumber := uint64(100)
-	msg, err := ToKafkaTransactionMessage(signedAccessListTx, signedAccessListTxReceipt, blockNumber)
+	msg, err := ToKafkaTransactionMessage(signedAccessListTx, signedAccessListTxReceipt, signedAccessListTxInnerTxs, blockNumber)
 	assert.NilError(t, err)
 	assert.Equal(t, msg.BlockNumber, blockNumber)
 	assert.Equal(t, int(msg.Type), types1.AccessListTxType)
@@ -226,6 +243,7 @@ func TestAccessListTx(t *testing.T) {
 	assert.Equal(t, msg.V, v.Hex())
 	assert.Equal(t, msg.GasPrice, "1")
 	assertReceipt(t, msg, signedAccessListTxReceipt)
+	assertInnerTxs(t, msg, signedAccessListTxInnerTxs)
 
 	assert.Equal(t, len(msg.AccessList), len(accesses))
 	for idx, access := range msg.AccessList {
@@ -294,9 +312,15 @@ func TestDynamicFeeTx(t *testing.T) {
 		ContractAddress: libcommon.BytesToAddress([]byte{0x03, 0x33, 0x33}),
 		GasUsed:         3,
 	}
+	signedDynFeeTxInnerTxs := []*zktypes.InnerTx{
+		{
+			Name:     "innerTx1",
+			CallType: vm.CALL_TYP,
+		},
+	}
 
 	blockNumber := uint64(100)
-	msg, err := ToKafkaTransactionMessage(signedDynFeeTx, signedDynFeeTxReceipt, blockNumber)
+	msg, err := ToKafkaTransactionMessage(signedDynFeeTx, signedDynFeeTxReceipt, signedDynFeeTxInnerTxs, blockNumber)
 	assert.NilError(t, err)
 	assert.Equal(t, msg.BlockNumber, blockNumber)
 	assert.Equal(t, int(msg.Type), types1.DynamicFeeTxType)
@@ -315,6 +339,7 @@ func TestDynamicFeeTx(t *testing.T) {
 	assert.Equal(t, msg.Tip, "1")
 	assert.Equal(t, msg.FeeCap, "1")
 	assertReceipt(t, msg, signedDynFeeTxReceipt)
+	assertInnerTxs(t, msg, signedDynFeeTxInnerTxs)
 
 	assert.Equal(t, len(msg.AccessList), len(accesses))
 	for idx, access := range msg.AccessList {
@@ -378,9 +403,15 @@ func TestFromBlobTx(t *testing.T) {
 		ContractAddress: libcommon.BytesToAddress([]byte{0x02, 0x22, 0x22}),
 		GasUsed:         5,
 	}
+	blobTxInnerTxs := []*zktypes.InnerTx{
+		{
+			Name:     "innerTx1",
+			CallType: vm.CALL_TYP,
+		},
+	}
 
 	blockNumber := uint64(100)
-	msg, err := ToKafkaTransactionMessage(blobTx, blobTxReceipt, blockNumber)
+	msg, err := ToKafkaTransactionMessage(blobTx, blobTxReceipt, blobTxInnerTxs, blockNumber)
 	assert.NilError(t, err)
 	assert.Equal(t, msg.BlockNumber, blockNumber)
 	assert.Equal(t, int(msg.Type), types1.BlobTxType)
@@ -399,6 +430,7 @@ func TestFromBlobTx(t *testing.T) {
 	assert.Equal(t, msg.Tip, "1")
 	assert.Equal(t, msg.FeeCap, "1")
 	assertReceipt(t, msg, blobTxReceipt)
+	assertInnerTxs(t, msg, blobTxInnerTxs)
 
 	assert.Equal(t, len(msg.AccessList), len(accesses))
 	for idx, access := range msg.AccessList {
@@ -476,4 +508,46 @@ func assertReceipt(t *testing.T, msg TransactionMessage, receipt *types1.Receipt
 	assert.Equal(t, msg.Receipt.BlockHash, receipt.BlockHash)
 	assert.Equal(t, msg.Receipt.BlockNumber, receipt.BlockNumber)
 	assert.Equal(t, msg.Receipt.TransactionIndex, receipt.TransactionIndex)
+}
+
+//	type InnerTx struct {
+//		Dept          big.Int `json:"dept"`
+//		InternalIndex big.Int `json:"internal_index"`
+//		CallType      string  `json:"call_type"`
+//		Name          string  `json:"name"`
+//		TraceAddress  string  `json:"trace_address"`
+//		CodeAddress   string  `json:"code_address"`
+//		From          string  `json:"from"`
+//		To            string  `json:"to"`
+//		Input         string  `json:"input"`
+//		Output        string  `json:"output"`
+//		IsError       bool    `json:"is_error"`
+//		Gas           uint64  `json:"gas"`
+//		GasUsed       uint64  `json:"gas_used"`
+//		Value         string  `json:"value"`
+//		ValueWei      string  `json:"value_wei"`
+//		CallValueWei  string  `json:"call_value_wei"`
+//		Error         string  `json:"error"`
+//	}
+func assertInnerTxs(t *testing.T, msg TransactionMessage, innerTxs []*zktypes.InnerTx) {
+	assert.Equal(t, len(msg.InnerTxs), len(innerTxs))
+	for i := range msg.InnerTxs {
+		assert.Equal(t, msg.InnerTxs[i].Dept.String(), innerTxs[i].Dept.String())
+		assert.Equal(t, msg.InnerTxs[i].InternalIndex.String(), innerTxs[i].InternalIndex.String())
+		assert.Equal(t, msg.InnerTxs[i].CallType, innerTxs[i].CallType)
+		assert.Equal(t, msg.InnerTxs[i].Name, innerTxs[i].Name)
+		assert.Equal(t, msg.InnerTxs[i].TraceAddress, innerTxs[i].TraceAddress)
+		assert.Equal(t, msg.InnerTxs[i].CodeAddress, innerTxs[i].CodeAddress)
+		assert.Equal(t, msg.InnerTxs[i].From, innerTxs[i].From)
+		assert.Equal(t, msg.InnerTxs[i].To, innerTxs[i].To)
+		assert.Equal(t, msg.InnerTxs[i].Input, innerTxs[i].Input)
+		assert.Equal(t, msg.InnerTxs[i].Output, innerTxs[i].Output)
+		assert.Equal(t, msg.InnerTxs[i].IsError, innerTxs[i].IsError)
+		assert.Equal(t, msg.InnerTxs[i].Gas, innerTxs[i].Gas)
+		assert.Equal(t, msg.InnerTxs[i].GasUsed, innerTxs[i].GasUsed)
+		assert.Equal(t, msg.InnerTxs[i].Value, innerTxs[i].Value)
+		assert.Equal(t, msg.InnerTxs[i].ValueWei, innerTxs[i].ValueWei)
+		assert.Equal(t, msg.InnerTxs[i].CallValueWei, innerTxs[i].CallValueWei)
+		assert.Equal(t, msg.InnerTxs[i].Error, innerTxs[i].Error)
+	}
 }
