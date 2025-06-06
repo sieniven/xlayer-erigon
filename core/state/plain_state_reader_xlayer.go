@@ -17,7 +17,6 @@ const (
 type PlainStateCacheReader struct {
 	db             kv.Getter
 	accountChanges map[libcommon.Address][]byte
-	storageChanged map[libcommon.Address]bool
 	storageChanges map[string][]byte
 }
 
@@ -25,7 +24,6 @@ func NewPlainStateCacheReader(db kv.Getter) *PlainStateCacheReader {
 	return &PlainStateCacheReader{
 		db:             db,
 		accountChanges: make(map[libcommon.Address][]byte, DefaultRealtimeCacheSize),
-		storageChanged: make(map[libcommon.Address]bool, DefaultRealtimeCacheSize),
 		storageChanges: make(map[string][]byte, DefaultRealtimeCacheSize),
 	}
 }
