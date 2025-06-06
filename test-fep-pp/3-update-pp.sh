@@ -30,6 +30,9 @@ if [ "$PROVER_TYPE" == "true" ]; then
     CONTRACT_JSON="./artifacts/contracts/verifiers/v4.0.0-rc.3/SP1VerifierPlonk.sol/SP1VerifierPlonk.json"
     sed_inplace "s|mock-verifier *= *true|mock-verifier = false|g" "$CONFIG_FILE_1"
     sed_inplace "s|\[primary-prover\.mock-prover\]|\[primary-prover.cpu-prover\]|g" "$CONFIG_FILE_2"
+else
+    sed_inplace "s|mock-verifier *= *false|mock-verifier = true|g" "$CONFIG_FILE_1"
+    sed_inplace "s|\[primary-prover\.cpu-prover\]|\[primary-prover.mock-prover\]|g" "$CONFIG_FILE_2"
 fi
 
 DEPLOYER_ADDRESS="0x8f8E2d6cF621f30e9a11309D6A56A876281Fd534"
