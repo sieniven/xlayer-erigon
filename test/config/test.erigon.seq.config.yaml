@@ -120,4 +120,5 @@ kafka.sync-enable-flag: true
 kafka.sync-bootstrap-servers: "xlayer-kafka:9092"
 kafka.sync-tx-topic: xlayer-tx
 kafka.sync-block-topic: xlayer-header
+kafka.sync-changed-set: xlayer-changed-set
 kafka.sync-client-id: "xlayer-producer"

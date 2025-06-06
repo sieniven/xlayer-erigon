@@ -33,6 +33,7 @@ import (
 	"github.com/ledgerwatch/erigon/core/types/accounts"
 	"github.com/ledgerwatch/erigon/smt/pkg/utils"
 	"github.com/ledgerwatch/erigon/turbo/trie"
+	"github.com/ledgerwatch/erigon/zkevm/log"
 )
 
 type revision struct {
@@ -337,6 +338,8 @@ func (sdb *IntraBlockState) AddBalance(addr libcommon.Address, amount *uint256.I
 		}
 	}
 
+	log.Info("IntraBlockState.AddBalance: ", "addr", addr, "amount", amount)
+
 	stateObject := sdb.GetOrNewStateObject(addr)
 	stateObject.AddBalance(amount)
 }
@@ -596,6 +599,7 @@ func (sdb *IntraBlockState) createObject(addr libcommon.Address, previous *state
 //
 // Carrying over the balance ensures that Ether doesn't disappear.
 func (sdb *IntraBlockState) CreateAccount(addr libcommon.Address, contractCreation bool) {
+	log.Infof("CreateAccount: %s", addr)
 	var prevInc uint64
 	previous := sdb.getStateObject(addr)
 	if previous != nil && previous.selfdestructed {

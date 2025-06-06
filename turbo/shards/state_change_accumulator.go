@@ -48,10 +48,33 @@ func (a *Accumulator) SetStateID(stateID uint64) {
 
 // StartChange begins accumulation of changes for a new block
 func (a *Accumulator) StartChange(blockHeight uint64, blockHash libcommon.Hash, txs [][]byte, unwind bool) {
+	if a.latestChange == nil {
+		a.changes = append(a.changes, &remote.StateChange{})
+		a.latestChange = a.changes[len(a.changes)-1]
+
+		a.latestChange.BlockHeight = blockHeight
+		if unwind {
+			a.latestChange.Direction = remote.Direction_UNWIND
+		} else {
+			a.latestChange.Direction = remote.Direction_FORWARD
+		}
+		a.accountChangeIndex = make(map[libcommon.Address]int)
+		a.storageChangeIndex = make(map[libcommon.Address]map[libcommon.Hash]int)
+	}
+
+	if txs != nil {
+		a.latestChange.Txs = make([][]byte, len(txs))
+		for i := range txs {
+			a.latestChange.Txs[i] = libcommon.Copy(txs[i])
+		}
+	}
+	a.latestChange.BlockHash = gointerfaces.ConvertHashToH256(blockHash)
+}
+
+func (a *Accumulator) InitChange(blockHeight uint64, unwind bool) {
 	a.changes = append(a.changes, &remote.StateChange{})
 	a.latestChange = a.changes[len(a.changes)-1]
 	a.latestChange.BlockHeight = blockHeight
-	a.latestChange.BlockHash = gointerfaces.ConvertHashToH256(blockHash)
 	if unwind {
 		a.latestChange.Direction = remote.Direction_UNWIND
 	} else {
@@ -59,12 +82,6 @@ func (a *Accumulator) StartChange(blockHeight uint64, blockHash libcommon.Hash, 
 	}
 	a.accountChangeIndex = make(map[libcommon.Address]int)
 	a.storageChangeIndex = make(map[libcommon.Address]map[libcommon.Hash]int)
-	if txs != nil {
-		a.latestChange.Txs = make([][]byte, len(txs))
-		for i := range txs {
-			a.latestChange.Txs[i] = libcommon.Copy(txs[i])
-		}
-	}
 }
 
 // ChangeAccount adds modification of account balance or nonce (or both) to the latest change

@@ -77,5 +77,6 @@ type KafkaConfig struct {
 	BootstrapServers []string
 	BlockTopic       string
 	TxTopic          string
+	ChangedSetTopic  string
 	ClientID         string
 }

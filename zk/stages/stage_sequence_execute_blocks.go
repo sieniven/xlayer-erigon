@@ -74,6 +74,7 @@ func doFinishBlockAndUpdateState(
 	l1BlockHash common.Hash,
 	l1TreeUpdateIndex uint64,
 	infoTreeIndexProgress uint64,
+	stateWriter state.WriterWithChangeSets,
 ) (*types.Block, error) {
 	thisBlockNumber := header.Number.Uint64()
 
@@ -81,7 +82,7 @@ func doFinishBlockAndUpdateState(
 		batchContext.cfg.accumulator.StartChange(thisBlockNumber, header.Hash(), nil, false)
 	}
 
-	block, err := finaliseBlock(batchContext, ibs, header, parentBlock, batchState, ger, l1BlockHash, l1TreeUpdateIndex, infoTreeIndexProgress)
+	block, err := finaliseBlock(batchContext, ibs, header, parentBlock, batchState, ger, l1BlockHash, l1TreeUpdateIndex, infoTreeIndexProgress, stateWriter)
 	if err != nil {
 		return nil, err
 	}
@@ -111,6 +112,7 @@ func finaliseBlock(
 	l1BlockHash common.Hash,
 	l1TreeUpdateIndex uint64,
 	infoTreeIndexProgress uint64,
+	stateWriter state.WriterWithChangeSets,
 ) (*types.Block, error) {
 	thisBlockNumber := newHeader.Number.Uint64()
 	if err := batchContext.sdb.hermezDb.WriteBlockL1InfoTreeIndex(thisBlockNumber, l1TreeUpdateIndex); err != nil {
@@ -120,7 +122,10 @@ func finaliseBlock(
 		return nil, err
 	}
 
-	stateWriter := state.NewPlainStateWriter(batchContext.sdb.tx, batchContext.sdb.tx, newHeader.Number.Uint64()).SetAccumulator(batchContext.cfg.accumulator)
+	if stateWriter == nil {
+		stateWriter = state.NewPlainStateWriter(batchContext.sdb.tx, batchContext.sdb.tx, newHeader.Number.Uint64()).SetAccumulator(batchContext.cfg.accumulator)
+	}
+
 	chainReader := stagedsync.ChainReader{
 		Cfg: *batchContext.cfg.chainConfig,
 		Db:  batchContext.sdb.tx,

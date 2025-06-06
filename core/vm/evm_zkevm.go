@@ -25,6 +25,7 @@ import (
 	"github.com/ledgerwatch/erigon/crypto"
 	"github.com/ledgerwatch/erigon/params"
 	zktypes "github.com/ledgerwatch/erigon/zk/types"
+	"github.com/ledgerwatch/erigon/zkevm/log"
 )
 
 // [zkevm] contains the list of zkevm precompiles
@@ -311,6 +312,7 @@ func (evm *EVM) call_zkevm(typ OpCode, caller ContractRef, addr libcommon.Addres
 			}
 			evm.intraBlockState.CreateAccount(addr, false)
 		}
+		log.Infof("Call Transfer: %s %d", addr, value)
 		evm.Context.Transfer(evm.intraBlockState, caller.Address(), addr, value, bailout)
 	} else if typ == STATICCALL {
 		// We do an AddBalance of zero here, just in order to trigger a touch.

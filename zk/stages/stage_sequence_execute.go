@@ -19,6 +19,7 @@ import (
 	"github.com/ledgerwatch/erigon/zk/apollo"
 	"github.com/ledgerwatch/erigon/zk/datastream/server"
 	"github.com/ledgerwatch/erigon/zk/hermez_db"
+	kafkaTypes "github.com/ledgerwatch/erigon/zk/kafka/types"
 	"github.com/ledgerwatch/erigon/zk/metrics"
 	zktx "github.com/ledgerwatch/erigon/zk/tx"
 	"github.com/ledgerwatch/erigon/zk/txpool"
@@ -460,6 +461,10 @@ BatchLoop:
 			cfg.txKafkaProducer.SendKafkaBlockHeader(ctx, header)
 		}
 
+		// For X Layer
+		stateWriter := state.NewPlainStateWriter(batchContext.sdb.tx, batchContext.sdb.tx, header.Number.Uint64()).SetAccumulator(batchContext.cfg.accumulator)
+		batchContext.cfg.accumulator.InitChange(header.Number.Uint64(), true)
+
 	OuterLoopTransactions:
 		for {
 			if innerBreak {
@@ -683,6 +688,18 @@ BatchLoop:
 					if cfg.zk.XLayer.Kafka.Enable {
 						cfg.txKafkaProducer.SendKafkaTransaction(ctx, blockNumber, transaction, receipt, innerTxs)
 					}
+
+					// For X Layer, generate changeSet from ibs
+					acs, scs, err := generateChangeSetFromTransaciton(ibs, stateWriter, header, cfg.chainConfig)
+					if err != nil {
+						log.Error("generateChangeSetFromTransaciton get error:", "err", err)
+					}
+
+					cfg.txKafkaProducer.SendKafkaChangedSet(ctx, &kafkaTypes.ChangedSet{
+						TxHash:            transaction.Hash(),
+						AccountChangedSet: acs,
+						StorageChangedSet: scs,
+					})
 				}
 
 				// We will only update the processed index in resequence job if there isn't overflow
@@ -772,7 +789,8 @@ BatchLoop:
 			quit := batchContext.ctx.Done()
 			batchContext.sdb.eridb.OpenBatch(quit)           // do nothing...
 			batchContext.sdb.eridb.SetCache(s.GetSmtCache()) // will deep copy in internal function
-			if block, err = doFinishBlockAndUpdateState(batchContext, ibs, header, parentBlock, batchState, ger, l1BlockHash, l1TreeUpdateIndex, infoTreeIndexProgress); err != nil {
+			if block, err = doFinishBlockAndUpdateState(batchContext, ibs, header, parentBlock, batchState, ger, l1BlockHash, l1TreeUpdateIndex, infoTreeIndexProgress, stateWriter); err != nil {
+				log.Error("doFinishBlockAndUpdateState get error", "err", err)
 				batchContext.sdb.eridb.RollbackBatch()
 				return err
 			}
@@ -786,7 +804,7 @@ BatchLoop:
 		} else {
 			quit := batchContext.ctx.Done()
 			batchContext.sdb.eridb.OpenBatch(quit)
-			if block, err = doFinishBlockAndUpdateState(batchContext, ibs, header, parentBlock, batchState, ger, l1BlockHash, l1TreeUpdateIndex, infoTreeIndexProgress); err != nil {
+			if block, err = doFinishBlockAndUpdateState(batchContext, ibs, header, parentBlock, batchState, ger, l1BlockHash, l1TreeUpdateIndex, infoTreeIndexProgress, stateWriter); err != nil {
 				batchContext.sdb.eridb.RollbackBatch()
 				return err
 			}

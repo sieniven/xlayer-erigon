@@ -1,6 +1,7 @@
 package state
 
 import (
+	"encoding/hex"
 	"fmt"
 
 	"github.com/holiman/uint256"
@@ -12,6 +13,7 @@ import (
 	historyv22 "github.com/ledgerwatch/erigon-lib/kv/temporal/historyv2"
 
 	"github.com/ledgerwatch/erigon/core/types/accounts"
+	"github.com/ledgerwatch/erigon/zkevm/log"
 )
 
 // ChangeSetWriter is a mock StateWriter that accumulates changes in-memory into ChangeSets.
@@ -43,6 +45,7 @@ func NewChangeSetWriterPlain(db kv.RwTx, blockNumber uint64) *ChangeSetWriter {
 func (w *ChangeSetWriter) GetAccountChanges() (*historyv22.ChangeSet, error) {
 	cs := historyv22.NewAccountChangeSet()
 	for address, val := range w.accountChanges {
+		log.Info("GetAccountChanges: ", "addr", address, "val", hex.EncodeToString(val))
 		if err := cs.Add(libcommon.CopyBytes(address[:]), val); err != nil {
 			return nil, err
 		}

@@ -7,7 +7,11 @@ import (
 
 	"github.com/0xPolygonHermez/zkevm-data-streamer/datastreamer"
 	dslog "github.com/0xPolygonHermez/zkevm-data-streamer/log"
+	"github.com/ledgerwatch/erigon-lib/chain"
+	historyv22 "github.com/ledgerwatch/erigon-lib/kv/temporal/historyv2"
 	"github.com/ledgerwatch/erigon/core/rawdb"
+	"github.com/ledgerwatch/erigon/core/state"
+	"github.com/ledgerwatch/erigon/core/types"
 	"github.com/ledgerwatch/erigon/eth/stagedsync"
 	"github.com/ledgerwatch/erigon/zk/apollo"
 	"github.com/ledgerwatch/erigon/zk/datastream/server"
@@ -143,4 +147,28 @@ func getTargetBlockForSMTAlignment(sdb *stageDb, logPrefix string, executionAt u
 	}
 	log.Warn(fmt.Sprintf("[%s] Target block for SMT alignment", logPrefix), "targetBlock", targetBlock, "executionAt", executionAt, "smtMaxBlockNumber", smtMaxBlockNumber, "smtBatchNo", smtBatchNo)
 	return targetBlock, nil
+}
+
+func generateChangeSetFromTransaciton(ibs *state.IntraBlockState, stateWriter state.WriterWithChangeSets, header *types.Header, cc *chain.Config) (*historyv22.ChangeSet, *historyv22.ChangeSet, error) {
+	err := ibs.CommitBlock(cc.Rules(header.Number.Uint64(), header.Time), stateWriter)
+	if err != nil {
+
+	}
+	err = stateWriter.WriteChangeSets()
+	if err != nil {
+
+	}
+
+	accountChangedSet, err := stateWriter.(*state.PlainStateWriter).ChangeSetWriter().GetAccountChanges()
+	if err != nil {
+
+	}
+
+	storageChangedSet, err := stateWriter.(*state.PlainStateWriter).ChangeSetWriter().GetStorageChanges()
+	if err != nil {
+
+	}
+
+	return accountChangedSet, storageChangedSet, err
+
 }

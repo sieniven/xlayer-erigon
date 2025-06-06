@@ -27,6 +27,8 @@ DOCKER_GRAFANA := grafana
 DOCKER_MAINNET_SEQ := xlayer-mainnet-seq
 DOCKER_MAINNET_RPC := xlayer-mainnet-rpc
 DOCKER_KAFKA := xlayer-kafka
+DOCKER_KAFKA_UI := xlayer-kafka-ui
+
 
 # Apollo
 DOCKER_COMPOSE_APOLLO := docker compose -f docker-compose-apollo.yml
@@ -63,6 +65,8 @@ RUN_DOCKER_DS := $(DOCKER_COMPOSE) up -d $(DOCKER_DS)
 RUN_DOCKER_PROMETHEUS := $(DOCKER_COMPOSE) up -d $(DOCKER_PROMETHEUS)
 RUN_DOCKER_GRAFANA := $(DOCKER_COMPOSE) up -d $(DOCKER_GRAFANA)
 RUN_DOCKER_KAFKA := $(DOCKER_COMPOSE) up -d $(DOCKER_KAFKA)
+RUN_DOCKER_KAFKA_UI := $(DOCKER_COMPOSE) up -d $(DOCKER_KAFKA_UI)
+
 
 # Apollo
 RUN_DOCKER_APOLLO_CONFIGSERVICE := $(DOCKER_COMPOSE_APOLLO) up -d $(DOCKER_APOLLO_CONFIGSERVICE)
@@ -98,6 +102,7 @@ run: build-docker ## Runs a full node
 	sleep 10
 	$(RUN_DOCKER_SEQ)
 	$(RUN_DOCKER_PROVER)
+	$(RUN_DOCKER_KAFKA_UI)
 	sleep 10
 	$(RUN_DOCKER_DS)
 	$(RUN_DOCKER_SIGNER)

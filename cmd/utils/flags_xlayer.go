@@ -363,6 +363,11 @@ var (
 		Usage: "Kafka tx topic",
 		Value: "",
 	}
+	KafkaSyncChangedSetTopic = cli.StringFlag{
+		Name:  "kafka.sync-changed-set",
+		Usage: "Kafka changed set topic",
+		Value: "",
+	}
 	KafkaSyncClientID = cli.StringFlag{
 		Name:  "kafka.sync-client-id",
 		Usage: "Kafka sync client id",

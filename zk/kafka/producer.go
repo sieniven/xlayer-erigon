@@ -2,6 +2,7 @@ package kafka
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 
 	"github.com/IBM/sarama"
@@ -9,6 +10,7 @@ import (
 	"github.com/ledgerwatch/erigon/eth/ethconfig"
 	kafkaTypes "github.com/ledgerwatch/erigon/zk/kafka/types"
 	zktypes "github.com/ledgerwatch/erigon/zk/types"
+	"github.com/ledgerwatch/erigon/zkevm/log"
 )
 
 // KafkaProducer represents a Kafka producer client for sending transaction messages
@@ -79,6 +81,32 @@ func (client *KafkaProducer) SendKafkaBlockHeader(ctx context.Context, header *t
 		Topic: client.config.BlockTopic,
 		Value: sarama.StringEncoder(jsonData),
 		Key:   sarama.StringEncoder(header.Hash().String()),
+	}
+
+	// Send message
+	_, _, err = client.producer.SendMessage(kafkaMsg)
+	if err != nil {
+		return fmt.Errorf("error sending message to Kafka: %v", err)
+	}
+
+	return nil
+}
+
+func (client *KafkaProducer) SendKafkaChangedSet(ctx context.Context, changedSet *kafkaTypes.ChangedSet) error {
+	jsonData, err := json.Marshal(changedSet)
+	if err != nil {
+		return fmt.Errorf("error marshaling block header: %v", err)
+	}
+
+	log.Infof("SendKafkaChangedSet send tx: %s", changedSet.TxHash)
+	log.Infof("SendKafkaChangedSet send acs: %+v", changedSet.AccountChangedSet)
+	log.Infof("SendKafkaChangedSet send scs: %+v", changedSet.StorageChangedSet)
+
+	// Create Kafka message
+	kafkaMsg := &sarama.ProducerMessage{
+		Topic: client.config.ChangedSetTopic,
+		Value: sarama.StringEncoder(jsonData),
+		Key:   sarama.StringEncoder(changedSet.TxHash.String()),
 	}
 
 	// Send message
