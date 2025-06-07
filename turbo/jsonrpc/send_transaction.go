@@ -17,7 +17,7 @@ import (
 	"github.com/ledgerwatch/erigon/zk/hermez_db"
 	"github.com/ledgerwatch/erigon/zk/sequencer"
 	"github.com/ledgerwatch/erigon/zk/utils"
-	"github.com/ledgerwatch/erigon/zkevm/log"
+	"github.com/ledgerwatch/log/v3"
 )
 
 // SendRawTransaction implements eth_sendRawTransaction. Creates new message call transaction or a contract creation for previously-signed transactions.
@@ -78,6 +78,16 @@ func (api *APIImpl) sendRawTransactionSingle(ctx context.Context, encodedTx hexu
 	if err != nil {
 		return common.Hash{}, err
 	}
+	utils.LogTrace(
+		txn.Hash().String(),        // txhash
+		utils.ServiceNameSequencer, // serviceName
+		utils.StepSeqReceiveTx.ID,  // processId
+		utils.StepSeqReceiveTx.Key, // processWord
+		0,                          // blockHeight
+		"",                         // blockHash
+		0,                          // blockTime
+		int8(txn.Type()),           // transactionType
+	)
 
 	latestBlockNumber, err := rpchelper.GetLatestFinishedBlockNumber(tx)
 	if err != nil {

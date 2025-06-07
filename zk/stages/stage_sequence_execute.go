@@ -554,18 +554,6 @@ BatchLoop:
 				if err != nil {
 					return err
 				}
-				for _, tx := range newTransactions {
-					utils.LogTrace(
-						tx.Hash().String(),         // txhash
-						utils.ServiceNameSequencer, // serviceName
-						utils.StepSeqReceiveTx.ID,  // processId
-						utils.StepSeqReceiveTx.Key, // processWord
-						blockNumber,                // blockHeight
-						"",                         // blockHash
-						0,                          // blockTime
-						int8(tx.Type()),            // transactionType
-					)
-				}
 
 				metrics.GetLogStatistics().CumulativeTiming(metrics.GetTxTiming, time.Since(getTxTime))
 
