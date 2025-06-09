@@ -219,8 +219,10 @@ func ListenTxKafkaProducer(
 		case <-ctx.Done():
 			return
 		case header := <-headersChan:
+			log.Info("Kafka prepare to send header", "header", header)
 			txKafkaProducer.SendKafkaBlockHeader(ctx, header)
 		case txInfo := <-txInfoChan:
+			log.Info("Kafka prepare to send transaction", "txhash", txInfo.Tx.Hash(), "receipt", txInfo.Receipt, "innerTxs", txInfo.InnerTxs, "changeset", txInfo.Changeset)
 			txKafkaProducer.SendKafkaTransaction(ctx, txInfo.BlockNumber, txInfo.Tx, txInfo.Receipt, txInfo.InnerTxs, txInfo.Changeset)
 		}
 	}

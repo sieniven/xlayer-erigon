@@ -87,10 +87,10 @@ func (j *journal) length() int {
 	return len(j.entries)
 }
 
-func (j *journal) changeset(changeset *types.Changeset, snapshot int) {
-	for _, entry := range j.entries[snapshot:] {
-		entry.collectChangeset(changeset)
-	}
+func (j *journal) collectEntriesSinceSnapshot(snapshot int) []journalEntry {
+	entries := make([]journalEntry, len(j.entries)-snapshot)
+	copy(entries, j.entries[snapshot:])
+	return entries
 }
 
 type (

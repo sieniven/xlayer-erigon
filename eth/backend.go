@@ -1235,8 +1235,8 @@ func New(ctx context.Context, stack *node.Node, config *ethconfig.Config, logger
 					return nil, err
 				}
 				backend.txKafkaProducer = kafkaProducer
-				backend.headerChan = make(chan *types.Header)
-				backend.txInfoChan = make(chan *zktypes.TxInfo)
+				backend.headerChan = make(chan *types.Header, 10000)
+				backend.txInfoChan = make(chan *zktypes.TxInfo, 10000)
 			}
 
 			backend.syncStages = stages2.NewSequencerZkStages(

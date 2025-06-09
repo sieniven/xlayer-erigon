@@ -6,10 +6,9 @@ import (
 
 	"github.com/ledgerwatch/erigon/core/types"
 	zktypes "github.com/ledgerwatch/erigon/zk/types"
-	"github.com/ledgerwatch/erigon/zkevm/log"
 )
 
-func (sdb *IntraBlockState) GenerateChangesetSinceSnapshot(revid int, txMsgChan chan *zktypes.TxInfo, tx types.Transaction, receipt *types.Receipt, innerTxs []*zktypes.InnerTx) {
+func (sdb *IntraBlockState) GenerateChangesetSinceSnapshotAndSendTxInfo(revid int, txMsgChan chan *zktypes.TxInfo, tx types.Transaction, receipt *types.Receipt, innerTxs []*zktypes.InnerTx) {
 	// Find the snapshot in the stack of valid snapshots.
 	idx := sort.Search(len(sdb.validRevisions), func(i int) bool {
 		return sdb.validRevisions[i].id >= revid
@@ -18,14 +17,13 @@ func (sdb *IntraBlockState) GenerateChangesetSinceSnapshot(revid int, txMsgChan 
 		panic(fmt.Errorf("revision id %v cannot be reverted", revid))
 	}
 	snapshot := sdb.validRevisions[idx].journalIndex
+	entries := sdb.journal.collectEntriesSinceSnapshot(snapshot)
 
-	changeset := zktypes.NewChangeset()
-	entries := &sdb.journal.entries
-
-	// sdb.journal.changeset(changeset, snapshot)
 	go func() {
-		fillingChangeset(changeset, entries, snapshot)
-		log.Info("Kafka prepare to send transactio", "txhash", tx.Hash(), "innerTxs", innerTxs, "changeset", changeset)
+		changeset := zktypes.NewChangeset()
+		for _, entry := range entries {
+			entry.collectChangeset(changeset)
+		}
 
 		txMsgChan <- &zktypes.TxInfo{
 			BlockNumber: receipt.BlockNumber.Uint64(),
@@ -35,11 +33,4 @@ func (sdb *IntraBlockState) GenerateChangesetSinceSnapshot(revid int, txMsgChan 
 			Changeset:   changeset,
 		}
 	}()
-}
-
-func fillingChangeset(changeset *zktypes.Changeset, entries *[]journalEntry, snapshot int) {
-	temp := *entries
-	for _, entry := range temp[snapshot:] {
-		entry.collectChangeset(changeset)
-	}
 }

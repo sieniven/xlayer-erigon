@@ -456,9 +456,11 @@ BatchLoop:
 		processingTxTime := time.Now()
 
 		// For X Layer, send kafka block header
-		go func() {
-			cfg.headerChan <- header
-		}()
+		if cfg.zk.XLayer.Kafka.Enable {
+			go func() {
+				cfg.headerChan <- header
+			}()
+		}
 
 	OuterLoopTransactions:
 		for {
