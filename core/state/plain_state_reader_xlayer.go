@@ -104,7 +104,7 @@ func (cache *PlainStateCache) ReadAccountData(address libcommon.Address) (*accou
 	acc, ok := cache.accountCache[address]
 	cache.accountLock.RUnlock()
 	if ok {
-		return deepCopyAccount(acc), nil
+		return accounts.DeepCopyAccount(acc), nil
 	}
 
 	// Cache miss, read from snapshot and load to cache
@@ -179,7 +179,7 @@ func (cache *PlainStateCache) loadAccountFromSnapshot(address libcommon.Address,
 	defer cache.accountLock.Unlock()
 	if account, ok := cache.accountCache[address]; ok {
 		// Cache hit
-		return deepCopyAccount(account)
+		return accounts.DeepCopyAccount(account)
 	}
 
 	// Load to cache
