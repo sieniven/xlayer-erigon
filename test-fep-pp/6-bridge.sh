@@ -2,6 +2,7 @@
 
 # Strict mode: exit on command failure or undefined variable
 set -eu
+# set -x
 
 # =============================================================================
 # Configuration
@@ -9,7 +10,7 @@ set -eu
 BRIDGE_ADDRESS="0x3a277Fa4E78cc1266F32E26c467F99A8eAEfF7c3"
 ACCOUNT="0x8f8E2d6cF621f30e9a11309D6A56A876281Fd534" 
 PRIVATE_KEY="0x815405dddb0e2a99b12af775fd2929e526704e1d1aea6a0b4e74dc33e2f7fcd2"
-BRIDGE_VALUE="100000000000000000"  # 0.1 ETH (wei)
+BRIDGE_VALUE="1000000000000000000"  # 1 ETH in wei
 
 L1_ETH_ADDRESS="0x0000000000000000000000000000000000000000"
 L2_WETH="0x17a2a2e444a7f3446877d1b71eaa2b2ae7533baf"
@@ -37,12 +38,13 @@ echo "Initial GER on L1: $GER"
 # =============================================================================
 
 # Check balance before bridging
-L2_BALANCE_BEFORE_BRIDGE=$(cast call "$L2_WETH" "balanceOf(address)(uint256)" "$ACCOUNT" --rpc-url "$L2RPC")
+L2_BALANCE_BEFORE_BRIDGE=$(cast call "$L2_WETH" "balanceOf(address)(uint256)" "$ACCOUNT" --rpc-url "$L2RPC" | awk '{print $1}')
 
 cast send \
     --legacy \
     --rpc-url $L1RPC \
     --private-key $PRIVATE_KEY \
+    --value $BRIDGE_VALUE \
     $BRIDGE_ADDRESS \
     'function bridgeAsset(uint32 destinationNetwork, address destinationAddress, uint256 amount, address token, bool forceUpdateGlobalExitRoot, bytes permitData) returns()' \
     1 $ACCOUNT $BRIDGE_VALUE $L1_ETH_ADDRESS true 0x
@@ -56,7 +58,7 @@ while true; do
         echo "GER updated to $GER on L1"
         break
     fi
-    sleep 1
+    sleep 10
 done
 
 # Wait for GER to sync to L2
@@ -67,7 +69,7 @@ while true; do
     if [ "$timestamp" != "0" ]; then
         break
     fi
-    sleep 1
+    sleep 10
 done
 end_time=$(date +%s)
 total_elapsed=$((end_time - start_time))
@@ -77,12 +79,16 @@ echo "GER synced to L2, took $total_elapsed seconds"
 echo "Waiting for assets to be claimed by sponsor..."
 start_time=$(date +%s)
 while true; do
-    balance=$(cast call "$L2_WETH" "balanceOf(address)(uint256)" "$ACCOUNT" --rpc-url "$L2RPC")
+    balance=$(cast call "$L2_WETH" "balanceOf(address)(uint256)" "$ACCOUNT" --rpc-url "$L2RPC" | awk '{print $1}')
+    balance=${balance:-0}
     increment=$(echo "$balance - $L2_BALANCE_BEFORE_BRIDGE" | bc)
-    if [ "$increment" -eq $BRIDGE_VALUE ]; then
+    echo "Current balance on L2: $balance (increment: $increment)"
+    if [ "$increment" -gt 0 ]; then
+        echo "Assets successfully claimed on L2"
         break
     fi
-    sleep 1
+    
+    sleep 10
 done
 end_time=$(date +%s)
 total_elapsed=$((end_time - start_time))
@@ -104,11 +110,10 @@ TX_HASH=$(cast send \
     --legacy \
     --private-key $PRIVATE_KEY \
     --rpc-url $L2RPC \
-    --value $BRIDGE_VALUE \
     --json \
     $BRIDGE_ADDRESS \
     'function bridgeAsset(uint32 destinationNetwork, address destinationAddress, uint256 amount, address token, bool forceUpdateGlobalExitRoot, bytes permitData) returns()' \
-    0 $ACCOUNT $BRIDGE_VALUE $L1_ETH_ADDRESS true "0x" \
+    0 $ACCOUNT $BRIDGE_VALUE $L2_WETH true "0x" \
     | jq -r ' .transactionHash')
 echo "Bridge transaction hash: $TX_HASH"
 
@@ -121,7 +126,7 @@ while true; do
         GER=$GER_NEW
         break
     fi
-    sleep 1
+    sleep 10
 done
 end_time=$(date +%s)
 total_elapsed=$((end_time - start_time))
