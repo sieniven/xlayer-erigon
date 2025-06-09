@@ -54,6 +54,12 @@ var (
 		},
 	}
 
+	rightvrsTxChangeset = &zktypes.Changeset{
+		BalanceChanges: map[libcommon.Address]*uint256.Int{
+			testToAddr: uint256.NewInt(10),
+		},
+	}
+
 	difficulty, _ = new(big.Int).SetString("8398142613866510000000000000000000000000000000", 10)
 	blockHeader   = &types1.Header{
 		ParentHash:  libcommon.HexToHash("0x8b00fcf1e541d371a3a1b79cc999a85cc3db5ee5637b5159646e1acd3613fd15"),
@@ -100,6 +106,7 @@ func TestKafkaConsumer(t *testing.T) {
 			kafkaTypes.AssertCommonTx(t, txMsg, rightvrsTx, uint64(i), types1.LegacyTxType)
 			kafkaTypes.AssertReceipt(t, txMsg, rightvrsTxReceipt)
 			kafkaTypes.AssertInnerTxs(t, txMsg, rightvrsTxInnerTxs)
+			kafkaTypes.AssertChangeseet(t, txMsg, rightvrsTxChangeset)
 		}
 	}
 
@@ -131,7 +138,7 @@ func TestKafkaProducer(t *testing.T) {
 	assert.NilError(t, err)
 
 	for i := 0; i < 10; i++ {
-		err = producer.SendKafkaTransaction(context.Background(), uint64(i), rightvrsTx, rightvrsTxReceipt, rightvrsTxInnerTxs)
+		err = producer.SendKafkaTransaction(context.Background(), uint64(i), rightvrsTx, rightvrsTxReceipt, rightvrsTxInnerTxs, rightvrsTxChangeset)
 		assert.NilError(t, err)
 
 		err = producer.SendKafkaBlockHeader(context.Background(), blockHeader)
