@@ -1,6 +1,7 @@
 package types
 
 import (
+	"encoding/hex"
 	"testing"
 
 	libcommon "github.com/ledgerwatch/erigon-lib/common"
@@ -121,4 +122,67 @@ func AssertInnerTxs(t *testing.T, msg TransactionMessage, innerTxs []*zktypes.In
 		assert.Equal(t, msg.InnerTxs[i].CallValueWei, innerTxs[i].CallValueWei)
 		assert.Equal(t, msg.InnerTxs[i].Error, innerTxs[i].Error)
 	}
+}
+func AssertChangeseet(t *testing.T, msg TransactionMessage, changeset *zktypes.Changeset) {
+	assert.Equal(t, len(msg.Changeset.DeletedAccounts), len(changeset.DeletedAccounts))
+	assert.Equal(t, len(msg.Changeset.BalanceChanges), len(changeset.BalanceChanges))
+	assert.Equal(t, len(msg.Changeset.NonceChanges), len(changeset.NonceChanges))
+	assert.Equal(t, len(msg.Changeset.CodeHashChanges), len(changeset.CodeHashChanges))
+	assert.Equal(t, len(msg.Changeset.CodeChanges), len(changeset.CodeChanges))
+	assert.Equal(t, len(msg.Changeset.IncarnationChanges), len(changeset.IncarnationChanges))
+	assert.Equal(t, len(msg.Changeset.StorageChanges), len(changeset.StorageChanges))
+
+	for k, v := range msg.Changeset.DeletedAccounts {
+		assert.Equal(t, v, changeset.DeletedAccounts[k])
+	}
+	for k, v := range changeset.DeletedAccounts {
+		assert.Equal(t, v, msg.Changeset.DeletedAccounts[k])
+	}
+
+	for k, v := range msg.Changeset.BalanceChanges {
+		assert.Equal(t, *v, *changeset.BalanceChanges[k])
+	}
+	for k, v := range changeset.BalanceChanges {
+		assert.Equal(t, *v, *msg.Changeset.BalanceChanges[k])
+	}
+
+	for k, v := range msg.Changeset.NonceChanges {
+		assert.Equal(t, v, changeset.NonceChanges[k])
+	}
+	for k, v := range changeset.NonceChanges {
+		assert.Equal(t, v, msg.Changeset.NonceChanges[k])
+	}
+
+	for k, v := range msg.Changeset.CodeHashChanges {
+		assert.Equal(t, v, changeset.CodeHashChanges[k])
+	}
+	for k, v := range changeset.CodeHashChanges {
+		assert.Equal(t, v, msg.Changeset.CodeHashChanges[k])
+	}
+
+	for k, v := range msg.Changeset.CodeChanges {
+		assert.Equal(t, hex.EncodeToString(v), hex.EncodeToString(changeset.CodeChanges[k]))
+	}
+	for k, v := range changeset.CodeChanges {
+		assert.Equal(t, v, msg.Changeset.CodeChanges[k])
+	}
+
+	for k, v := range msg.Changeset.IncarnationChanges {
+		assert.Equal(t, v, changeset.IncarnationChanges[k])
+	}
+	for k, v := range changeset.IncarnationChanges {
+		assert.Equal(t, v, msg.Changeset.IncarnationChanges[k])
+	}
+
+	for k, v := range msg.Changeset.StorageChanges {
+		for item, itemValue := range v {
+			assert.Equal(t, *itemValue, *changeset.StorageChanges[k][item])
+		}
+	}
+	for k, v := range changeset.StorageChanges {
+		for item, itemValue := range v {
+			assert.Equal(t, *itemValue, *msg.Changeset.StorageChanges[k][item])
+		}
+	}
+
 }

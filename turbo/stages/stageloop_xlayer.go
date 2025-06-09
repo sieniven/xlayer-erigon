@@ -181,8 +181,15 @@ func ListenTxKafka(ctx context.Context, txKafkaConsumer *kafka.KafkaConsumer, co
 				logger.Error("failed to consume tx innerTxs message from kafka", "error", err)
 				continue
 			}
+			changeset, err := txMsg.GetChangeset()
+			if err != nil {
+				logger.Error("failed to consume tx changeset message from kafka", "error", err)
+				continue
+			}
 			txInfoMap.Put(tx.Hash(), tx, receipt, innerTxs)
-			logger.Info("Received transaction message", "tx", tx, "blockNumber", blockNumber, "receipt", receipt, "innerTxs", innerTxs)
+
+			// TODO: Use changeset to generate new state
+			logger.Info("Received transaction message", "tx", tx, "blockNumber", blockNumber, "receipt", receipt, "innerTxs", innerTxs, "changeset", changeset)
 		case err := <-errorChan:
 			logger.Error("kafka consumer failed", "error", err)
 			return

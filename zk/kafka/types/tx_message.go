@@ -44,9 +44,12 @@ type TransactionMessage struct {
 
 	// Inner transactions
 	InnerTxs []*zktypes.InnerTx `json:"innerTxs"`
+
+	// Changeset
+	Changeset *zktypes.Changeset `json:"changeset"`
 }
 
-func ToKafkaTransactionMessage(tx types1.Transaction, receipt *types1.Receipt, innerTxs []*zktypes.InnerTx, blockNumber uint64) (txMsg TransactionMessage, err error) {
+func ToKafkaTransactionMessage(tx types1.Transaction, receipt *types1.Receipt, innerTxs []*zktypes.InnerTx, changeset *zktypes.Changeset, blockNumber uint64) (txMsg TransactionMessage, err error) {
 	// Parse tx
 	switch tx.Type() {
 	case types1.LegacyTxType:
@@ -97,6 +100,7 @@ func ToKafkaTransactionMessage(tx types1.Transaction, receipt *types1.Receipt, i
 	// Parse receipt
 	txMsg.Receipt = receipt
 	txMsg.InnerTxs = innerTxs
+	txMsg.Changeset = changeset
 
 	return txMsg, nil
 }
@@ -155,6 +159,14 @@ func (msg TransactionMessage) GetInnerTxs() ([]*zktypes.InnerTx, error) {
 	return msg.InnerTxs, nil
 }
 
+func (msg TransactionMessage) GetChangeset() (*zktypes.Changeset, error) {
+	if msg.Changeset == nil {
+		return nil, fmt.Errorf("changeset is nil")
+	}
+
+	return msg.Changeset, nil
+}
+
 func (msg TransactionMessage) MarshalJSON() ([]byte, error) {
 	type TransactionMessage struct {
 		BlockNumber uint64             `json:"blockNumber"`
@@ -173,6 +185,7 @@ func (msg TransactionMessage) MarshalJSON() ([]byte, error) {
 		GasPrice    string             `json:"gasPrice"`
 		Receipt     *types1.Receipt    `json:"receipt"`
 		InnerTxs    []*zktypes.InnerTx `json:"innerTxs"`
+		Changeset   *zktypes.Changeset `json:"changeset"`
 	}
 
 	var enc TransactionMessage
@@ -191,6 +204,7 @@ func (msg TransactionMessage) MarshalJSON() ([]byte, error) {
 	enc.V = msg.V
 	enc.GasPrice = msg.GasPrice
 	enc.InnerTxs = msg.InnerTxs
+	enc.Changeset = msg.Changeset
 
 	if msg.Receipt != nil {
 		// Handle nil logs
