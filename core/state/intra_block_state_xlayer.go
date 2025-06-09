@@ -5,10 +5,19 @@ import (
 	"sort"
 
 	"github.com/ledgerwatch/erigon/core/types"
+	ethTypes "github.com/ledgerwatch/erigon/core/types"
 	zktypes "github.com/ledgerwatch/erigon/zk/types"
 )
 
-func (sdb *IntraBlockState) GenerateChangesetSinceSnapshotAndSendTxInfo(revid int, txMsgChan chan *zktypes.TxInfo, tx types.Transaction, receipt *types.Receipt, innerTxs []*zktypes.InnerTx) {
+type TxInfo struct {
+	BlockNumber uint64
+	Tx          ethTypes.Transaction
+	Receipt     *ethTypes.Receipt
+	InnerTxs    []*zktypes.InnerTx
+	Entries     Entries
+}
+
+func (sdb *IntraBlockState) GenerateChangesetSinceSnapshotAndSendTxInfo(revid int, txMsgChan chan *TxInfo, tx types.Transaction, receipt *types.Receipt, innerTxs []*zktypes.InnerTx) {
 	// Find the snapshot in the stack of valid snapshots.
 	idx := sort.Search(len(sdb.validRevisions), func(i int) bool {
 		return sdb.validRevisions[i].id >= revid
@@ -17,20 +26,22 @@ func (sdb *IntraBlockState) GenerateChangesetSinceSnapshotAndSendTxInfo(revid in
 		panic(fmt.Errorf("revision id %v cannot be reverted", revid))
 	}
 	snapshot := sdb.validRevisions[idx].journalIndex
-	entries := &sdb.journal.entries
+	entries := Entries{
+		entries:  &sdb.journal.entries,
+		snapshot: snapshot,
+	}
 
-	go func() {
-		changeset := zktypes.NewChangeset()
-		for _, entry := range (*entries)[snapshot:] {
-			entry.collectChangeset(changeset)
-		}
+	// changeset := zktypes.NewChangeset()
+	// for _, entry := range (*entries)[snapshot:] {
+	// 	entry.collectChangeset(changeset)
+	// }
 
-		txMsgChan <- &zktypes.TxInfo{
-			BlockNumber: receipt.BlockNumber.Uint64(),
-			Tx:          tx,
-			Receipt:     receipt,
-			InnerTxs:    innerTxs,
-			Changeset:   changeset,
-		}
-	}()
+	txMsgChan <- &TxInfo{
+		BlockNumber: receipt.BlockNumber.Uint64(),
+		Tx:          tx,
+		Receipt:     receipt,
+		InnerTxs:    innerTxs,
+		// Changeset:   changeset,
+		Entries: entries,
+	}
 }

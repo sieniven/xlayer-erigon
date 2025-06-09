@@ -91,6 +91,7 @@ import (
 	"github.com/ledgerwatch/erigon/core"
 	"github.com/ledgerwatch/erigon/core/rawdb"
 	"github.com/ledgerwatch/erigon/core/rawdb/blockio"
+	"github.com/ledgerwatch/erigon/core/state"
 	"github.com/ledgerwatch/erigon/core/types"
 	"github.com/ledgerwatch/erigon/core/vm"
 	"github.com/ledgerwatch/erigon/crypto"
@@ -258,7 +259,7 @@ type Ethereum struct {
 	txInfoMap       *zktypes.TxInfoMap
 	headerMap       *zktypes.HeaderMap
 	headerChan      chan *types.Header
-	txInfoChan      chan *zktypes.TxInfo
+	txInfoChan      chan *state.TxInfo
 }
 
 func splitAddrIntoHostAndPort(addr string) (host string, port int, err error) {
@@ -1236,7 +1237,7 @@ func New(ctx context.Context, stack *node.Node, config *ethconfig.Config, logger
 				}
 				backend.txKafkaProducer = kafkaProducer
 				backend.headerChan = make(chan *types.Header, 10000)
-				backend.txInfoChan = make(chan *zktypes.TxInfo, 10000)
+				backend.txInfoChan = make(chan *state.TxInfo, 10000)
 			}
 
 			backend.syncStages = stages2.NewSequencerZkStages(

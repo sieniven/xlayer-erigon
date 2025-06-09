@@ -12,6 +12,7 @@ import (
 	"github.com/ledgerwatch/log/v3"
 
 	"github.com/ledgerwatch/erigon-lib/kv"
+	"github.com/ledgerwatch/erigon/core/state"
 	"github.com/ledgerwatch/erigon/core/types"
 	"github.com/ledgerwatch/erigon/zk/kafka"
 	kafkaTypes "github.com/ledgerwatch/erigon/zk/kafka/types"
@@ -203,7 +204,7 @@ func ListenTxKafkaProducer(
 	config ethconfig.XLayerConfig,
 	logger log.Logger,
 	headersChan chan *types.Header,
-	txInfoChan chan *zktypes.TxInfo) {
+	txInfoChan chan *state.TxInfo) {
 	if !sequencer.IsSequencer() {
 		logger.Info("txKafkaProducer is disabled on non-sequencer, skipping")
 		return
@@ -219,11 +220,12 @@ func ListenTxKafkaProducer(
 		case <-ctx.Done():
 			return
 		case header := <-headersChan:
-			log.Info("Kafka prepare to send header", "header", header)
+			// log.Info("Kafka prepare to send header", "header", header)
 			txKafkaProducer.SendKafkaBlockHeader(ctx, header)
 		case txInfo := <-txInfoChan:
-			log.Info("Kafka prepare to send transaction", "txhash", txInfo.Tx.Hash(), "receipt", txInfo.Receipt, "innerTxs", txInfo.InnerTxs, "changeset", txInfo.Changeset)
-			txKafkaProducer.SendKafkaTransaction(ctx, txInfo.BlockNumber, txInfo.Tx, txInfo.Receipt, txInfo.InnerTxs, txInfo.Changeset)
+			changeset := state.CollectChangeset(txInfo.Entries)
+			// log.Info("Kafka prepare to send transaction", "txhash", txInfo.Tx.Hash(), "receipt", txInfo.Receipt, "innerTxs", txInfo.InnerTxs, "changeset", changeset)
+			txKafkaProducer.SendKafkaTransaction(ctx, txInfo.BlockNumber, txInfo.Tx, txInfo.Receipt, txInfo.InnerTxs, changeset)
 		}
 	}
 }

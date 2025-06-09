@@ -8,6 +8,7 @@ import (
 	"github.com/ledgerwatch/erigon-lib/state"
 	"github.com/ledgerwatch/erigon/consensus"
 	"github.com/ledgerwatch/erigon/core/rawdb/blockio"
+	state2 "github.com/ledgerwatch/erigon/core/state"
 	"github.com/ledgerwatch/erigon/core/types"
 	"github.com/ledgerwatch/erigon/core/vm"
 	"github.com/ledgerwatch/erigon/eth/ethconfig"
@@ -116,7 +117,7 @@ func NewSequencerZkStages(ctx context.Context,
 	infoTreeUpdater *l1infotree.Updater,
 	hook *Hook,
 	headerChan chan *types.Header,
-	txInfoChan chan *zktypes.TxInfo,
+	txInfoChan chan *state2.TxInfo,
 ) []*stagedsync.Stage {
 	dirs := cfg.Dirs
 	blockReader := freezeblocks.NewBlockReader(snapshots, nil)

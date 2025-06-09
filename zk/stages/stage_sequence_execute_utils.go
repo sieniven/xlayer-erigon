@@ -98,7 +98,7 @@ type SequenceBlockCfg struct {
 
 	txKafkaProducer *kafka.KafkaProducer
 	headerChan      chan *types.Header
-	txInfoChan      chan *zktypes.TxInfo
+	txInfoChan      chan *state.TxInfo
 }
 
 func StageSequenceBlocksCfg(
@@ -130,7 +130,7 @@ func StageSequenceBlocksCfg(
 	infoTreeUpdater *l1infotree.Updater,
 	doneHook DoneHook,
 	headerChan chan *types.Header,
-	txInfoChan chan *zktypes.TxInfo,
+	txInfoChan chan *state.TxInfo,
 ) SequenceBlockCfg {
 
 	return SequenceBlockCfg{

@@ -8,11 +8,11 @@ import (
 )
 
 type TxInfo struct {
+	BlockNumber uint64
 	Tx          ethTypes.Transaction
 	Receipt     *ethTypes.Receipt
 	InnerTxs    []*InnerTx
 	Changeset   *Changeset
-	BlockNumber uint64
 }
 
 type TxInfoMap struct {
