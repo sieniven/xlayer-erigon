@@ -17,11 +17,11 @@ func (sdb *IntraBlockState) GenerateChangesetSinceSnapshotAndSendTxInfo(revid in
 		panic(fmt.Errorf("revision id %v cannot be reverted", revid))
 	}
 	snapshot := sdb.validRevisions[idx].journalIndex
-	entries := sdb.journal.collectEntriesSinceSnapshot(snapshot)
+	entries := &sdb.journal.entries
 
 	go func() {
 		changeset := zktypes.NewChangeset()
-		for _, entry := range entries {
+		for _, entry := range (*entries)[snapshot:] {
 			entry.collectChangeset(changeset)
 		}
 

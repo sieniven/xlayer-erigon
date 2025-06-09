@@ -87,12 +87,6 @@ func (j *journal) length() int {
 	return len(j.entries)
 }
 
-func (j *journal) collectEntriesSinceSnapshot(snapshot int) []journalEntry {
-	entries := make([]journalEntry, len(j.entries)-snapshot)
-	copy(entries, j.entries[snapshot:])
-	return entries
-}
-
 type (
 	// Changes to the account trie.
 	createObjectChange struct {
