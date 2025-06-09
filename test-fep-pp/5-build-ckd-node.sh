@@ -29,7 +29,7 @@ fi
 
 cd ./xlayer-cdk
 echo "Cleaning and resting contract repository..."
-rm -rf *; git reset --hard; git checkout zjg/v0.5.4-rc1
+git reset --hard; git checkout zjg/v0.5.4-rc1;git pull
 
 make build-docker
 
