@@ -2,6 +2,7 @@ package state
 
 import (
 	"bytes"
+	"fmt"
 	"sync"
 
 	"github.com/holiman/uint256"
@@ -9,6 +10,8 @@ import (
 	"github.com/ledgerwatch/erigon-lib/kv"
 	"github.com/ledgerwatch/erigon-lib/kv/dbutils"
 	"github.com/ledgerwatch/erigon/core/types/accounts"
+	"github.com/ledgerwatch/erigon/turbo/trie"
+	zktypes "github.com/ledgerwatch/erigon/zk/types"
 )
 
 const (
@@ -31,35 +34,66 @@ type PlainStateCache struct {
 	codeLock  sync.RWMutex
 	codeCache map[libcommon.Hash][]byte
 
-	accountIncarnationLock  sync.RWMutex
-	accountIncarnationCache map[libcommon.Address]uint64
+	incarnationLock  sync.RWMutex
+	incarnationCache map[libcommon.Address]uint64
 }
 
 func NewPlainStateCache(db kv.Getter, snapshotHeight uint64) *PlainStateCache {
 	return &PlainStateCache{
-		snapshotHeight: snapshotHeight,
-		snapshotReader: NewPlainStateReader(db),
-		accountCache:   make(map[libcommon.Address]*accounts.Account, DefaultRealtimeCacheSize),
-		storageCache:   make(map[string]*uint256.Int, DefaultRealtimeCacheSize),
-		codeCache:      make(map[libcommon.Hash][]byte, DefaultRealtimeCacheSize),
+		snapshotHeight:   snapshotHeight,
+		snapshotReader:   NewPlainStateReader(db),
+		accountCache:     make(map[libcommon.Address]*accounts.Account, DefaultRealtimeCacheSize),
+		storageCache:     make(map[string]*uint256.Int, DefaultRealtimeCacheSize),
+		codeCache:        make(map[libcommon.Hash][]byte, DefaultRealtimeCacheSize),
+		incarnationCache: make(map[libcommon.Address]uint64, DefaultRealtimeCacheSize),
 	}
 }
 
-// func (cache *PlainStateCache) ApplyChangeset(changeset *zktypes.Changeset) error {
-// 	// // Handle account data changes
-// 	// cache.accountLock.Lock()
-// 	// for address, balances := range changeset.BalanceChanges {
-// 	// 	account, ok := cache.accountCache[address]
-// 	// 	if !ok {
-// 	// 		account = &accounts.Account{}
-// 	// 		cache.accountCache[address] = account
-// 	// 	}
-// 	// 	account.Balance.Set(balances)
-// 	// 	cache.accountCache[address] = account
-// 	// 	cache.accountLock.Unlock()
-// 	// }
-// 	return nil
-// }
+func (cache *PlainStateCache) ApplyChangeset(changeset *zktypes.Changeset) error {
+	// Handle account data changes
+
+	return nil
+}
+
+func (cache *PlainStateCache) ApplyChangesetToAccountData(changeset *zktypes.Changeset) (err error) {
+	addressChanges := make(map[libcommon.Address]*accounts.Account)
+
+	// Apply balance changes
+	for address, balance := range changeset.BalanceChanges {
+		if _, ok := changeset.DeletedAccounts[address]; ok {
+			continue
+		}
+
+		account, err := cache.getOrCreateAccount(address, addressChanges)
+		if err != nil {
+			return fmt.Errorf("apply balance changes failed: %v", err)
+		}
+		account.Balance.Set(balance)
+	}
+
+	// Apply nonce changes
+	for address, nonce := range changeset.NonceChanges {
+		if _, ok := changeset.DeletedAccounts[address]; ok {
+			continue
+		}
+
+		account, err := cache.getOrCreateAccount(address, addressChanges)
+		if err != nil {
+			return fmt.Errorf("apply nonce changes failed: %v", err)
+		}
+		account.Nonce = nonce
+	}
+
+	// Apply code hash changes
+
+	// Apply code changes
+
+	// Apply incarnation changes
+
+	// Apply storage changes
+
+	return nil
+}
 
 // func (cache *PlainStateCache) UpdateAccountData(address libcommon.Address, _, account *accounts.Account) error {
 // 	cache.accountLock.Lock()
@@ -107,12 +141,8 @@ func (cache *PlainStateCache) ReadAccountData(address libcommon.Address) (*accou
 		return accounts.DeepCopyAccount(acc), nil
 	}
 
-	// Cache miss, read from snapshot and load to cache
-	acc, err := cache.snapshotReader.ReadAccountData(address)
-	if err != nil {
-		return nil, err
-	}
-	return cache.loadAccountFromSnapshot(address, acc), nil
+	// Cache miss, read from snapshot
+	return cache.snapshotReader.ReadAccountData(address)
 }
 
 func (cache *PlainStateCache) ReadAccountStorage(address libcommon.Address, incarnation uint64, key *libcommon.Hash) ([]byte, error) {
@@ -125,12 +155,8 @@ func (cache *PlainStateCache) ReadAccountStorage(address libcommon.Address, inca
 		return libcommon.Copy(storage.Bytes()), nil
 	}
 
-	// Cache miss, read from snapshot and load to cache
-	enc, err := cache.snapshotReader.ReadAccountStorage(address, incarnation, key)
-	if err != nil {
-		return nil, err
-	}
-	return cache.loadStorageFromSnapshot(string(compositeKey), enc), nil
+	// Cache miss, read from snapshot
+	return cache.snapshotReader.ReadAccountStorage(address, incarnation, key)
 }
 
 func (cache *PlainStateCache) ReadAccountCode(address libcommon.Address, incarnation uint64, codeHash libcommon.Hash) ([]byte, error) {
@@ -145,12 +171,8 @@ func (cache *PlainStateCache) ReadAccountCode(address libcommon.Address, incarna
 		return libcommon.Copy(code), nil
 	}
 
-	// Cache miss, read from snapshot and load to cache
-	code, err := cache.snapshotReader.ReadAccountCode(address, incarnation, codeHash)
-	if err != nil {
-		return nil, err
-	}
-	return cache.loadCodeFromSnapshot(codeHash, code), err
+	// Cache miss, read from snapshot
+	return cache.snapshotReader.ReadAccountCode(address, incarnation, codeHash)
 }
 
 func (cache *PlainStateCache) ReadAccountCodeSize(address libcommon.Address, incarnation uint64, codeHash libcommon.Hash) (int, error) {
@@ -159,70 +181,51 @@ func (cache *PlainStateCache) ReadAccountCodeSize(address libcommon.Address, inc
 }
 
 func (cache *PlainStateCache) ReadAccountIncarnation(address libcommon.Address) (uint64, error) {
-	cache.accountIncarnationLock.RLock()
-	incarnation, ok := cache.accountIncarnationCache[address]
-	cache.accountIncarnationLock.RUnlock()
+	cache.incarnationLock.RLock()
+	incarnation, ok := cache.incarnationCache[address]
+	cache.incarnationLock.RUnlock()
 	if ok {
 		return incarnation, nil
 	}
 
-	// Cache miss, read from snapshot and load to cache
-	incarnation, err := cache.snapshotReader.ReadAccountIncarnation(address)
+	// Cache miss, read from snapshot
+	return cache.snapshotReader.ReadAccountIncarnation(address)
+}
+
+func (cache *PlainStateCache) getOrCreateAccount(address libcommon.Address, addressChanges map[libcommon.Address]*accounts.Account) (*accounts.Account, error) {
+	account, ok := addressChanges[address]
+	if !ok {
+		var err error
+		account, err = cache.ReadAccountData(address)
+		if err != nil {
+			return nil, err
+		}
+
+		if account == nil {
+			// Non-existent account, create new account
+			account, err = cache.createAccount(address)
+			if err != nil {
+				return nil, err
+			}
+		}
+		addressChanges[address] = account
+	}
+
+	return account, nil
+}
+
+func (cache *PlainStateCache) createAccount(address libcommon.Address) (*accounts.Account, error) {
+	prevIncarnation, err := cache.ReadAccountIncarnation(address)
 	if err != nil {
-		return 0, err
-	}
-	return cache.loadAccountIncarnationFromSnapshot(address, incarnation), nil
-}
-
-func (cache *PlainStateCache) loadAccountFromSnapshot(address libcommon.Address, accountSnapshot *accounts.Account) *accounts.Account {
-	cache.accountLock.Lock()
-	defer cache.accountLock.Unlock()
-	if account, ok := cache.accountCache[address]; ok {
-		// Cache hit
-		return accounts.DeepCopyAccount(account)
+		return nil, fmt.Errorf("createAccount failed: %v", err)
 	}
 
-	// Load to cache
-	cache.accountCache[address] = accountSnapshot
-	return accountSnapshot
-}
-
-func (cache *PlainStateCache) loadStorageFromSnapshot(key string, encSnapshot []byte) []byte {
-	cache.storageLock.Lock()
-	defer cache.storageLock.Unlock()
-	if value, ok := cache.storageCache[key]; ok {
-		// Cache hit
-		return libcommon.Copy(value.Bytes())
-	}
-
-	// Load to cache
-	vSnapshot := uint256.NewInt(0).SetBytes(encSnapshot)
-	cache.storageCache[key] = vSnapshot
-	return encSnapshot
-}
-
-func (cache *PlainStateCache) loadCodeFromSnapshot(key libcommon.Hash, codeSnapshot []byte) []byte {
-	cache.codeLock.Lock()
-	defer cache.codeLock.Unlock()
-	if code, ok := cache.codeCache[key]; ok {
-		// Cache hit
-		return libcommon.Copy(code)
-	}
-
-	// Load to cache
-	cache.codeCache[key] = codeSnapshot
-	return codeSnapshot
-}
-
-func (cache *PlainStateCache) loadAccountIncarnationFromSnapshot(address libcommon.Address, incarnationSnapshot uint64) uint64 {
-	cache.accountIncarnationLock.Lock()
-	defer cache.accountIncarnationLock.Unlock()
-	if incarnation, ok := cache.accountIncarnationCache[address]; ok {
-		// Cache hit
-		return incarnation
-	}
-
-	// Load to cache
-	cache.accountIncarnationCache[address] = incarnationSnapshot
-	return incarnationSnapshot
+	return &accounts.Account{
+		Initialised:     true,
+		Nonce:           0,
+		Root:            libcommon.BytesToHash(trie.EmptyRoot[:]),
+		CodeHash:        libcommon.BytesToHash(emptyCodeHash),
+		PrevIncarnation: prevIncarnation,
+		Incarnation:     prevIncarnation + 1,
+	}, nil
 }
