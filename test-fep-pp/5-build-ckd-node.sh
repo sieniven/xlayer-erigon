@@ -24,12 +24,12 @@ sed_inplace() {
 
 if [ ! -d "./xlayer-cdk" ]; then
   echo "Cloning contract repository..."
-  git clone -b upstream/v0.5.4-rc1 https://github.com/okx/xlayer-cdk.git
+  git clone -b zjg/v0.5.4-rc1 https://github.com/okx/xlayer-cdk.git
 fi
 
 cd ./xlayer-cdk
 echo "Cleaning and resting contract repository..."
-rm -rf *; git reset --hard; git checkout upstream/v0.5.4-rc1
+rm -rf *; git reset --hard; git checkout zjg/v0.5.4-rc1
 
 make build-docker
 
