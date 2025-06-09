@@ -141,7 +141,7 @@ func FlushDataToDB(ctx context.Context, db *mdbx.MdbxKV, logger log.Logger, cach
 	cache.TruncateSmtCacheList(saveData.BlockHeight)
 }
 
-func ListenTxKafka(ctx context.Context, txKafkaConsumer *kafka.KafkaConsumer, config ethconfig.XLayerConfig, logger log.Logger, txInfoMap *zktypes.TxInfoMap, headerMap *zktypes.HeaderMap) {
+func ListenTxKafkaConsumer(ctx context.Context, txKafkaConsumer *kafka.KafkaConsumer, config ethconfig.XLayerConfig, logger log.Logger, txInfoMap *zktypes.TxInfoMap, headerMap *zktypes.HeaderMap) {
 	if sequencer.IsSequencer() {
 		logger.Info("txKafkaConsumer is disabled on sequencer, skipping")
 		return
@@ -193,6 +193,35 @@ func ListenTxKafka(ctx context.Context, txKafkaConsumer *kafka.KafkaConsumer, co
 		case err := <-errorChan:
 			logger.Error("kafka consumer failed", "error", err)
 			return
+		}
+	}
+}
+
+func ListenTxKafkaProducer(
+	ctx context.Context,
+	txKafkaProducer *kafka.KafkaProducer,
+	config ethconfig.XLayerConfig,
+	logger log.Logger,
+	headersChan chan *types.Header,
+	txInfoChan chan *zktypes.TxInfo) {
+	if !sequencer.IsSequencer() {
+		logger.Info("txKafkaProducer is disabled on non-sequencer, skipping")
+		return
+	}
+
+	if !config.Kafka.Enable {
+		logger.Info("Tx Kafka is disabled, skipping")
+		return
+	}
+
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case header := <-headersChan:
+			txKafkaProducer.SendKafkaBlockHeader(ctx, header)
+		case txInfo := <-txInfoChan:
+			txKafkaProducer.SendKafkaTransaction(ctx, txInfo.BlockNumber, txInfo.Tx, txInfo.Receipt, txInfo.InnerTxs, txInfo.Changeset)
 		}
 	}
 }

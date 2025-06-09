@@ -257,6 +257,8 @@ type Ethereum struct {
 	txKafkaConsumer *kafka.KafkaConsumer
 	txInfoMap       *zktypes.TxInfoMap
 	headerMap       *zktypes.HeaderMap
+	headerChan      chan *types.Header
+	txInfoChan      chan *zktypes.TxInfo
 }
 
 func splitAddrIntoHostAndPort(addr string) (host string, port int, err error) {
@@ -1233,6 +1235,8 @@ func New(ctx context.Context, stack *node.Node, config *ethconfig.Config, logger
 					return nil, err
 				}
 				backend.txKafkaProducer = kafkaProducer
+				backend.headerChan = make(chan *types.Header)
+				backend.txInfoChan = make(chan *zktypes.TxInfo)
 			}
 
 			backend.syncStages = stages2.NewSequencerZkStages(
@@ -1255,7 +1259,8 @@ func New(ctx context.Context, stack *node.Node, config *ethconfig.Config, logger
 				backend.txPool2DB,
 				l1InfoTreeUpdater,
 				hook,
-				backend.txKafkaProducer,
+				backend.headerChan,
+				backend.txInfoChan,
 			)
 
 			backend.syncUnwindOrder = zkStages.ZkSequencerUnwindOrder
@@ -2000,7 +2005,9 @@ func (s *Ethereum) Start() error {
 
 		go stages2.StageLoop(s.sentryCtx, s.chainDB, s.stagedSync, s.sentriesClient.Hd, s.waitForStageLoopStop, s.config.Sync.LoopThrottle, s.logger, s.blockReader, hook, s.config.ForcePartialCommit)
 
-		go stages2.ListenTxKafka(s.sentryCtx, s.txKafkaConsumer, s.config.Zk.XLayer, s.logger, s.txInfoMap, s.headerMap)
+		go stages2.ListenTxKafkaConsumer(s.sentryCtx, s.txKafkaConsumer, s.config.Zk.XLayer, s.logger, s.txInfoMap, s.headerMap)
+
+		go stages2.ListenTxKafkaProducer(s.sentryCtx, s.txKafkaProducer, s.config.Zk.XLayer, s.logger, s.headerChan, s.txInfoChan)
 	}
 
 	stages := diagnostics.InitStagesFromList(nodeStages)

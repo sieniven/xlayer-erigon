@@ -6,9 +6,17 @@ import (
 
 	"github.com/holiman/uint256"
 	libcommon "github.com/ledgerwatch/erigon-lib/common"
+	"github.com/ledgerwatch/erigon/core/types"
 	types1 "github.com/ledgerwatch/erigon/core/types"
 	zktypes "github.com/ledgerwatch/erigon/zk/types"
 )
+
+type TxInfo struct {
+	Transaction types.Transaction
+	Receipt     *types.Receipt
+	InnerTxs    []*zktypes.InnerTx
+	Changeset   *zktypes.Changeset
+}
 
 // TransactionMessage represents the structure of the transaction message to be sent to Kafka
 type TransactionMessage struct {
