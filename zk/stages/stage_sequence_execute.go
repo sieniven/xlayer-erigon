@@ -681,7 +681,7 @@ BatchLoop:
 
 					// For X Layer, send kafka tx message
 					if cfg.zk.XLayer.Kafka.Enable {
-						cfg.txKafkaProducer.SendKafkaTransaction(ctx, blockNumber, transaction, receipt, innerTxs)
+						cfg.txKafkaProducer.SendKafkaTransaction(ctx, blockNumber, transaction, receipt, innerTxs, changeset)
 					}
 
 					log.Info(fmt.Sprintf("[%s] changeset", logPrefix), "txhash", txHash, "changeset", changeset)

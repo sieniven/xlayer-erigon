@@ -35,8 +35,8 @@ func NewKafkaProducer(config ethconfig.KafkaConfig) (*KafkaProducer, error) {
 	}, nil
 }
 
-func (client *KafkaProducer) SendKafkaTransaction(ctx context.Context, blockNumber uint64, tx types.Transaction, receipt *types.Receipt, innerTxs []*zktypes.InnerTx) error {
-	msg, err := kafkaTypes.ToKafkaTransactionMessage(tx, receipt, innerTxs, blockNumber)
+func (client *KafkaProducer) SendKafkaTransaction(ctx context.Context, blockNumber uint64, tx types.Transaction, receipt *types.Receipt, innerTxs []*zktypes.InnerTx, changeset *zktypes.Changeset) error {
+	msg, err := kafkaTypes.ToKafkaTransactionMessage(tx, receipt, innerTxs, changeset, blockNumber)
 	if err != nil {
 		return fmt.Errorf("SendKafkaTransaction error: %v", err)
 	}

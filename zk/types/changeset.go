@@ -6,8 +6,7 @@ import (
 )
 
 type Changeset struct {
-	DeletedAccounts map[libcommon.Address]struct{}
-
+	DeletedAccounts    map[libcommon.Address]struct{}
 	BalanceChanges     map[libcommon.Address]*uint256.Int
 	NonceChanges       map[libcommon.Address]uint64
 	CodeHashChanges    map[libcommon.Address]libcommon.Hash

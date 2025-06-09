@@ -48,7 +48,7 @@ func TestLegacyTx(t *testing.T) {
 	emptyTxReceipt := types1.NewReceipt(false, 1000)
 
 	blockNumber := uint64(100)
-	emptyMsg, err := ToKafkaTransactionMessage(emptyTx, emptyTxReceipt, nil, blockNumber)
+	emptyMsg, err := ToKafkaTransactionMessage(emptyTx, emptyTxReceipt, nil, nil, blockNumber)
 	assert.NilError(t, err)
 	AssertCommonTx(t, emptyMsg, emptyTx, blockNumber, types1.LegacyTxType)
 	assert.Equal(t, emptyMsg.GasPrice, emptyTx.GetPrice().String())
@@ -88,12 +88,19 @@ func TestLegacyTx(t *testing.T) {
 		},
 	}
 
-	msg, err := ToKafkaTransactionMessage(rightvrsTx, rightvrsTxReceipt, rightvrsTxInnerTxs, blockNumber)
+	rightvrsTxChangeset := &zktypes.Changeset{
+		BalanceChanges: map[libcommon.Address]*uint256.Int{
+			testToAddr: uint256.NewInt(10),
+		},
+	}
+
+	msg, err := ToKafkaTransactionMessage(rightvrsTx, rightvrsTxReceipt, rightvrsTxInnerTxs, rightvrsTxChangeset, blockNumber)
 	assert.NilError(t, err)
 	AssertCommonTx(t, msg, rightvrsTx, blockNumber, types1.LegacyTxType)
 	assert.Equal(t, msg.GasPrice, rightvrsTx.GetPrice().String())
 	AssertReceipt(t, msg, rightvrsTxReceipt)
 	AssertInnerTxs(t, msg, rightvrsTxInnerTxs)
+	AssertChangeseet(t, msg, rightvrsTxChangeset)
 
 	// Test to
 	convertEmptyTx, convertBlockNumber, err := emptyMsg.GetTransaction()
@@ -151,15 +158,21 @@ func TestAccessListTx(t *testing.T) {
 			CallType: vm.CALL_TYP,
 		},
 	}
+	signedAccessListTxChangeset := &zktypes.Changeset{
+		BalanceChanges: map[libcommon.Address]*uint256.Int{
+			testToAddr: uint256.NewInt(10),
+		},
+	}
 
 	blockNumber := uint64(100)
-	msg, err := ToKafkaTransactionMessage(signedAccessListTx, signedAccessListTxReceipt, signedAccessListTxInnerTxs, blockNumber)
+	msg, err := ToKafkaTransactionMessage(signedAccessListTx, signedAccessListTxReceipt, signedAccessListTxInnerTxs, signedAccessListTxChangeset, blockNumber)
 	assert.NilError(t, err)
 	AssertCommonTx(t, msg, signedAccessListTx, blockNumber, types1.AccessListTxType)
 	assert.Equal(t, msg.GasPrice, signedAccessListTx.GetPrice().String())
 	AssertReceipt(t, msg, signedAccessListTxReceipt)
 	AssertInnerTxs(t, msg, signedAccessListTxInnerTxs)
 	AssertAccessList(t, msg.AccessList)
+	AssertChangeseet(t, msg, signedAccessListTxChangeset)
 
 	// Test to
 	convertAccessListTx, convertBlockNumber, err := msg.GetTransaction()
@@ -197,9 +210,14 @@ func TestDynamicFeeTx(t *testing.T) {
 			CallType: vm.CALL_TYP,
 		},
 	}
+	signedDynFeeTxChangeset := &zktypes.Changeset{
+		BalanceChanges: map[libcommon.Address]*uint256.Int{
+			testToAddr: uint256.NewInt(10),
+		},
+	}
 
 	blockNumber := uint64(100)
-	msg, err := ToKafkaTransactionMessage(signedDynFeeTx, signedDynFeeTxReceipt, signedDynFeeTxInnerTxs, blockNumber)
+	msg, err := ToKafkaTransactionMessage(signedDynFeeTx, signedDynFeeTxReceipt, signedDynFeeTxInnerTxs, signedDynFeeTxChangeset, blockNumber)
 	assert.NilError(t, err)
 	AssertCommonTx(t, msg, signedDynFeeTx, blockNumber, types1.DynamicFeeTxType)
 	assert.Equal(t, msg.Tip, signedDynFeeTx.GetTip().String())
@@ -207,6 +225,7 @@ func TestDynamicFeeTx(t *testing.T) {
 	AssertReceipt(t, msg, signedDynFeeTxReceipt)
 	AssertInnerTxs(t, msg, signedDynFeeTxInnerTxs)
 	AssertAccessList(t, msg.AccessList)
+	AssertChangeseet(t, msg, signedDynFeeTxChangeset)
 
 	// Test to
 	convertDynFeeTx, convertBlockNumber, err := msg.GetTransaction()
@@ -238,9 +257,14 @@ func TestFromBlobTx(t *testing.T) {
 			CallType: vm.CALL_TYP,
 		},
 	}
+	blobTxChangeset := &zktypes.Changeset{
+		BalanceChanges: map[libcommon.Address]*uint256.Int{
+			testToAddr: uint256.NewInt(10),
+		},
+	}
 
 	blockNumber := uint64(100)
-	msg, err := ToKafkaTransactionMessage(blobTx, blobTxReceipt, blobTxInnerTxs, blockNumber)
+	msg, err := ToKafkaTransactionMessage(blobTx, blobTxReceipt, blobTxInnerTxs, blobTxChangeset, blockNumber)
 	assert.NilError(t, err)
 	AssertCommonTx(t, msg, blobTx, blockNumber, types1.BlobTxType)
 	assert.Equal(t, msg.Tip, blobTx.GetTip().String())
