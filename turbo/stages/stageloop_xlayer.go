@@ -159,6 +159,8 @@ func ListenTxKafka(ctx context.Context, txKafkaConsumer *kafka.KafkaConsumer, co
 	errorChan := make(chan error, 1)
 	go txKafkaConsumer.ConsumeKafka(ctx, headersChan, txMsgsChan, errorChan, logger)
 
+	// TODO: Start snapshot and sync height with incoming kafka messages
+
 	for {
 		select {
 		case <-ctx.Done():
