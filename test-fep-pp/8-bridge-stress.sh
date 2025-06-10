@@ -69,8 +69,8 @@ do
     count=$((count + 1))
     if (( count % 100 == 0 )); then
         echo "Waiting for 100 transactions to be processed,  $count of $input"
-        sleep 0.1
     fi
+    sleep 0.05
     CURRENT_NONCE=$((CURRENT_NONCE + 1))
 done
 
@@ -124,8 +124,8 @@ do
     count=$((count + 1))
     if (( count % 100 == 0 )); then
         echo "Waiting for 100 transactions to be processed,  $count of $input"
-        sleep 0.1
     fi
+    sleep 0.05
     CURRENT_NONCE=$((CURRENT_NONCE + 1))
     echo "Bridge L2 tx TX_HASH: $TX_HASH"
 done
@@ -173,11 +173,11 @@ for TX_HASH in "${TX_HASH_ARRAY[@]}"; do
     # Claim assets on L1
     TX_HASH=$(cast send --legacy --rpc-url $L1RPC  --gas-price 1gwei --gas-limit 1000000 --async --nonce $CURRENT_NONCE --private-key $PRIVATE_KEY $BRIDGE_ADDRESS 'claimAsset(bytes32[32],bytes32[32],uint256,bytes32,bytes32,uint32,address,uint32,address,uint256,bytes)' $MERKLE_PROOF $ROLLUP_MERKLE_PROOF $GLOBAL_INDEX $MER $RER $ORINGIN_NETWORK $ORINGIN_ADDRESS $DESTINATION_NETWORK $ACCOUNT $IN_AMOUNT $METADATA)
     echo "Claim transaction hash: $TX_HASH"
+    sleep 0.05
     CURRENT_NONCE=$((CURRENT_NONCE + 1))
     if (( count % 100 == 0 )); then
         result=$(curl -s "$BRIDGE_SERVICE1/bridges/$ACCOUNT?limit=20000&offset=0" | \
    jq -r '.deposits[] | select(.ready_for_claim == true and .claim_tx_hash == "" and .tx_hash=="'$TX_HASH'")') 
         echo "Waiting for 100 transactions to be processed,  $count of $input"
-        sleep 0.1
     fi
 done
