@@ -156,10 +156,12 @@ func (cache *PlainStateCache) ApplyChangesetToAccountData(changeset *zktypes.Cha
 func (cache *PlainStateCache) ReadAccountData(address libcommon.Address) (*accounts.Account, error) {
 	cache.cacheLock.RLock()
 	acc, ok := cache.accountCache[address]
-	cache.cacheLock.RUnlock()
 	if ok {
-		return accounts.DeepCopyAccount(acc), nil
+		accCopy := accounts.DeepCopyAccount(acc)
+		cache.cacheLock.RUnlock()
+		return accCopy, nil
 	}
+	cache.cacheLock.RUnlock()
 
 	// Cache miss, read from snapshot
 	return cache.snapshotReader.ReadAccountData(address)
@@ -170,10 +172,12 @@ func (cache *PlainStateCache) ReadAccountStorage(address libcommon.Address, inca
 
 	cache.cacheLock.RLock()
 	storage, ok := cache.storageCache[string(compositeKey)]
-	cache.cacheLock.RUnlock()
 	if ok {
-		return libcommon.Copy(storage.Bytes()), nil
+		storageCopy := libcommon.Copy(storage.Bytes())
+		cache.cacheLock.RUnlock()
+		return storageCopy, nil
 	}
+	cache.cacheLock.RUnlock()
 
 	// Cache miss, read from snapshot
 	return cache.snapshotReader.ReadAccountStorage(address, incarnation, key)
@@ -186,10 +190,12 @@ func (cache *PlainStateCache) ReadAccountCode(address libcommon.Address, incarna
 
 	cache.cacheLock.RLock()
 	code, ok := cache.codeCache[codeHash]
-	cache.cacheLock.RUnlock()
 	if ok {
-		return libcommon.Copy(code), nil
+		codeCopy := libcommon.Copy(code)
+		cache.cacheLock.RUnlock()
+		return codeCopy, nil
 	}
+	cache.cacheLock.RUnlock()
 
 	// Cache miss, read from snapshot
 	return cache.snapshotReader.ReadAccountCode(address, incarnation, codeHash)
@@ -212,11 +218,21 @@ func (cache *PlainStateCache) ReadAccountIncarnation(address libcommon.Address) 
 	return cache.snapshotReader.ReadAccountIncarnation(address)
 }
 
+func (cache *PlainStateCache) readAccountData(address libcommon.Address) (*accounts.Account, error) {
+	acc, ok := cache.accountCache[address]
+	if ok {
+		return accounts.DeepCopyAccount(acc), nil
+	}
+
+	// Cache miss, read from snapshot
+	return cache.snapshotReader.ReadAccountData(address)
+}
+
 func (cache *PlainStateCache) getOrCreateAccount(address libcommon.Address, addressChanges map[libcommon.Address]*accounts.Account) (*accounts.Account, error) {
 	account, ok := addressChanges[address]
 	if !ok {
 		var err error
-		account, err = cache.ReadAccountData(address)
+		account, err = cache.readAccountData(address)
 		if err != nil {
 			return nil, err
 		}
