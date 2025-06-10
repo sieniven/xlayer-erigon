@@ -147,9 +147,9 @@ sleep 60
 CURRENT_NONCE=$(cast nonce --rpc-url $L1RPC $ACCOUNT)
 count=0
 echo "L1 claim, Current nonce for $ACCOUNT on L1: $CURRENT_NONCE"
-for TX_HASH in "${TX_HASH_ARRAY[@]}"; do
-    result=$(curl -s "$BRIDGE_SERVICE1/bridges/$ACCOUNT?limit=20000&offset=0" | \
-   jq -r '.deposits[] | select(.ready_for_claim == true and .claim_tx_hash == "" and .tx_hash=="'$TX_HASH'")')                                                                  
+result=$(curl -s "$BRIDGE_SERVICE1/bridges/$ACCOUNT?limit=20000&offset=0" | \
+   jq -r '.deposits[] | select(.ready_for_claim == true and .claim_tx_hash == "" and .tx_hash=="'$TX_HASH'")') 
+for TX_HASH in "${TX_HASH_ARRAY[@]}"; do                                                                 
     DEPOSIT_CNT=$(echo "$result" | jq -r '.deposit_cnt')
     NETWORK_ID=$(echo "$result" | jq -r '.network_id')
     GLOBAL_INDEX=$(echo "$result" | jq -r '.global_index')
@@ -175,6 +175,8 @@ for TX_HASH in "${TX_HASH_ARRAY[@]}"; do
     echo "Claim transaction hash: $TX_HASH"
     CURRENT_NONCE=$((CURRENT_NONCE + 1))
     if (( count % 100 == 0 )); then
+        result=$(curl -s "$BRIDGE_SERVICE1/bridges/$ACCOUNT?limit=20000&offset=0" | \
+   jq -r '.deposits[] | select(.ready_for_claim == true and .claim_tx_hash == "" and .tx_hash=="'$TX_HASH'")') 
         echo "Waiting for 100 transactions to be processed,  $count of $input"
         sleep 0.1
     fi
