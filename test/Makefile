@@ -71,7 +71,7 @@ run: stop build-docker ## Runs a full node
 	$(DOCKER_COMPOSE) up -d kafka-zookeeper
 	$(DOCKER_COMPOSE) up -d xlayer-bridge-coin-kafka
 	$(RUN_DOCKER_KAFKA)
-	sleep 3
+	sleep 10
 	$(DOCKER_COMPOSE) up -d xlayer-approve
 	$(DOCKER_COMPOSE) up -d xlayer-seq
 	$(DOCKER_COMPOSE) up -d xlayer-pool-manager
