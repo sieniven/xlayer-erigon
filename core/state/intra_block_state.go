@@ -621,14 +621,22 @@ func (sdb *IntraBlockState) CreateAccount(addr libcommon.Address, contractCreati
 	if contractCreation {
 		newObj.createdContract = true
 		newObj.data.Incarnation = prevInc + 1
+		sdb.journal.append(incarnationChange{
+			account: &addr,
+			post:    newObj.data.Incarnation,
+		})
 	} else {
+		// Strange? When creating newObj, the selfdestructed is always false.
 		newObj.selfdestructed = false
+		// In case the account was selfdestructed, and then the native token is transferred to it,
+		// we need to set the incarnation value to zero as an EOA account.
+		if previous.selfdestructed {
+			sdb.journal.append(incarnationChange{
+				account: &addr,
+				post:    newObj.data.Incarnation,
+			})
+		}
 	}
-
-	sdb.journal.append(incarnationChange{
-		account: &addr,
-		post:    newObj.data.Incarnation,
-	})
 }
 
 // Snapshot returns an identifier for the current revision of the state.
