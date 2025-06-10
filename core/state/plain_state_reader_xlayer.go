@@ -118,7 +118,7 @@ func (cache *PlainStateCache) ApplyChangesetToAccountData(changeset *zktypes.Cha
 	}
 
 	// Apply code hash changes
-	for address, codeHash := range changeset.CodeChanges {
+	for address, codeHash := range changeset.CodeHashChanges {
 		if _, ok := changeset.DeletedAccounts[address]; ok {
 			continue
 		}
@@ -127,7 +127,7 @@ func (cache *PlainStateCache) ApplyChangesetToAccountData(changeset *zktypes.Cha
 		if err != nil {
 			return fmt.Errorf("apply code hash changes failed: %v", err)
 		}
-		account.CodeHash = libcommon.BytesToHash(codeHash)
+		account.CodeHash = codeHash
 	}
 
 	// Apply incarnation changes
@@ -218,10 +218,10 @@ func (cache *PlainStateCache) ReadAccountIncarnation(address libcommon.Address) 
 	return cache.snapshotReader.ReadAccountIncarnation(address)
 }
 
-func (cache *PlainStateCache) readAccountData(address libcommon.Address) (*accounts.Account, error) {
+func (cache *PlainStateCache) unsafeReadAccountData(address libcommon.Address) (*accounts.Account, error) {
 	acc, ok := cache.accountCache[address]
 	if ok {
-		return accounts.DeepCopyAccount(acc), nil
+		return acc, nil
 	}
 
 	// Cache miss, read from snapshot
@@ -232,7 +232,7 @@ func (cache *PlainStateCache) getOrCreateAccount(address libcommon.Address, addr
 	account, ok := addressChanges[address]
 	if !ok {
 		var err error
-		account, err = cache.readAccountData(address)
+		account, err = cache.unsafeReadAccountData(address)
 		if err != nil {
 			return nil, err
 		}
