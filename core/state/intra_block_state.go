@@ -33,7 +33,6 @@ import (
 	"github.com/ledgerwatch/erigon/core/types/accounts"
 	"github.com/ledgerwatch/erigon/smt/pkg/utils"
 	"github.com/ledgerwatch/erigon/turbo/trie"
-	zktypes "github.com/ledgerwatch/erigon/zk/types"
 )
 
 type revision struct {
@@ -903,20 +902,4 @@ func (sdb *IntraBlockState) AddressInAccessList(addr libcommon.Address) bool {
 
 func (sdb *IntraBlockState) SlotInAccessList(addr libcommon.Address, slot libcommon.Hash) (addressPresent bool, slotPresent bool) {
 	return sdb.accessList.Contains(addr, slot)
-}
-
-func (sdb *IntraBlockState) GenerateChangesetSinceSnapshot(revid int) *zktypes.Changeset {
-	// Find the snapshot in the stack of valid snapshots.
-	idx := sort.Search(len(sdb.validRevisions), func(i int) bool {
-		return sdb.validRevisions[i].id >= revid
-	})
-	if idx == len(sdb.validRevisions) || sdb.validRevisions[idx].id != revid {
-		panic(fmt.Errorf("revision id %v cannot be reverted", revid))
-	}
-	snapshot := sdb.validRevisions[idx].journalIndex
-
-	changeset := zktypes.NewChangeset()
-	sdb.journal.changeset(changeset, snapshot)
-
-	return changeset
 }

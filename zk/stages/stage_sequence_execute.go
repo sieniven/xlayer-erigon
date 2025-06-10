@@ -204,7 +204,7 @@ func sequencingBatchStep(
 	var block *types.Block
 	runLoopBlocks := true
 	batchContext := newBatchContext(ctx, &cfg, &historyCfg, s, sdb)
-	batchState := newBatchState(forkId, batchNumberForStateInitialization, executionAt+1, cfg.zk.UseExecutors(), cfg.zk.L1SyncStartBlock > 0, cfg.txPool, resequenceBatchJob)
+	batchState := newBatchState(forkId, batchNumberForStateInitialization, executionAt+1, cfg.zk.L1SyncStartBlock > 0, cfg.txPool, resequenceBatchJob)
 	streamWriter := newSequencerBatchStreamWriter(batchContext, batchState)
 
 	// injected batch
@@ -457,7 +457,7 @@ BatchLoop:
 
 		// For X Layer, send kafka block header
 		if cfg.zk.XLayer.Kafka.Enable {
-			cfg.txKafkaProducer.SendKafkaBlockHeader(ctx, header)
+			cfg.headerChan <- header
 		}
 
 	OuterLoopTransactions:
@@ -612,7 +612,7 @@ BatchLoop:
 
 				effectiveGas := batchState.blockState.getL1EffectiveGases(cfg, i)
 
-				receipt, execResult, innerTxs, changeset, anyOverflow, err := attemptAddTransaction(cfg, sdb, ibs, &blockContext, header, transaction, effectiveGas, batchState.isL1Recovery(), batchState.forkId, l1TreeUpdateIndex, ethBlockGasPool)
+				receipt, execResult, _, anyOverflow, err := attemptAddTransaction(cfg, sdb, ibs, &blockContext, header, transaction, effectiveGas, batchState.isL1Recovery(), batchState.forkId, l1TreeUpdateIndex, ethBlockGasPool)
 				if err != nil {
 					metrics.GetLogStatistics().CumulativeCounting(metrics.ProcessingInvalidTxCounter)
 					if batchState.isLimboRecovery() {
@@ -678,13 +678,6 @@ BatchLoop:
 					metrics.GetLogStatistics().CumulativeValue(metrics.BatchGas, int64(execResult.UsedGas))
 					batchState.onAddedTransaction(transaction, receipt, execResult, effectiveGas)
 					minedTxHashes = append(minedTxHashes, txHash)
-
-					// For X Layer, send kafka tx message
-					if cfg.zk.XLayer.Kafka.Enable {
-						cfg.txKafkaProducer.SendKafkaTransaction(ctx, blockNumber, transaction, receipt, innerTxs, changeset)
-					}
-
-					log.Info(fmt.Sprintf("[%s] changeset", logPrefix), "txhash", txHash, "changeset", changeset)
 				}
 
 				// We will only update the processed index in resequence job if there isn't overflow

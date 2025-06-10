@@ -8,9 +8,11 @@ import (
 )
 
 type TxInfo struct {
-	tx       ethTypes.Transaction
-	receipt  *ethTypes.Receipt
-	innerTxs []*InnerTx
+	BlockNumber uint64
+	Tx          ethTypes.Transaction
+	Receipt     *ethTypes.Receipt
+	InnerTxs    []*InnerTx
+	Changeset   *Changeset
 }
 
 type TxInfoMap struct {
@@ -28,16 +30,16 @@ func (rm *TxInfoMap) Get(txHash common.Hash) (ethTypes.Transaction, *ethTypes.Re
 	rm.mu.RLock()
 	defer rm.mu.RUnlock()
 	txInfo, exists := rm.txInfos[txHash]
-	return txInfo.tx, txInfo.receipt, txInfo.innerTxs, exists
+	return txInfo.Tx, txInfo.Receipt, txInfo.InnerTxs, exists
 }
 
 func (rm *TxInfoMap) Put(txHash common.Hash, tx ethTypes.Transaction, receipt *ethTypes.Receipt, innerTxs []*InnerTx) {
 	rm.mu.Lock()
 	defer rm.mu.Unlock()
 	rm.txInfos[txHash] = TxInfo{
-		tx:       tx,
-		receipt:  receipt,
-		innerTxs: innerTxs,
+		Tx:       tx,
+		Receipt:  receipt,
+		InnerTxs: innerTxs,
 	}
 }
 

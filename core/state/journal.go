@@ -20,6 +20,7 @@ import (
 	"github.com/holiman/uint256"
 	libcommon "github.com/ledgerwatch/erigon-lib/common"
 	types "github.com/ledgerwatch/erigon/zk/types"
+	zktypes "github.com/ledgerwatch/erigon/zk/types"
 )
 
 // journalEntry is a modification entry in the state change journal that can be
@@ -41,6 +42,19 @@ type journalEntry interface {
 type journal struct {
 	entries []journalEntry            // Current changes tracked by the journal
 	dirties map[libcommon.Address]int // Dirty accounts and the number of changes
+}
+
+type Entries struct {
+	entries  *[]journalEntry
+	snapshot int
+}
+
+func CollectChangeset(entries Entries) *types.Changeset {
+	changeset := zktypes.NewChangeset()
+	for _, entry := range (*entries.entries)[(entries).snapshot:] {
+		entry.collectChangeset(changeset)
+	}
+	return changeset
 }
 
 // newJournal create a new initialized journal.
@@ -85,12 +99,6 @@ func (j *journal) dirty(addr libcommon.Address) {
 // length returns the current number of entries in the journal.
 func (j *journal) length() int {
 	return len(j.entries)
-}
-
-func (j *journal) changeset(changeset *types.Changeset, snapshot int) {
-	for _, entry := range j.entries[snapshot:] {
-		entry.collectChangeset(changeset)
-	}
 }
 
 type (

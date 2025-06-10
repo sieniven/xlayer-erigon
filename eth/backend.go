@@ -37,7 +37,6 @@ import (
 	"github.com/ledgerwatch/erigon-lib/common/disk"
 	"github.com/ledgerwatch/erigon-lib/common/mem"
 	"github.com/ledgerwatch/erigon-lib/diagnostics"
-	"github.com/ledgerwatch/erigon/zk/legacy_executor_verifier"
 	"github.com/ledgerwatch/erigon/zk/nacos"
 
 	"github.com/0xPolygonHermez/zkevm-data-streamer/datastreamer"
@@ -91,6 +90,7 @@ import (
 	"github.com/ledgerwatch/erigon/core"
 	"github.com/ledgerwatch/erigon/core/rawdb"
 	"github.com/ledgerwatch/erigon/core/rawdb/blockio"
+	"github.com/ledgerwatch/erigon/core/state"
 	"github.com/ledgerwatch/erigon/core/types"
 	"github.com/ledgerwatch/erigon/core/vm"
 	"github.com/ledgerwatch/erigon/crypto"
@@ -245,7 +245,6 @@ type Ethereum struct {
 	smtFlushCtx    context.Context
 	smtFlushCancel context.CancelFunc
 	smtFlushDoneCh chan struct{}
-	verifier       *legacy_executor_verifier.LegacyExecutorVerifier
 
 	// For X Layer, apollo
 	seqVerSyncer     *syncer.L1Syncer
@@ -257,6 +256,8 @@ type Ethereum struct {
 	txKafkaConsumer *kafka.KafkaConsumer
 	txInfoMap       *zktypes.TxInfoMap
 	headerMap       *zktypes.HeaderMap
+	headerChan      chan *types.Header
+	txInfoChan      chan *state.TxInfo
 }
 
 func splitAddrIntoHostAndPort(addr string) (host string, port int, err error) {
@@ -1233,6 +1234,8 @@ func New(ctx context.Context, stack *node.Node, config *ethconfig.Config, logger
 					return nil, err
 				}
 				backend.txKafkaProducer = kafkaProducer
+				backend.headerChan = make(chan *types.Header, 10000)
+				backend.txInfoChan = make(chan *state.TxInfo, 10000)
 			}
 
 			backend.syncStages = stages2.NewSequencerZkStages(
@@ -1255,7 +1258,8 @@ func New(ctx context.Context, stack *node.Node, config *ethconfig.Config, logger
 				backend.txPool2DB,
 				l1InfoTreeUpdater,
 				hook,
-				backend.txKafkaProducer,
+				backend.headerChan,
+				backend.txInfoChan,
 			)
 
 			backend.syncUnwindOrder = zkStages.ZkSequencerUnwindOrder
@@ -2000,7 +2004,9 @@ func (s *Ethereum) Start() error {
 
 		go stages2.StageLoop(s.sentryCtx, s.chainDB, s.stagedSync, s.sentriesClient.Hd, s.waitForStageLoopStop, s.config.Sync.LoopThrottle, s.logger, s.blockReader, hook, s.config.ForcePartialCommit)
 
-		go stages2.ListenTxKafka(s.sentryCtx, s.txKafkaConsumer, s.config.Zk.XLayer, s.logger, s.txInfoMap, s.headerMap)
+		go stages2.ListenTxKafkaConsumer(s.sentryCtx, s.txKafkaConsumer, s.config.Zk.XLayer, s.logger, s.txInfoMap, s.headerMap)
+
+		go stages2.ListenTxKafkaProducer(s.sentryCtx, s.txKafkaProducer, s.config.Zk.XLayer, s.logger, s.headerChan, s.txInfoChan)
 	}
 
 	stages := diagnostics.InitStagesFromList(nodeStages)

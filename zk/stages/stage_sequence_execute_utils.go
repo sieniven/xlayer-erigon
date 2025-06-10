@@ -97,6 +97,8 @@ type SequenceBlockCfg struct {
 	doneHook       DoneHook
 
 	txKafkaProducer *kafka.KafkaProducer
+	headerChan      chan *types.Header
+	txInfoChan      chan *state.TxInfo
 }
 
 func StageSequenceBlocksCfg(
@@ -127,7 +129,8 @@ func StageSequenceBlocksCfg(
 	yieldSize uint16,
 	infoTreeUpdater *l1infotree.Updater,
 	doneHook DoneHook,
-	txKafkaProducer *kafka.KafkaProducer,
+	headerChan chan *types.Header,
+	txInfoChan chan *state.TxInfo,
 ) SequenceBlockCfg {
 
 	return SequenceBlockCfg{
@@ -160,7 +163,8 @@ func StageSequenceBlocksCfg(
 		dbsmt: dbsmt,
 
 		// For X Layer, kafka
-		txKafkaProducer: txKafkaProducer,
+		headerChan: headerChan,
+		txInfoChan: txInfoChan,
 	}
 }
 
