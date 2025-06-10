@@ -60,7 +60,7 @@ build-docker: ## Build cdk-erigoin for sequencer and rpc
 	docker build -t cdk-erigon -f ../Dockerfile.local ../
 
 .PHONY: run
-run: build-docker ## Runs a full node
+run: stop build-docker ## Runs a full node
 	$(DOCKER_COMPOSE) up -d xlayer-mock-l1-network
 	$(DOCKER_COMPOSE) up -d xlayer-agg-db
 	$(DOCKER_COMPOSE) up -d xlayer-bridge-db
