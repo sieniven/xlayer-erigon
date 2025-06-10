@@ -193,7 +193,7 @@ func ListenTxKafkaConsumer(ctx context.Context, txKafkaConsumer *kafka.KafkaCons
 				logger.Error("failed to consume tx changeset message from kafka", "error", err)
 				continue
 			}
-			stateCache.ApplyChangeset(changeset)
+			stateCache.ApplyChangeset(changeset, blockNumber, receipt.TransactionIndex)
 
 			logger.Info("Received transaction message", "tx", tx, "blockNumber", blockNumber, "receipt", receipt, "innerTxs", innerTxs, "changeset", changeset)
 		case err := <-errorChan:
