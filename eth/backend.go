@@ -1295,7 +1295,11 @@ func New(ctx context.Context, stack *node.Node, config *ethconfig.Config, logger
 				backend.txKafkaConsumer = kafkaConsumer
 				backend.txInfoMap = zktypes.NewTxInfoMap()
 				backend.headerMap = zktypes.NewHeaderMap()
-				backend.stateCache = nil
+				tx, err := backend.chainDB.BeginRo(ctx)
+				if err != nil {
+					return nil, err
+				}
+				backend.stateCache = state.NewPlainStateCache(tx)
 			}
 
 			backend.syncStages = stages2.NewDefaultZkStages(

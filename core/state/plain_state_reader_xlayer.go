@@ -22,7 +22,6 @@ const (
 // The cache holds a snapshot of the statedb, with a changeset cache layer that
 // stores in-memory the state changes.
 type PlainStateCache struct {
-	snapshotHeight uint64
 	snapshotReader *PlainStateReader
 
 	cacheLock        sync.RWMutex
@@ -30,16 +29,17 @@ type PlainStateCache struct {
 	storageCache     map[string]*uint256.Int
 	codeCache        map[libcommon.Hash][]byte
 	incarnationCache map[libcommon.Address]uint64
+	ready            bool
 }
 
-func NewPlainStateCache(db kv.Getter, snapshotHeight uint64) *PlainStateCache {
+func NewPlainStateCache(db kv.Getter) *PlainStateCache {
 	return &PlainStateCache{
-		snapshotHeight:   snapshotHeight,
 		snapshotReader:   NewPlainStateReader(db),
 		accountCache:     make(map[libcommon.Address]*accounts.Account, DefaultRealtimeCacheSize),
 		storageCache:     make(map[string]*uint256.Int, DefaultRealtimeCacheSize),
 		codeCache:        make(map[libcommon.Hash][]byte, DefaultRealtimeCacheSize),
 		incarnationCache: make(map[libcommon.Address]uint64, DefaultRealtimeCacheSize),
+		ready:            false,
 	}
 }
 
