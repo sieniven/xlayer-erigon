@@ -256,6 +256,7 @@ type Ethereum struct {
 	txKafkaConsumer *kafka.KafkaConsumer
 	txInfoMap       *zktypes.TxInfoMap
 	headerMap       *zktypes.HeaderMap
+	stateCache      *state.PlainStateCache
 	headerChan      chan *types.Header
 	txInfoChan      chan *state.TxInfo
 }
@@ -1294,6 +1295,7 @@ func New(ctx context.Context, stack *node.Node, config *ethconfig.Config, logger
 				backend.txKafkaConsumer = kafkaConsumer
 				backend.txInfoMap = zktypes.NewTxInfoMap()
 				backend.headerMap = zktypes.NewHeaderMap()
+				backend.stateCache = nil
 			}
 
 			backend.syncStages = stages2.NewDefaultZkStages(
@@ -2004,7 +2006,7 @@ func (s *Ethereum) Start() error {
 
 		go stages2.StageLoop(s.sentryCtx, s.chainDB, s.stagedSync, s.sentriesClient.Hd, s.waitForStageLoopStop, s.config.Sync.LoopThrottle, s.logger, s.blockReader, hook, s.config.ForcePartialCommit)
 
-		go stages2.ListenTxKafkaConsumer(s.sentryCtx, s.txKafkaConsumer, s.config.Zk.XLayer, s.logger, s.txInfoMap, s.headerMap)
+		go stages2.ListenTxKafkaConsumer(s.sentryCtx, s.txKafkaConsumer, s.config.Zk.XLayer, s.logger, s.txInfoMap, s.headerMap, s.stateCache)
 
 		go stages2.ListenTxKafkaProducer(s.sentryCtx, s.txKafkaProducer, s.config.Zk.XLayer, s.logger, s.headerChan, s.txInfoChan)
 	}
