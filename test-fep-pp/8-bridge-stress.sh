@@ -142,7 +142,7 @@ while true; do
     sleep 10
 done
 echo "GER updated to $GER on L1, and sleep 60s for all txs"
-sleep 120
+sleep 180
 
 CURRENT_NONCE=$(cast nonce --rpc-url $L1RPC $ACCOUNT)
 count=0
@@ -166,7 +166,7 @@ for TX_HASH in "${TX_HASH_ARRAY[@]}"; do
     RER=$(echo "$proof" | jq -r '.proof | .rollup_exit_root')
     if [ "$MERKLE_PROOF" == "null" ] || [ "$MERKLE_PROOF" == "[]" ]; then
         echo "Error: Merkle proof is null, skipping claim for this transaction, and waiting for 60s, $TX_HASH" >&2
-        sleep 60
+        sleep 10
         result=$(curl -s "$BRIDGE_SERVICE1/bridges/$ACCOUNT?limit=20000&offset=0" | \
    jq -r '.deposits[] | select(.ready_for_claim == true and .claim_tx_hash == "" and .tx_hash=="'$TX_HASH'")') 
         continue
