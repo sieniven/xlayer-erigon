@@ -39,7 +39,7 @@ services:
       - REDIS_DATABASES=8
 
   kafka-zookeeper:
-    image: wurstmeister/zookeeper
+    image: zookeeper
     container_name: kafka-zookeeper
     environment:
       - EXPERIMENTAL_DOCKER_DESKTOP_FORCE_QEMU=1
