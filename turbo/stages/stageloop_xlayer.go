@@ -12,6 +12,7 @@ import (
 	"github.com/ledgerwatch/log/v3"
 
 	"github.com/ledgerwatch/erigon-lib/kv"
+	"github.com/ledgerwatch/erigon/core/state"
 	"github.com/ledgerwatch/erigon/core/types"
 	"github.com/ledgerwatch/erigon/zk/kafka"
 	kafkaTypes "github.com/ledgerwatch/erigon/zk/kafka/types"
@@ -141,7 +142,7 @@ func FlushDataToDB(ctx context.Context, db *mdbx.MdbxKV, logger log.Logger, cach
 	cache.TruncateSmtCacheList(saveData.BlockHeight)
 }
 
-func ListenTxKafka(ctx context.Context, txKafkaConsumer *kafka.KafkaConsumer, config ethconfig.XLayerConfig, logger log.Logger, txInfoMap *zktypes.TxInfoMap, headerMap *zktypes.HeaderMap) {
+func ListenTxKafka(ctx context.Context, txKafkaConsumer *kafka.KafkaConsumer, config ethconfig.XLayerConfig, logger log.Logger, txInfoMap *zktypes.TxInfoMap, headerMap *zktypes.HeaderMap, stateCache *state.PlainStateCache) {
 	if sequencer.IsSequencer() {
 		logger.Info("txKafkaConsumer is disabled on sequencer, skipping")
 		return
@@ -158,6 +159,8 @@ func ListenTxKafka(ctx context.Context, txKafkaConsumer *kafka.KafkaConsumer, co
 	errorChan := make(chan error, 1)
 	go txKafkaConsumer.ConsumeKafka(ctx, headersChan, txMsgsChan, errorChan, logger)
 
+	// TODO: Start snapshot and sync height with incoming kafka messages
+
 	for {
 		select {
 		case <-ctx.Done():
@@ -166,6 +169,7 @@ func ListenTxKafka(ctx context.Context, txKafkaConsumer *kafka.KafkaConsumer, co
 			headerMap.Put(header.Number.Uint64(), &header)
 			logger.Info("Received header message", "header", header)
 		case txMsg := <-txMsgsChan:
+			// 1. Process non-state data
 			tx, blockNumber, err := txMsg.GetTransaction()
 			if err != nil {
 				logger.Error("failed to consume transaction message from kafka", "error", err)
@@ -181,14 +185,16 @@ func ListenTxKafka(ctx context.Context, txKafkaConsumer *kafka.KafkaConsumer, co
 				logger.Error("failed to consume tx innerTxs message from kafka", "error", err)
 				continue
 			}
+			txInfoMap.Put(tx.Hash(), tx, receipt, innerTxs)
+
+			// 2. Process state data
 			changeset, err := txMsg.GetChangeset()
 			if err != nil {
 				logger.Error("failed to consume tx changeset message from kafka", "error", err)
 				continue
 			}
-			txInfoMap.Put(tx.Hash(), tx, receipt, innerTxs)
+			stateCache.ApplyChangeset(changeset)
 
-			// TODO: Use changeset to generate new state
 			logger.Info("Received transaction message", "tx", tx, "blockNumber", blockNumber, "receipt", receipt, "innerTxs", innerTxs, "changeset", changeset)
 		case err := <-errorChan:
 			logger.Error("kafka consumer failed", "error", err)
