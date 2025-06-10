@@ -178,8 +178,6 @@ for TX_HASH in "${TX_HASH_ARRAY[@]}"; do
     sleep 0.02
     CURRENT_NONCE=$((CURRENT_NONCE + 1))
     if (( count % 100 == 0 )); then
-        result=$(curl -s "$BRIDGE_SERVICE1/bridges/$ACCOUNT?limit=20000&offset=0" | \
-   jq -r '.deposits[] | select(.ready_for_claim == true and .claim_tx_hash == "" and .tx_hash=="'$TX_HASH'")') 
         echo "Waiting for 100 transactions to be processed,  $count of $input"
     fi
 done
