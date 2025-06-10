@@ -201,7 +201,6 @@ func (ch createObjectChange) collectChangeset(cs *types.Changeset) {
 	cs.BalanceChanges[*ch.account] = uint256.NewInt(0)
 	cs.NonceChanges[*ch.account] = 0
 	cs.CodeHashChanges[*ch.account] = emptyCodeHashH
-	cs.IncarnationChanges[*ch.account] = 0
 	cs.CodeChanges[*ch.account] = nil
 	cs.StorageChanges[*ch.account] = make(map[libcommon.Hash]*uint256.Int)
 }
@@ -221,7 +220,6 @@ func (ch resetObjectChange) collectChangeset(cs *types.Changeset) {
 	cs.BalanceChanges[*ch.account] = uint256.NewInt(0)
 	cs.NonceChanges[*ch.account] = 0
 	cs.CodeHashChanges[*ch.account] = emptyCodeHashH
-	cs.IncarnationChanges[*ch.account] = 0
 	cs.CodeChanges[*ch.account] = nil
 	cs.StorageChanges[*ch.account] = make(map[libcommon.Hash]*uint256.Int)
 }
