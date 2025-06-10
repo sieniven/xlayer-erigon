@@ -34,6 +34,10 @@ echo "Starting xlayer-mock-l1-network..."
 docker-compose up -d xlayer-mock-l1-network
 sleep 5
 
+git checkout docker-compose.yml
+git checkout test.erigon.seq.config.yaml
+git checkout test.erigon.rpc.config.yaml
+
 echo "Sending funds to deployer..."
 cast send -f $RICH_ADDRESS --private-key $RICH_PRIVATE_KEY --value 3ether --legacy $DEPLOYER_ADDRESS
 
