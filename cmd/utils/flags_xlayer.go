@@ -357,6 +357,11 @@ var (
 		Usage: "Kafka tx topic",
 		Value: "",
 	}
+	KafkaSyncErrorTopic = cli.StringFlag{
+		Name:  "kafka.sync-error-topic",
+		Usage: "Kafka error trigger topic",
+		Value: "",
+	}
 	KafkaSyncClientID = cli.StringFlag{
 		Name:  "kafka.sync-client-id",
 		Usage: "Kafka sync client id",

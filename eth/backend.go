@@ -272,6 +272,7 @@ func splitAddrIntoHostAndPort(addr string) (host string, port int, err error) {
 }
 
 const blockBufferSize = 128
+const kafkaBufferSize = 10000
 
 // New creates a new Ethereum object (including the
 // initialisation of the common Ethereum object)
@@ -1235,8 +1236,8 @@ func New(ctx context.Context, stack *node.Node, config *ethconfig.Config, logger
 					return nil, err
 				}
 				backend.txKafkaProducer = kafkaProducer
-				backend.headerChan = make(chan *types.Header, 10000)
-				backend.txInfoChan = make(chan *state.TxInfo, 10000)
+				backend.headerChan = make(chan *types.Header, kafkaBufferSize)
+				backend.txInfoChan = make(chan *state.TxInfo, kafkaBufferSize)
 			}
 
 			backend.syncStages = stages2.NewSequencerZkStages(

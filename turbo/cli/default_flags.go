@@ -368,5 +368,6 @@ var DefaultFlags = []cli.Flag{
 	&utils.KafkaSyncBootstrapServers,
 	&utils.KafkaSyncBlockTopic,
 	&utils.KafkaSyncTxTopic,
+	&utils.KafkaSyncErrorTopic,
 	&utils.KafkaSyncClientID,
 }

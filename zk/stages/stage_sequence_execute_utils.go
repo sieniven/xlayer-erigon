@@ -33,7 +33,6 @@ import (
 	"github.com/ledgerwatch/erigon/turbo/stages/headerdownload"
 	"github.com/ledgerwatch/erigon/zk/datastream/server"
 	"github.com/ledgerwatch/erigon/zk/hermez_db"
-	"github.com/ledgerwatch/erigon/zk/kafka"
 	"github.com/ledgerwatch/erigon/zk/l1infotree"
 	zktx "github.com/ledgerwatch/erigon/zk/tx"
 	"github.com/ledgerwatch/erigon/zk/txpool"
@@ -96,9 +95,9 @@ type SequenceBlockCfg struct {
 	decodedTxCache *expirable.LRU[common.Hash, *types.Transaction]
 	doneHook       DoneHook
 
-	txKafkaProducer *kafka.KafkaProducer
-	headerChan      chan *types.Header
-	txInfoChan      chan *state.TxInfo
+	// For X Layer, kafka
+	kafkaHeaderChan chan *types.Header
+	kafkaTxInfoChan chan *state.TxInfo
 }
 
 func StageSequenceBlocksCfg(
@@ -129,8 +128,10 @@ func StageSequenceBlocksCfg(
 	yieldSize uint16,
 	infoTreeUpdater *l1infotree.Updater,
 	doneHook DoneHook,
-	headerChan chan *types.Header,
-	txInfoChan chan *state.TxInfo,
+
+	// For X Layer, kafka
+	kafkaHeaderChan chan *types.Header,
+	kafkaTxInfoChan chan *state.TxInfo,
 ) SequenceBlockCfg {
 
 	return SequenceBlockCfg{
@@ -163,8 +164,8 @@ func StageSequenceBlocksCfg(
 		dbsmt: dbsmt,
 
 		// For X Layer, kafka
-		headerChan: headerChan,
-		txInfoChan: txInfoChan,
+		kafkaHeaderChan: kafkaHeaderChan,
+		kafkaTxInfoChan: kafkaTxInfoChan,
 	}
 }
 

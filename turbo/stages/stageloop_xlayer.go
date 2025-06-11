@@ -156,8 +156,9 @@ func ListenTxKafkaConsumer(ctx context.Context, txKafkaConsumer *kafka.KafkaCons
 	// Start the kafka consumer
 	headersChan := make(chan types.Header, MaxKafkaChanSize)
 	txMsgsChan := make(chan kafkaTypes.TransactionMessage, MaxKafkaChanSize)
+	errorMsgsChan := make(chan kafkaTypes.ErrorTriggerMessage, MaxKafkaChanSize)
 	errorChan := make(chan error, 1)
-	go txKafkaConsumer.ConsumeKafka(ctx, headersChan, txMsgsChan, errorChan, logger)
+	go txKafkaConsumer.ConsumeKafka(ctx, headersChan, txMsgsChan, errorMsgsChan, errorChan, logger)
 
 	// TODO: Start snapshot and sync height with incoming kafka messages
 
@@ -196,6 +197,12 @@ func ListenTxKafkaConsumer(ctx context.Context, txKafkaConsumer *kafka.KafkaCons
 			stateCache.ApplyChangeset(changeset)
 
 			logger.Info("Received transaction message", "tx", tx, "blockNumber", blockNumber, "receipt", receipt, "innerTxs", innerTxs, "changeset", changeset)
+		case errorTriggerMsg := <-errorMsgsChan:
+			triggerHeight := errorTriggerMsg.BlockNumber
+			logger.Info("Received error trigger message", "triggerHeight", triggerHeight)
+
+			// TODO: handle trigger unwind here on producer side error
+
 		case err := <-errorChan:
 			logger.Error("kafka consumer failed", "error", err)
 			return
@@ -221,16 +228,30 @@ func ListenTxKafkaProducer(
 	}
 
 	for {
+		var err error
+		currHeight := uint64(0)
+
 		select {
 		case <-ctx.Done():
 			return
 		case header := <-headersChan:
+			currHeight = header.Number.Uint64()
 			// log.Info("Kafka prepare to send header", "header", header)
-			txKafkaProducer.SendKafkaBlockHeader(ctx, header)
+			err = txKafkaProducer.SendKafkaBlockHeader(ctx, header)
 		case txInfo := <-txInfoChan:
+			currHeight = txInfo.BlockNumber
 			changeset := state.CollectChangeset(txInfo.Entries)
 			// log.Info("Kafka prepare to send transaction", "txhash", txInfo.Tx.Hash(), "receipt", txInfo.Receipt, "innerTxs", txInfo.InnerTxs, "changeset", changeset)
-			txKafkaProducer.SendKafkaTransaction(ctx, txInfo.BlockNumber, txInfo.Tx, txInfo.Receipt, txInfo.InnerTxs, changeset)
+			err = txKafkaProducer.SendKafkaTransaction(ctx, txInfo.BlockNumber, txInfo.Tx, txInfo.Receipt, txInfo.InnerTxs, changeset)
+		}
+
+		if err != nil {
+			logger.Error("Failed to send kafka message, trigger error message", "error", err, "currHeight", currHeight)
+			err = txKafkaProducer.SendKafkaErrorTrigger(ctx, currHeight)
+			if err != nil {
+				logger.Error("Failed to send error trigger message", "error", err, "blockNumber", currHeight)
+			}
+			continue
 		}
 	}
 }
