@@ -244,7 +244,7 @@ func ListenTxKafkaProducer(
 			return
 		case blockInfo := <-blockInfoChan:
 			currHeight = blockInfo.Header.Number.Uint64()
-			// log.Info("Kafka prepare to send header", "header", header)
+			// log.Info("Kafka prepare to send blockInfo", "blockInfo", blockInfo)
 			err = txKafkaProducer.SendKafkaBlockInfo(ctx, blockInfo.Header, blockInfo.TxCount)
 		case txInfo := <-txInfoChan:
 			currHeight = txInfo.BlockNumber
@@ -286,7 +286,7 @@ func HandleTxKafkaMessage(
 
 	latestForkId, err := stages.GetStageProgress(tx, stages.ForkId)
 	if err != nil {
-		logger.Error(fmt.Sprintf("Failed to get stage progress of forkid", "err", err))
+		logger.Error("Failed to get stage progress of forkid", "err", err)
 		return
 	}
 	dsClient := client.NewClient(ctx, ethCfg.L2DataStreamerUrl, ethCfg.L2DataStreamerUseTLS, ethCfg.DatastreamVersion, ethCfg.L2DataStreamerTimeout, uint16(latestForkId))
@@ -333,11 +333,11 @@ func HandleTxKafkaMessage(
 				stateCache.UpdateReady(true)
 			}
 		case msg := <-deliverChan:
-			_, parentTxCount, exist := blockInfoMap.Get(msg.BlockNumber)
+			_, prevBlockTxCount, exist := blockInfoMap.Get(msg.BlockNumber)
 			if exist && msg.BlockNumber == lastHeight || (lastHeight == 0 && msg.Receipt.TransactionIndex == 0) {
 				lastHeight = msg.BlockNumber
 
-				if msg.Receipt.TransactionIndex == uint(parentTxCount) {
+				if msg.Receipt.TransactionIndex == uint(prevBlockTxCount) {
 					if err := stateCache.ApplyChangeset(msg.Changeset); err != nil {
 						// TODO：need to record the invalid changeset and apply it again later?
 						logger.Error("Failed to apply tx changeset to state cache", "error", err)
@@ -355,7 +355,7 @@ func HandleTxKafkaMessage(
 					// TODO: if pending msgs length is too large, should ask kafka for the missing tx msgs
 
 				}
-			} else if msg.BlockNumber == lastHeight+1 && msg.Receipt.TransactionIndex == 0 && nextTxIndex == parentTxCount+1 {
+			} else if msg.BlockNumber == lastHeight+1 && msg.Receipt.TransactionIndex == 0 && nextTxIndex == prevBlockTxCount+1 {
 				// the last handled msg is the last one of lastHeight, and the new msg is the first one of next block
 				if err := stateCache.ApplyChangeset(msg.Changeset); err != nil {
 					logger.Error("Failed to apply tx changeset to state cache", "error", err)
@@ -386,18 +386,18 @@ func HandleTxKafkaMessage(
 func handlePending(stateCache *state.PlainStateCache, pendingTxMsgs *kafkaTypes.TransactionMessageSlice, blockInfoMap *zktypes.BlockInfoMap, lastHeight, nextTxIndex uint64) (uint64, uint64, error) {
 	handled, newLastHeight, newNextTxIndex := 0, lastHeight, nextTxIndex
 	for ; handled < len(*pendingTxMsgs); handled++ {
-		_, parentTxCount, exist := blockInfoMap.Get((*pendingTxMsgs)[handled].BlockNumber)
+		_, prevBlockTxCount, exist := blockInfoMap.Get((*pendingTxMsgs)[handled].BlockNumber)
 		if !exist {
 			return newLastHeight, newNextTxIndex, nil
 		}
 
-		if (*pendingTxMsgs)[handled].BlockNumber == newLastHeight && (*pendingTxMsgs)[handled].Receipt.TransactionIndex == uint(parentTxCount) {
+		if (*pendingTxMsgs)[handled].BlockNumber == newLastHeight && (*pendingTxMsgs)[handled].Receipt.TransactionIndex == uint(prevBlockTxCount) {
 			if err := stateCache.ApplyChangeset((*pendingTxMsgs)[handled].Changeset); err != nil {
 				return newLastHeight, newNextTxIndex, err
 			}
 			newLastHeight = (*pendingTxMsgs)[handled].BlockNumber
 			newNextTxIndex++
-		} else if (*pendingTxMsgs)[handled].BlockNumber == newLastHeight+1 && (*pendingTxMsgs)[handled].Receipt.TransactionIndex == 0 && nextTxIndex == parentTxCount+1 {
+		} else if (*pendingTxMsgs)[handled].BlockNumber == newLastHeight+1 && (*pendingTxMsgs)[handled].Receipt.TransactionIndex == 0 && nextTxIndex == prevBlockTxCount+1 {
 			if err := stateCache.ApplyChangeset((*pendingTxMsgs)[handled].Changeset); err != nil {
 				return newLastHeight, newNextTxIndex, err
 			}
