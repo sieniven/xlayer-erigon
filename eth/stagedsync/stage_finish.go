@@ -32,13 +32,21 @@ type FinishCfg struct {
 	db            kv.RwDB
 	tmpDir        string
 	forkValidator *engine_helpers.ForkValidator
+
+	// For X Layer. RPC latency optimization
+	notifyChan                chan struct{}
+	enableLatencyOptimization bool
 }
 
-func StageFinishCfg(db kv.RwDB, tmpDir string, forkValidator *engine_helpers.ForkValidator) FinishCfg {
+func StageFinishCfg(db kv.RwDB, tmpDir string, forkValidator *engine_helpers.ForkValidator, notifyChan chan struct{}, enable bool) FinishCfg {
 	return FinishCfg{
 		db:            db,
 		tmpDir:        tmpDir,
 		forkValidator: forkValidator,
+
+		// For X Layer. RPC latency optimization
+		notifyChan:                notifyChan,
+		enableLatencyOptimization: enable,
 	}
 }
 
@@ -89,6 +97,11 @@ func FinishForward(s *StageState, tx kv.RwTx, cfg FinishCfg, initialCycle bool) 
 		if err := tx.Commit(); err != nil {
 			return err
 		}
+	}
+
+	// For X Layer, RPC latency optimization
+	if cfg.enableLatencyOptimization {
+		cfg.notifyChan <- struct{}{}
 	}
 
 	return nil

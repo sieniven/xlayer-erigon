@@ -30,8 +30,6 @@ type PlainStateCache struct {
 	codeCache        map[libcommon.Hash][]byte
 	incarnationCache map[libcommon.Address]uint64
 	ready            bool
-	blockHeight      uint64
-	txIndex          uint
 }
 
 func NewPlainStateCache(db kv.Getter) *PlainStateCache {
@@ -45,7 +43,7 @@ func NewPlainStateCache(db kv.Getter) *PlainStateCache {
 	}
 }
 
-func (cache *PlainStateCache) ApplyChangeset(changeset *zktypes.Changeset, blockHeight uint64, txIndex uint) error {
+func (cache *PlainStateCache) ApplyChangeset(changeset *zktypes.Changeset) error {
 	// Handle account data changes
 	addressChanges := make(map[libcommon.Address]*accounts.Account)
 	cache.applyChangesetToAccountData(changeset, addressChanges)
@@ -88,9 +86,6 @@ func (cache *PlainStateCache) ApplyChangeset(changeset *zktypes.Changeset, block
 		delete(cache.accountCache, address)
 		cache.accountCache[address] = account
 	}
-
-	cache.blockHeight = blockHeight
-	cache.txIndex = txIndex
 
 	return nil
 }
@@ -277,4 +272,12 @@ func (cache *PlainStateCache) createAccount(address libcommon.Address) (*account
 		Root:        libcommon.BytesToHash(trie.EmptyRoot[:]),
 		CodeHash:    libcommon.BytesToHash(emptyCodeHash),
 	}, nil
+}
+
+func (cache *PlainStateCache) UpdateReady(current bool) {
+	cache.ready = current
+}
+
+func (cache *PlainStateCache) IsReady() bool {
+	return cache.ready
 }

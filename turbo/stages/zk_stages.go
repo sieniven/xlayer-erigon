@@ -40,8 +40,10 @@ func NewDefaultZkStages(ctx context.Context,
 	datastreamClient zkStages.DatastreamClient,
 	dataStreamServer server.DataStreamServer,
 	infoTreeUpdater *l1infotree.Updater,
+	// For X Layer. RPC latency optimization
 	txInfoMap *zktypes.TxInfoMap,
 	blockInfoMap *zktypes.BlockInfoMap,
+	finishNotifyChan chan struct{},
 ) []*stagedsync.Stage {
 	dirs := cfg.Dirs
 	blockWriter := blockio.NewBlockWriter(cfg.HistoryV3)
@@ -89,7 +91,8 @@ func NewDefaultZkStages(ctx context.Context,
 		stagedsync.StageLogIndexCfg(db, cfg.Prune, dirs.Tmp, cfg.Genesis.Config.NoPruneContracts),
 		stagedsync.StageCallTracesCfg(db, cfg.Prune, 0, dirs.Tmp),
 		stagedsync.StageTxLookupCfg(db, cfg.Prune, dirs.Tmp, controlServer.ChainConfig.Bor, blockReader),
-		stagedsync.StageFinishCfg(db, dirs.Tmp, forkValidator),
+		// For X Layer. RPC latency optimization
+		stagedsync.StageFinishCfg(db, dirs.Tmp, forkValidator, finishNotifyChan, cfg.XLayer.Kafka.Enable),
 		txInfoMap,
 		blockInfoMap,
 		runInTestMode)
@@ -167,6 +170,7 @@ func NewSequencerZkStages(ctx context.Context,
 		stagedsync.StageLogIndexCfg(db, cfg.Prune, dirs.Tmp, cfg.Genesis.Config.NoPruneContracts),
 		stagedsync.StageCallTracesCfg(db, cfg.Prune, 0, dirs.Tmp),
 		stagedsync.StageTxLookupCfg(db, cfg.Prune, dirs.Tmp, controlServer.ChainConfig.Bor, blockReader),
-		stagedsync.StageFinishCfg(db, dirs.Tmp, forkValidator),
+		// For X Layer, RPC latency optimization
+		stagedsync.StageFinishCfg(db, dirs.Tmp, forkValidator, nil, false),
 		runInTestMode)
 }

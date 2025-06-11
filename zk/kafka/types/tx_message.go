@@ -3,6 +3,7 @@ package types
 import (
 	"encoding/json"
 	"fmt"
+	"sort"
 
 	"github.com/holiman/uint256"
 	libcommon "github.com/ledgerwatch/erigon-lib/common"
@@ -225,4 +226,34 @@ func (msg TransactionMessage) MarshalJSON() ([]byte, error) {
 	}
 
 	return json.Marshal(&enc)
+}
+
+type TransactionMessageSlice []*TransactionMessage
+
+// Len returns the length of the slice
+func (t TransactionMessageSlice) Len() int {
+	return len(t)
+}
+
+// Less defines the sorting criteria: BlockNumber ascending, then Receipt.TransactionIndex ascending
+func (t TransactionMessageSlice) Less(i, j int) bool {
+	if t[i].BlockNumber == t[j].BlockNumber {
+		// Check if Receipt is non-nil to avoid panic
+		if t[i].Receipt != nil && t[j].Receipt != nil {
+			return t[i].Receipt.TransactionIndex < t[j].Receipt.TransactionIndex
+		}
+		// If either Receipt is nil, maintain stable sort by returning false
+		return false
+	}
+	return t[i].BlockNumber < t[j].BlockNumber
+}
+
+// Swap swaps two elements in the slice
+func (t TransactionMessageSlice) Swap(i, j int) {
+	t[i], t[j] = t[j], t[i]
+}
+
+// SortTransactions sorts a slice of TransactionMessage by BlockNumber and Receipt.TransactionIndex
+func SortTransactions(transactions []*TransactionMessage) {
+	sort.Sort(TransactionMessageSlice(transactions))
 }
