@@ -333,83 +333,6 @@ func TxPoolStatus() (interface{}, error) {
 	return result, nil
 }
 
-// ZKEVMIsBlockConsolidated checks if a block is consolidated
-func ZKEVMIsBlockConsolidated(blockNumber uint64) (bool, error) {
-	response, err := client.JSONRPCCall(DefaultL2NetworkURL, "zkevm_isBlockConsolidated", blockNumber)
-	if err != nil {
-		return false, err
-	}
-	if response.Error != nil {
-		return false, fmt.Errorf("%d - %s", response.Error.Code, response.Error.Message)
-	}
-
-	var result bool
-	err = json.Unmarshal(response.Result, &result)
-	if err != nil {
-		return false, err
-	}
-
-	return result, nil
-}
-
-// ZKEVMIsBlockVirtualized checks if a block is virtualized
-func ZKEVMIsBlockVirtualized(blockNumber uint64) (bool, error) {
-	response, err := client.JSONRPCCall(DefaultL2NetworkURL, "zkevm_isBlockVirtualized", blockNumber)
-	if err != nil {
-		return false, err
-	}
-	if response.Error != nil {
-		return false, fmt.Errorf("%d - %s", response.Error.Code, response.Error.Message)
-	}
-
-	var result bool
-	err = json.Unmarshal(response.Result, &result)
-	if err != nil {
-		return false, err
-	}
-
-	return result, nil
-}
-
-// ZKEVMVerifiedBatchNumber returns the number of the latest verified batch
-func ZKEVMVerifiedBatchNumber() (uint64, error) {
-	response, err := client.JSONRPCCall(DefaultL2NetworkURL, "zkevm_verifiedBatchNumber")
-	if err != nil {
-		return 0, err
-	}
-	if response.Error != nil {
-		return 0, fmt.Errorf("%d - %s", response.Error.Code, response.Error.Message)
-	}
-
-	return transHexToUint64(response.Result)
-}
-
-// ZKEVMVirtualBatchNumber returns the number of the latest virtual batch
-func ZKEVMVirtualBatchNumber() (uint64, error) {
-	response, err := client.JSONRPCCall(DefaultL2NetworkURL, "zkevm_virtualBatchNumber")
-	if err != nil {
-		return 0, err
-	}
-	if response.Error != nil {
-		return 0, fmt.Errorf("%d - %s", response.Error.Code, response.Error.Message)
-	}
-
-	return transHexToUint64(response.Result)
-}
-
-// ZKEVMConsolidatedBlockNumber returns the number of the latest consolidated block
-func ZKEVMConsolidatedBlockNumber() (uint64, error) {
-	response, err := client.JSONRPCCall(DefaultL2NetworkURL, "zkevm_consolidatedBlockNumber")
-	if err != nil {
-		return 0, err
-	}
-	if response.Error != nil {
-		return 0, fmt.Errorf("%d - %s", response.Error.Code, response.Error.Message)
-	}
-
-	return transHexToUint64(response.Result)
-}
-
 // EthBlockNumber returns the number of the most recent block
 func EthBlockNumber() (uint64, error) {
 	response, err := client.JSONRPCCall(DefaultL2NetworkURL, "eth_blockNumber")
@@ -657,25 +580,6 @@ func ZKEVMBatchNumber() (uint64, error) {
 // ZKEVMGetLatestDataStreamBlock returns the latest data stream block
 func ZKEVMGetLatestDataStreamBlock() (interface{}, error) {
 	response, err := client.JSONRPCCall(DefaultL2NetworkURL, "zkevm_getLatestDataStreamBlock")
-	if err != nil {
-		return nil, err
-	}
-	if response.Error != nil {
-		return nil, fmt.Errorf("%d - %s", response.Error.Code, response.Error.Message)
-	}
-
-	var result interface{}
-	err = json.Unmarshal(response.Result, &result)
-	if err != nil {
-		return nil, err
-	}
-
-	return result, nil
-}
-
-// ZKEVMGetBatchWitness returns the witness for a given batch number
-func ZKEVMGetBatchWitness(batchNumber uint64, format string) (interface{}, error) {
-	response, err := client.JSONRPCCall(DefaultL2NetworkURL, "zkevm_getBatchWitness", batchNumber, format)
 	if err != nil {
 		return nil, err
 	}

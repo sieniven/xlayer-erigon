@@ -1,6 +1,6 @@
 {
-  "ChainName": "dynamic-mynetwork",
-  "chainId": 195,
+  "ChainName": "dynamic-polygonzkevm",
+  "chainId": 1101,
   "consensus": "ethash",
   "homesteadBlock": 0,
   "daoForkBlock": 0,

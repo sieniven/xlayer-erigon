@@ -50,7 +50,7 @@ To use the new config when starting erigon use the `--cfg` flag with the path to
 ## Prereqs
 In order to use the optimal vectorized poseidon hashing for the Sparse Merkle Tree, on x86 the following packages are required (for Apple silicon it will fall back to the iden3 library and as such these dependencies are not required in that case.
 
-Please install: 
+Please install:
 - Linux: `libgtest-dev` `libomp-dev` `libgmp-dev`
 - MacOS: `brew install libomp` `brew install gmp`
 
@@ -97,11 +97,6 @@ In order to enable the zkevm_ namespace, please add 'zkevm' to the http.api flag
 ### Supported
 - `zkevm_batchNumber`
 - `zkevm_batchNumberByBlockNumber`
-- `zkevm_consolidatedBlockNumber`
-- `zkevm_isBlockConsolidated`
-- `zkevm_verifiedBatchNumber`
-- `zkevm_isBlockVirtualized`
-- `zkevm_virtualBatchNumber`
 - `zkevm_getFullBlockByHash`
 - `zkevm_getFullBlockByNumber`
 - `zkevm_virtualCounters`
@@ -110,9 +105,6 @@ In order to enable the zkevm_ namespace, please add 'zkevm' to the http.api flag
 
 ### Supported (remote)
 - `zkevm_getBatchByNumber`
-
-### Configurable
-- `zkevm_getBatchWitness` - concurrency can be limited with `zkevm.rpc-get-batch-witness-concurrency-limit` flag which defaults to 1. Use 0 for no limit.
 
 ### Not yet supported
 - `zkevm_getNativeBlockHashesInRange`
@@ -141,7 +133,7 @@ Config files are the easiest way to configure cdk-erigon, there are examples in 
 - run `./build/bin/cdk-erigon --config="./hermezconfig-{network}.yaml"` (complete the name of your config file as required)
 
 ### Run modes
-cdk-erigon can be run as an RPC node which will use the data stream to fetch new block/batch information and track a 
+cdk-erigon can be run as an RPC node which will use the data stream to fetch new block/batch information and track a
 remote sequencer (the default behaviour).  It can also run as a sequencer. To enable the sequencer, set the `CDK_ERIGON_SEQUENCER` environment variable to `1` and start the node.
 cdk-erigon supports migrating a node from being an RPC node to a sequencer and vice versa.  To do this, stop the node, set the `CDK_ERIGON_SEQUENCER` environment variable to the desired value and restart the node.
 Please ensure that you do include the sequencer specific flags found below when running as a sequencer.  You can include these flags when running as an RPC to keep a consistent configuration between the two run modes.
@@ -152,7 +144,7 @@ The image comes with 3 preinstalled default configs which you may wish to edit a
 A datadir must be mounted to the container to persist the chain data between runs.
 
 Example commands:
-- Mainnet 
+- Mainnet
 ```
 docker run -d -p 8545:8545 -v ./cdk-erigon-data/:/home/erigon/.local/share/erigon hermeznetwork/cdk-erigon  --config="./mainnet.yaml" --zkevm.l1-rpc-url=https://rpc.eth.gateway.fm
 ```
@@ -196,9 +188,6 @@ For a full explanation of the config options, see below:
 - `http.api`: List of enabled HTTP API modules.
 
 Sequencer specific config:
-- `zkevm.executor-urls`: A csv list of the executor URLs.  These will be used in a round robbin fashion by the sequencer
-- `zkevm.executor-strict`: Defaulted to true, but can be set to false when running the sequencer without verifications (use with extreme caution)
-- `zkevm.witness-full`: Defaulted to false.  Controls whether the full or partial witness is used with the executor.
 - `zkevm.reject-smart-contract-deployments`: Defaulted to false.  Controls whether smart contract deployments are rejected by the TxPool.
 
 Resource Utilisation config:
@@ -240,7 +229,7 @@ Metrics and pprof configuration flags:
 
 - Block Explorers:
   - Mainnet: [PolygonScan Mainnet](https://zkevm.polygonscan.com/)
-  - Cardona: [PolygonScan Cardona](https://cardona-zkevm.polygonscan.com/) 
+  - Cardona: [PolygonScan Cardona](https://cardona-zkevm.polygonscan.com/)
 
 ***
 

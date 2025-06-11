@@ -148,8 +148,7 @@ var dataStreamServerFactory = server.NewZkEVMDataStreamServerFactory()
 type Config = ethconfig.Config
 
 type PreStartTasks struct {
-	WarmUpDataStream  bool
-	PurgeWitnessCache bool
+	WarmUpDataStream bool
 }
 
 // Ethereum implements the Ethereum full node service.
@@ -243,6 +242,11 @@ type Ethereum struct {
 	smtFlushCtx    context.Context
 	smtFlushCancel context.CancelFunc
 	smtFlushDoneCh chan struct{}
+
+	// For X Layer, apollo
+	seqVerSyncer     *syncer.L1Syncer
+	l1InfoTreeSyncer *syncer.L1Syncer
+	l1BlockSyncer    *syncer.L1Syncer
 }
 
 func splitAddrIntoHostAndPort(addr string) (host string, port int, err error) {
@@ -1059,8 +1063,6 @@ func New(ctx context.Context, stack *node.Node, config *ethconfig.Config, logger
 			}
 		}
 
-		backend.preStartTasks.PurgeWitnessCache = config.WitnessCachePurge
-
 		// entering ZK territory!
 		cfg := backend.config
 
@@ -1148,6 +1150,9 @@ func New(ctx context.Context, stack *node.Node, config *ethconfig.Config, logger
 			cfg.Zk.XLayer.GetLogsRetries,
 		)
 
+		// For X Layer, apollo
+		backend.seqVerSyncer = seqVerSyncer
+
 		backend.l1Syncer = syncer.NewL1Syncer(
 			ctx,
 			ethermanClients,
@@ -1177,6 +1182,9 @@ func New(ctx context.Context, stack *node.Node, config *ethconfig.Config, logger
 			cfg.Zk.XLayer.GetLogsRetries,
 		)
 
+		// For X Layer, apollo
+		backend.l1InfoTreeSyncer = l1InfoTreeSyncer
+
 		l1InfoTreeUpdater := l1infotree.NewUpdater(cfg.Zk, l1InfoTreeSyncer)
 
 		var dataStreamServer server.DataStreamServer
@@ -1205,6 +1213,9 @@ func New(ctx context.Context, stack *node.Node, config *ethconfig.Config, logger
 				cfg.Zk.XLayer.GetLogsRetries,
 			)
 
+			// For X Layer, apollo
+			backend.l1BlockSyncer = l1BlockSyncer
+
 			backend.syncStages = stages2.NewSequencerZkStages(
 				backend.sentryCtx,
 				backend.chainDB,
@@ -1229,6 +1240,10 @@ func New(ctx context.Context, stack *node.Node, config *ethconfig.Config, logger
 
 			backend.syncUnwindOrder = zkStages.ZkSequencerUnwindOrder
 
+			// For Xlayer
+			if cfg.Zk.XLayer.Apollo.Enable {
+				go backend.listenApollo(ctx, cfg)
+			}
 		} else {
 			/*
 			 if we are syncing from for the RPC, we do the normal ZK sync loop
@@ -1471,22 +1486,6 @@ func (s *Ethereum) PreStart() error {
 		}
 		if err = tx.Commit(); err != nil {
 			return err
-		}
-	}
-
-	if s.preStartTasks.PurgeWitnessCache {
-		log.Warn("[PreStart] purge witness cache enabled, purging...", "zkevm.witness-cache-purge", s.config.WitnessCachePurge)
-		tx, err := s.chainDB.BeginRw(context.Background())
-		if err != nil {
-			return err
-		}
-		defer tx.Rollback()
-		hermezDb := hermez_db.NewHermezDb(tx)
-		if err := hermezDb.PurgeWitnessCaches(); err != nil {
-			return fmt.Errorf("failed to purge witness caches: %w", err)
-		}
-		if err = tx.Commit(); err != nil {
-			return fmt.Errorf("tx.Commit: %w", err)
 		}
 	}
 

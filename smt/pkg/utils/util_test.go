@@ -83,12 +83,6 @@ func BenchmarkConvertHexToBigInt(b *testing.B) {
 
 		}
 	})
-	b.Run("New", func(b *testing.B) {
-		b.ReportAllocs()
-		for n := 0; n < b.N; n++ {
-			ConvertHexToBigInt("0x9257c9a31308a7cb046aba1a95679dd7e3ad695b6900e84a6470b401b1ea416e")
-		}
-	})
 }
 
 func BenchmarkHashContractBytecode(b *testing.B) {

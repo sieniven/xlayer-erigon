@@ -35,7 +35,6 @@ type Zk struct {
 	L1CacheEnabled                         bool
 	L1CachePort                            uint
 	RpcRateLimits                          int
-	RpcGetBatchWitnessConcurrencyLimit     int
 	DatastreamVersion                      int
 	SequencerBlockSingleBlockVerify        bool
 	SequencerBlockSealTime                 time.Duration
@@ -47,8 +46,6 @@ type Zk struct {
 	SequencerResequence                    bool
 	SequencerResequenceStrict              bool
 	SequencerResequenceReuseL1InfoIndex    bool
-	ExecutorUrls                           []string
-	ExecutorStrictMode                     bool
 	ExecutorRequestTimeout                 time.Duration
 	ExecutorEnabled                        bool
 	DatastreamNewBlockTimeout              time.Duration
@@ -77,7 +74,6 @@ type Zk struct {
 	RebuildTreeAfter      uint64
 	IncrementTreeAlways   bool
 	SmtRegenerateInMemory bool
-	WitnessFull           bool
 	SyncLimit             uint64
 	Gasless               bool
 
@@ -88,7 +84,6 @@ type Zk struct {
 	DebugStepAfter uint64
 
 	PoolManagerUrl              string
-	DisableVirtualCounters      bool
 	VirtualCountersSmtReduction float64
 	ExecutorPayloadOutput       string
 
@@ -102,11 +97,6 @@ type Zk struct {
 	InfoTreeUpdateInterval         time.Duration
 	BadBatches                     []uint64
 	SealBatchImmediatelyOnOverflow bool
-	MockWitnessGeneration          bool
-	WitnessCacheEnabled            bool
-	WitnessCachePurge              bool
-	WitnessCacheBatchAheadOffset   uint64
-	WitnessCacheBatchBehindOffset  uint64
 	WitnessContractInclusion       []common.Address
 	BadTxAllowance                 uint64
 	RejectLowGasPriceTransactions  bool
@@ -116,18 +106,6 @@ type Zk struct {
 var DefaultZkConfig = Zk{
 	// For X Layer
 	XLayer: DefaultXLayerConfig,
-}
-
-func (c *Zk) ShouldCountersBeUnlimited(l1Recovery bool) bool {
-	return l1Recovery || (c.DisableVirtualCounters && !c.ExecutorStrictMode && !c.HasExecutors()) || c.XLayer.SequencerReplay
-}
-
-func (c *Zk) HasExecutors() bool {
-	return len(c.ExecutorUrls) > 0 && c.ExecutorUrls[0] != ""
-}
-
-func (c *Zk) UseExecutors() bool {
-	return c.HasExecutors() && c.ExecutorEnabled
 }
 
 // ShouldImportInitialBatch returns true in case initial batch config file name is non-empty string.

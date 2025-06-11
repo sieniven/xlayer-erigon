@@ -248,7 +248,7 @@ func (s *SMT) SetStorage(ctx context.Context, logPrefix string, accChanges map[l
 			return nil, nil, err
 		}
 		if !isDelete {
-			if err = s.InsertKeySource(&keyBalance, utils.KEY_BALANCE, &addr, &common.Hash{}); err != nil {
+			if err = s.InsertKeySource(&keyBalance, utils.KEY_BALANCE, &addr, &libcommon.Hash{}); err != nil {
 				return nil, nil, err
 			}
 		} else {
@@ -263,7 +263,7 @@ func (s *SMT) SetStorage(ctx context.Context, logPrefix string, accChanges map[l
 			return nil, nil, err
 		}
 		if !isDelete {
-			if err = s.InsertKeySource(&keyNonce, utils.KEY_NONCE, &addr, &common.Hash{}); err != nil {
+			if err = s.InsertKeySource(&keyNonce, utils.KEY_NONCE, &addr, &libcommon.Hash{}); err != nil {
 				return nil, nil, err
 			}
 		} else {
@@ -294,7 +294,7 @@ func (s *SMT) SetStorage(ctx context.Context, logPrefix string, accChanges map[l
 			return nil, nil, err
 		}
 		if !isDelete {
-			if err = s.InsertKeySource(&keyContractCode, utils.SC_CODE, &addr, &common.Hash{}); err != nil {
+			if err = s.InsertKeySource(&keyContractCode, utils.SC_CODE, &addr, &libcommon.Hash{}); err != nil {
 				return nil, nil, err
 			}
 		} else {
@@ -308,7 +308,7 @@ func (s *SMT) SetStorage(ctx context.Context, logPrefix string, accChanges map[l
 			return nil, nil, err
 		}
 		if !isDelete {
-			if err = s.InsertKeySource(&keyContractLength, utils.SC_LENGTH, &addr, &common.Hash{}); err != nil {
+			if err = s.InsertKeySource(&keyContractLength, utils.SC_LENGTH, &addr, &libcommon.Hash{}); err != nil {
 				return nil, nil, err
 			}
 		} else {
@@ -337,7 +337,7 @@ func (s *SMT) SetStorage(ctx context.Context, logPrefix string, accChanges map[l
 			}
 			if !isDelete {
 				sp, _ := utils.StrValToBigInt(k)
-				hash := common.BigToHash(sp)
+				hash := libcommon.BigToHash(sp)
 				if err = s.InsertKeySource(&keyStoragePosition, utils.SC_STORAGE, &addr, &hash); err != nil {
 					return nil, nil, err
 				}
