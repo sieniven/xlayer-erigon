@@ -142,7 +142,7 @@ func FlushDataToDB(ctx context.Context, db *mdbx.MdbxKV, logger log.Logger, cach
 	cache.TruncateSmtCacheList(saveData.BlockHeight)
 }
 
-func ListenTxKafkaConsumer(ctx context.Context, txKafkaConsumer *kafka.KafkaConsumer, config ethconfig.XLayerConfig, logger log.Logger, txInfoMap *zktypes.TxInfoMap, headerMap *zktypes.HeaderMap, stateCache *state.PlainStateCache) {
+func ListenTxKafkaConsumer(ctx context.Context, txKafkaConsumer *kafka.KafkaConsumer, config ethconfig.XLayerConfig, logger log.Logger, stateCache *state.PlainStateCache, statelessCache *zktypes.StatelessCache) {
 	if sequencer.IsSequencer() {
 		logger.Info("txKafkaConsumer is disabled on sequencer, skipping")
 		return
@@ -167,7 +167,7 @@ func ListenTxKafkaConsumer(ctx context.Context, txKafkaConsumer *kafka.KafkaCons
 		case <-ctx.Done():
 			return
 		case header := <-headersChan:
-			headerMap.Put(header.Number.Uint64(), &header)
+			statelessCache.PutHeader(header.Number.Uint64(), &header)
 			logger.Info("Received header message", "header", header)
 		case txMsg := <-txMsgsChan:
 			// 1. Process non-state data
@@ -186,7 +186,7 @@ func ListenTxKafkaConsumer(ctx context.Context, txKafkaConsumer *kafka.KafkaCons
 				logger.Error("failed to consume tx innerTxs message from kafka", "error", err)
 				continue
 			}
-			txInfoMap.Put(tx.Hash(), tx, receipt, innerTxs)
+			statelessCache.PutTxInfo(blockNumber, tx.Hash(), tx, receipt, innerTxs)
 
 			// 2. Process state data
 			changeset, err := txMsg.GetChangeset()

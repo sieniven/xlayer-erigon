@@ -254,9 +254,8 @@ type Ethereum struct {
 	// For X Layer, kafka
 	txKafkaProducer *kafka.KafkaProducer
 	txKafkaConsumer *kafka.KafkaConsumer
-	txInfoMap       *zktypes.TxInfoMap
-	headerMap       *zktypes.HeaderMap
 	stateCache      *state.PlainStateCache
+	statelessCache  *zktypes.StatelessCache
 	headerChan      chan *types.Header
 	txInfoChan      chan *state.TxInfo
 }
@@ -1294,9 +1293,8 @@ func New(ctx context.Context, stack *node.Node, config *ethconfig.Config, logger
 					return nil, err
 				}
 				backend.txKafkaConsumer = kafkaConsumer
-				backend.txInfoMap = zktypes.NewTxInfoMap()
-				backend.headerMap = zktypes.NewHeaderMap()
 				backend.stateCache = nil
+				backend.statelessCache = zktypes.NewStatelessCache()
 			}
 
 			backend.syncStages = stages2.NewDefaultZkStages(
@@ -1315,8 +1313,7 @@ func New(ctx context.Context, stack *node.Node, config *ethconfig.Config, logger
 				streamClient,
 				dataStreamServer,
 				l1InfoTreeUpdater,
-				backend.txInfoMap,
-				backend.headerMap,
+				backend.statelessCache,
 			)
 
 			backend.syncUnwindOrder = zkStages.ZkUnwindOrder
@@ -1437,7 +1434,7 @@ func (s *Ethereum) Init(stack *node.Node, config *ethconfig.Config, chainConfig 
 
 	var gpCache *jsonrpc.GasPriceCache
 	// For X Layer, split db
-	s.apiList, gpCache = jsonrpc.APIList(chainKv, s.smtDB, ethRpcClient, txPoolRpcClient, s.txPool2, miningRpcClient, ff, stateCache, blockReader, s.agg, &httpRpcCfg, s.engine, config, s.l1Syncer, s.logger, dataStreamServer, s.gasTracker, s.stagedSync.GetCache(), s.txInfoMap, s.headerMap, s.stateCache)
+	s.apiList, gpCache = jsonrpc.APIList(chainKv, s.smtDB, ethRpcClient, txPoolRpcClient, s.txPool2, miningRpcClient, ff, stateCache, blockReader, s.agg, &httpRpcCfg, s.engine, config, s.l1Syncer, s.logger, dataStreamServer, s.gasTracker, s.stagedSync.GetCache(), s.stateCache, s.statelessCache)
 
 	// For X Layer
 	if s.txPool2 != nil && gpCache != nil {
@@ -2007,7 +2004,7 @@ func (s *Ethereum) Start() error {
 
 		go stages2.StageLoop(s.sentryCtx, s.chainDB, s.stagedSync, s.sentriesClient.Hd, s.waitForStageLoopStop, s.config.Sync.LoopThrottle, s.logger, s.blockReader, hook, s.config.ForcePartialCommit)
 
-		go stages2.ListenTxKafkaConsumer(s.sentryCtx, s.txKafkaConsumer, s.config.Zk.XLayer, s.logger, s.txInfoMap, s.headerMap, s.stateCache)
+		go stages2.ListenTxKafkaConsumer(s.sentryCtx, s.txKafkaConsumer, s.config.Zk.XLayer, s.logger, s.stateCache, s.statelessCache)
 
 		go stages2.ListenTxKafkaProducer(s.sentryCtx, s.txKafkaProducer, s.config.Zk.XLayer, s.logger, s.headerChan, s.txInfoChan)
 	}

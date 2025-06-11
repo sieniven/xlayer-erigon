@@ -34,9 +34,8 @@ func APIList(db kv.RoDB, dbsmt kv.RoDB, eth rpchelper.ApiBackend, txPool txpool.
 	gasTracker *RecurringL1GasPriceTracker,
 	// For X Layer
 	cache *smt.SmtCache,
-	txInfoMap *zktypes.TxInfoMap,
-	headerMap *zktypes.HeaderMap,
-	pStateCache state.StateReader,
+	kStateCache state.StateReader,
+	kStatelessCache *zktypes.StatelessCache,
 ) (list []rpc.API, gpCache *GasPriceCache) {
 	// non-sequencer nodes should forward on requests to the sequencer
 	rpcUrl := ""
@@ -81,7 +80,7 @@ func APIList(db kv.RoDB, dbsmt kv.RoDB, eth rpchelper.ApiBackend, txPool txpool.
 	// For X Layer, split db and ac
 	zkEvmImpl := NewZkEvmAPI(ethImpl, db, dbsmt, cfg.ReturnDataLimit, ethCfg, l1Syncer, rpcUrl, dataStreamServer, cache)
 	// For X Layer, realtime response
-	realtimeImpl := NewRealtimeAPI(ethImpl, txInfoMap, headerMap, pStateCache)
+	realtimeImpl := NewRealtimeAPI(ethImpl, kStateCache, kStatelessCache)
 
 	if cfg.GraphQLEnabled {
 		list = append(list, rpc.API{
