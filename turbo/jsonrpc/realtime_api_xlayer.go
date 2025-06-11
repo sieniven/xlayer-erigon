@@ -6,6 +6,7 @@ import (
 
 	"github.com/ledgerwatch/erigon-lib/common"
 	"github.com/ledgerwatch/erigon-lib/common/hexutil"
+	"github.com/ledgerwatch/erigon-lib/common/hexutility"
 	"github.com/ledgerwatch/erigon/core/state"
 	"github.com/ledgerwatch/erigon/rpc"
 	zktypes "github.com/ledgerwatch/erigon/zk/types"
@@ -17,9 +18,9 @@ type RealtimeAPI interface {
 	BlockNumber(ctx context.Context) (hexutil.Uint64, error)
 	GetBlockTransactionCountByNumber(ctx context.Context, blockNr rpc.BlockNumber) (*hexutil.Uint, error)
 
-	// // Transaction related (see ./realtime_txs_xlayer.go)
-	// GetTransactionByHash(ctx context.Context, hash common.Hash, includeExtraInfo *bool) (interface{}, error)
-	// GetRawTransactionByHash(ctx context.Context, hash common.Hash) (hexutility.Bytes, error)
+	// Transaction related (see ./realtime_txs_xlayer.go)
+	GetTransactionByHash(ctx context.Context, hash common.Hash, includeExtraInfo *bool) (interface{}, error)
+	GetRawTransactionByHash(ctx context.Context, hash common.Hash) (hexutility.Bytes, error)
 
 	// Receipt related (see ./realtime_receipts_xlayer.go)
 	GetTransactionReceipt(ctx context.Context, hash common.Hash) (map[string]interface{}, error)
@@ -56,7 +57,7 @@ func NewRealtimeAPI(
 	}
 }
 
-func (api *RealtimeAPIImpl) GetBlockNumber(blockNr rpc.BlockNumber) (uint64, bool, error) {
+func (api *RealtimeAPIImpl) getBlockNumber(blockNr rpc.BlockNumber) (uint64, bool, error) {
 	currentBlockNumber := api.statelessCache.GetHeight()
 	if currentBlockNumber == 0 {
 		return 0, false, fmt.Errorf("no block number found in stateless cache")

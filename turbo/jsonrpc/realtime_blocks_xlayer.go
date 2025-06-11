@@ -21,7 +21,7 @@ func (api *RealtimeAPIImpl) BlockNumber(ctx context.Context) (hexutil.Uint64, er
 // GetBlockTransactionCountByNumber implements realtime_getBlockTransactionCountByNumber.
 // Returns the number of transactions in a block given the block's block number.
 func (api *RealtimeAPIImpl) GetBlockTransactionCountByNumber(ctx context.Context, blockNr rpc.BlockNumber) (*hexutil.Uint, error) {
-	blockNum, _, err := api.GetBlockNumber(blockNr)
+	blockNum, _, err := api.getBlockNumber(blockNr)
 	if err != nil {
 		return api.ethApi.GetBlockTransactionCountByNumber(ctx, blockNr)
 	}
