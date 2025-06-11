@@ -13,7 +13,6 @@ import (
 
 	"github.com/ledgerwatch/erigon-lib/kv"
 	"github.com/ledgerwatch/erigon/core/state"
-	"github.com/ledgerwatch/erigon/core/types"
 	"github.com/ledgerwatch/erigon/zk/kafka"
 	kafkaTypes "github.com/ledgerwatch/erigon/zk/kafka/types"
 	"github.com/ledgerwatch/erigon/zk/sequencer"
@@ -142,7 +141,7 @@ func FlushDataToDB(ctx context.Context, db *mdbx.MdbxKV, logger log.Logger, cach
 	cache.TruncateSmtCacheList(saveData.BlockHeight)
 }
 
-func ListenTxKafkaConsumer(ctx context.Context, txKafkaConsumer *kafka.KafkaConsumer, config ethconfig.XLayerConfig, logger log.Logger, txInfoMap *zktypes.TxInfoMap, headerMap *zktypes.HeaderMap, stateCache *state.PlainStateCache) {
+func ListenTxKafkaConsumer(ctx context.Context, txKafkaConsumer *kafka.KafkaConsumer, config ethconfig.XLayerConfig, logger log.Logger, txInfoMap *zktypes.TxInfoMap, blockInfoMap *zktypes.BlockInfoMap, stateCache *state.PlainStateCache) {
 	if sequencer.IsSequencer() {
 		logger.Info("txKafkaConsumer is disabled on sequencer, skipping")
 		return
@@ -154,11 +153,11 @@ func ListenTxKafkaConsumer(ctx context.Context, txKafkaConsumer *kafka.KafkaCons
 	}
 
 	// Start the kafka consumer
-	headersChan := make(chan types.Header, MaxKafkaChanSize)
+	blockMsgsChan := make(chan kafkaTypes.BlockMessage, MaxKafkaChanSize)
 	txMsgsChan := make(chan kafkaTypes.TransactionMessage, MaxKafkaChanSize)
 	errorMsgsChan := make(chan kafkaTypes.ErrorTriggerMessage, MaxKafkaChanSize)
 	errorChan := make(chan error, 1)
-	go txKafkaConsumer.ConsumeKafka(ctx, headersChan, txMsgsChan, errorMsgsChan, errorChan, logger)
+	go txKafkaConsumer.ConsumeKafka(ctx, blockMsgsChan, txMsgsChan, errorMsgsChan, errorChan, logger)
 
 	// TODO: Start snapshot and sync height with incoming kafka messages
 
@@ -166,9 +165,15 @@ func ListenTxKafkaConsumer(ctx context.Context, txKafkaConsumer *kafka.KafkaCons
 		select {
 		case <-ctx.Done():
 			return
-		case header := <-headersChan:
-			headerMap.Put(header.Number.Uint64(), &header)
-			logger.Info("Received header message", "header", header)
+		case blockMsg := <-blockMsgsChan:
+			header, prevBlockTxCount, err := blockMsg.GetBlockInfo()
+			if err != nil {
+				logger.Error("failed to consume block message from kafka", "error", err)
+				continue
+			}
+			blockInfoMap.PutHeader(header.Number.Uint64(), header)
+			blockInfoMap.PutTxCount(header.Number.Uint64()-1, prevBlockTxCount)
+			logger.Info("Received block message", "header", header, "prevBlockTxCount", prevBlockTxCount)
 		case txMsg := <-txMsgsChan:
 			// 1. Process non-state data
 			tx, blockNumber, err := txMsg.GetTransaction()
@@ -215,7 +220,7 @@ func ListenTxKafkaProducer(
 	txKafkaProducer *kafka.KafkaProducer,
 	config ethconfig.XLayerConfig,
 	logger log.Logger,
-	headersChan chan *types.Header,
+	blockInfoChan chan *zktypes.BlockInfo,
 	txInfoChan chan *state.TxInfo) {
 	if !sequencer.IsSequencer() {
 		logger.Info("txKafkaProducer is disabled on non-sequencer, skipping")
@@ -234,10 +239,10 @@ func ListenTxKafkaProducer(
 		select {
 		case <-ctx.Done():
 			return
-		case header := <-headersChan:
-			currHeight = header.Number.Uint64()
+		case blockInfo := <-blockInfoChan:
+			currHeight = blockInfo.Header.Number.Uint64()
 			// log.Info("Kafka prepare to send header", "header", header)
-			err = txKafkaProducer.SendKafkaBlockHeader(ctx, header)
+			err = txKafkaProducer.SendKafkaBlockInfo(ctx, blockInfo.Header, blockInfo.TxCount)
 		case txInfo := <-txInfoChan:
 			currHeight = txInfo.BlockNumber
 			changeset := state.CollectChangeset(txInfo.Entries)

@@ -22,11 +22,13 @@ import (
 	"github.com/ledgerwatch/erigon/zk/metrics"
 	zktx "github.com/ledgerwatch/erigon/zk/tx"
 	"github.com/ledgerwatch/erigon/zk/txpool"
+	zktypes "github.com/ledgerwatch/erigon/zk/types"
 	"github.com/ledgerwatch/erigon/zk/utils"
 	"github.com/ledgerwatch/log/v3"
 )
 
 var shouldCheckForExecutionAndDataStreamAlignment = true
+var prevBlockTxCount = uint64(0)
 
 func SpawnSequencingStage(
 	s *stagedsync.StageState,
@@ -457,7 +459,10 @@ BatchLoop:
 
 		// For X Layer, send kafka block header
 		if cfg.zk.XLayer.Kafka.Enable {
-			cfg.kafkaHeaderChan <- header
+			cfg.kafkaBlockInfoChan <- &zktypes.BlockInfo{
+				Header:  header,
+				TxCount: prevBlockTxCount,
+			}
 		}
 
 	OuterLoopTransactions:
@@ -874,6 +879,8 @@ BatchLoop:
 		if err := streamWriter.WriteBlockDetailsToDatastream(batchState.forkId, batchState.batchNumber, batchState.builtBlocks); err != nil {
 			return err
 		}
+
+		prevBlockTxCount = uint64(len(batchState.blockState.builtBlockElements.transactions))
 
 		// lets commit everything after updateStreamAndCheckRollback no matter of its result unless
 		// we're in L1 recovery where losing some blocks on restart doesn't matter

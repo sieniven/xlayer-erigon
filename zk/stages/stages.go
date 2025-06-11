@@ -241,7 +241,7 @@ func DefaultZkStages(
 	txLookup stages.TxLookupCfg,
 	finish stages.FinishCfg,
 	txInfoMap *types.TxInfoMap,
-	headerMap *types.HeaderMap,
+	blockInfoMap *types.BlockInfoMap,
 	test bool,
 ) []*stages.Stage {
 	return []*stages.Stage{
@@ -320,7 +320,7 @@ func DefaultZkStages(
 			ID:          stages2.Execution,
 			Description: "Execute blocks w/o hash checks",
 			Forward: func(firstCycle bool, badBlockUnwind bool, s *stages.StageState, u stages.Unwinder, txc wrap.TxContainer, logger log.Logger) error {
-				return stages.SpawnExecuteBlocksStageZk(s, u, txc.Tx, 0, ctx, exec, firstCycle, txInfoMap, headerMap)
+				return stages.SpawnExecuteBlocksStageZk(s, u, txc.Tx, 0, ctx, exec, firstCycle, txInfoMap, blockInfoMap)
 			},
 			Unwind: func(firstCycle bool, u *stages.UnwindState, s *stages.StageState, txc wrap.TxContainer, logger log.Logger) error {
 				return stages.UnwindExecutionStageZk(u, s, txc.Tx, ctx, exec, firstCycle)

@@ -9,7 +9,6 @@ import (
 	"github.com/ledgerwatch/erigon/consensus"
 	"github.com/ledgerwatch/erigon/core/rawdb/blockio"
 	state2 "github.com/ledgerwatch/erigon/core/state"
-	"github.com/ledgerwatch/erigon/core/types"
 	"github.com/ledgerwatch/erigon/core/vm"
 	"github.com/ledgerwatch/erigon/eth/ethconfig"
 	"github.com/ledgerwatch/erigon/eth/stagedsync"
@@ -42,7 +41,7 @@ func NewDefaultZkStages(ctx context.Context,
 	dataStreamServer server.DataStreamServer,
 	infoTreeUpdater *l1infotree.Updater,
 	txInfoMap *zktypes.TxInfoMap,
-	headerMap *zktypes.HeaderMap,
+	blockInfoMap *zktypes.BlockInfoMap,
 ) []*stagedsync.Stage {
 	dirs := cfg.Dirs
 	blockWriter := blockio.NewBlockWriter(cfg.HistoryV3)
@@ -92,7 +91,7 @@ func NewDefaultZkStages(ctx context.Context,
 		stagedsync.StageTxLookupCfg(db, cfg.Prune, dirs.Tmp, controlServer.ChainConfig.Bor, blockReader),
 		stagedsync.StageFinishCfg(db, dirs.Tmp, forkValidator),
 		txInfoMap,
-		headerMap,
+		blockInfoMap,
 		runInTestMode)
 }
 
@@ -116,7 +115,7 @@ func NewSequencerZkStages(ctx context.Context,
 	txPoolDb kv.RwDB,
 	infoTreeUpdater *l1infotree.Updater,
 	hook *Hook,
-	kafkaHeaderChan chan *types.Header,
+	kafkaBlockInfoChan chan *zktypes.BlockInfo,
 	kafkaTxInfoChan chan *state2.TxInfo,
 ) []*stagedsync.Stage {
 	dirs := cfg.Dirs
@@ -158,7 +157,7 @@ func NewSequencerZkStages(ctx context.Context,
 			uint16(cfg.YieldSize),
 			infoTreeUpdater,
 			hook,
-			kafkaHeaderChan,
+			kafkaBlockInfoChan,
 			kafkaTxInfoChan,
 		),
 		stagedsync.StageHashStateCfg(db, dirs, cfg.HistoryV3, agg),

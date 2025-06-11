@@ -68,11 +68,16 @@ func (client *KafkaProducer) Close() error {
 	return client.producer.Close()
 }
 
-func (client *KafkaProducer) SendKafkaBlockHeader(ctx context.Context, header *types.Header) error {
-	// Marshal header to JSON
-	jsonData, err := header.MarshalJSON()
+func (client *KafkaProducer) SendKafkaBlockInfo(ctx context.Context, header *types.Header, prevBlockTxCount uint64) error {
+	msg, err := kafkaTypes.ToKafkaBlockMessage(header, prevBlockTxCount)
 	if err != nil {
-		return fmt.Errorf("error marshaling block header: %v", err)
+		return fmt.Errorf("SendKafkaBlockInfo error: %v", err)
+	}
+
+	// Marshal message to JSON
+	jsonData, err := msg.MarshalJSON()
+	if err != nil {
+		return fmt.Errorf("error marshaling block message: %v", err)
 	}
 
 	// Create Kafka message

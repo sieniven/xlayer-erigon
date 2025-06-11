@@ -6,17 +6,9 @@ import (
 
 	"github.com/holiman/uint256"
 	libcommon "github.com/ledgerwatch/erigon-lib/common"
-	"github.com/ledgerwatch/erigon/core/types"
-	types1 "github.com/ledgerwatch/erigon/core/types"
+	ethTypes "github.com/ledgerwatch/erigon/core/types"
 	zktypes "github.com/ledgerwatch/erigon/zk/types"
 )
-
-type TxInfo struct {
-	Transaction types.Transaction
-	Receipt     *types.Receipt
-	InnerTxs    []*zktypes.InnerTx
-	Changeset   *zktypes.Changeset
-}
 
 // TransactionMessage represents the structure of the transaction message to be sent to Kafka
 type TransactionMessage struct {
@@ -48,7 +40,7 @@ type TransactionMessage struct {
 	BlobVersionedHashes []string `json:"blobVersionedHashes"`
 
 	// Receipt data
-	Receipt *types1.Receipt `json:"receipt"`
+	Receipt *ethTypes.Receipt `json:"receipt"`
 
 	// Inner transactions
 	InnerTxs []*zktypes.InnerTx `json:"innerTxs"`
@@ -57,11 +49,11 @@ type TransactionMessage struct {
 	Changeset *zktypes.Changeset `json:"changeset"`
 }
 
-func ToKafkaTransactionMessage(tx types1.Transaction, receipt *types1.Receipt, innerTxs []*zktypes.InnerTx, changeset *zktypes.Changeset, blockNumber uint64) (txMsg TransactionMessage, err error) {
+func ToKafkaTransactionMessage(tx ethTypes.Transaction, receipt *ethTypes.Receipt, innerTxs []*zktypes.InnerTx, changeset *zktypes.Changeset, blockNumber uint64) (txMsg TransactionMessage, err error) {
 	// Parse tx
 	switch tx.Type() {
-	case types1.LegacyTxType:
-		if _, ok := tx.(*types1.LegacyTx); !ok {
+	case ethTypes.LegacyTxType:
+		if _, ok := tx.(*ethTypes.LegacyTx); !ok {
 			return TransactionMessage{}, fmt.Errorf("incorrect type, failed to encode legacy tx")
 		}
 
@@ -69,8 +61,8 @@ func ToKafkaTransactionMessage(tx types1.Transaction, receipt *types1.Receipt, i
 		if err != nil {
 			return TransactionMessage{}, fmt.Errorf("parse legacy tx error: %w", err)
 		}
-	case types1.AccessListTxType:
-		if _, ok := tx.(*types1.AccessListTx); !ok {
+	case ethTypes.AccessListTxType:
+		if _, ok := tx.(*ethTypes.AccessListTx); !ok {
 			return TransactionMessage{}, fmt.Errorf("incorrect type, failed to encode access list tx")
 		}
 
@@ -78,8 +70,8 @@ func ToKafkaTransactionMessage(tx types1.Transaction, receipt *types1.Receipt, i
 		if err != nil {
 			return TransactionMessage{}, fmt.Errorf("parse accesslist tx error: %w", err)
 		}
-	case types1.DynamicFeeTxType:
-		if _, ok := tx.(*types1.DynamicFeeTransaction); !ok {
+	case ethTypes.DynamicFeeTxType:
+		if _, ok := tx.(*ethTypes.DynamicFeeTransaction); !ok {
 			return TransactionMessage{}, fmt.Errorf("incorrect type, failed to encode dynamic fee tx")
 		}
 
@@ -87,11 +79,11 @@ func ToKafkaTransactionMessage(tx types1.Transaction, receipt *types1.Receipt, i
 		if err != nil {
 			return TransactionMessage{}, fmt.Errorf("parse dynamic fee tx error: %w", err)
 		}
-	case types1.BlobTxType:
+	case ethTypes.BlobTxType:
 		switch tx.(type) {
-		case *types1.BlobTx:
+		case *ethTypes.BlobTx:
 			// continue
-		case *types1.BlobTxWrapper:
+		case *ethTypes.BlobTxWrapper:
 			// continue
 		default:
 			return TransactionMessage{}, fmt.Errorf("incorrect type, failed to encode blob tx")
@@ -113,33 +105,33 @@ func ToKafkaTransactionMessage(tx types1.Transaction, receipt *types1.Receipt, i
 	return txMsg, nil
 }
 
-func (msg TransactionMessage) GetTransaction() (types1.Transaction, uint64, error) {
+func (msg TransactionMessage) GetTransaction() (ethTypes.Transaction, uint64, error) {
 	blockNumber := msg.BlockNumber
 
 	// Get tx
 	switch msg.Type {
-	case types1.LegacyTxType:
+	case ethTypes.LegacyTxType:
 		tx, err := msg.toLegacyTx()
 		if err != nil {
 			return nil, blockNumber, err
 		}
 
 		return &tx, blockNumber, nil
-	case types1.AccessListTxType:
+	case ethTypes.AccessListTxType:
 		tx, err := msg.toAccessListTx()
 		if err != nil {
 			return nil, blockNumber, err
 		}
 
 		return &tx, blockNumber, nil
-	case types1.DynamicFeeTxType:
+	case ethTypes.DynamicFeeTxType:
 		tx, err := msg.toDynamicFeeTx()
 		if err != nil {
 			return nil, blockNumber, err
 		}
 
 		return &tx, blockNumber, nil
-	case types1.BlobTxType:
+	case ethTypes.BlobTxType:
 		tx, err := msg.toBlobTx()
 		if err != nil {
 			return nil, blockNumber, err
@@ -151,7 +143,7 @@ func (msg TransactionMessage) GetTransaction() (types1.Transaction, uint64, erro
 	}
 }
 
-func (msg TransactionMessage) GetReceipt() (*types1.Receipt, error) {
+func (msg TransactionMessage) GetReceipt() (*ethTypes.Receipt, error) {
 	if msg.Receipt == nil {
 		return nil, fmt.Errorf("receipt is nil")
 	}
@@ -191,7 +183,7 @@ func (msg TransactionMessage) MarshalJSON() ([]byte, error) {
 		R           uint256.Int        `json:"r"`
 		S           uint256.Int        `json:"s"`
 		GasPrice    string             `json:"gasPrice"`
-		Receipt     *types1.Receipt    `json:"receipt"`
+		Receipt     *ethTypes.Receipt  `json:"receipt"`
 		InnerTxs    []*zktypes.InnerTx `json:"innerTxs"`
 		Changeset   *zktypes.Changeset `json:"changeset"`
 	}
@@ -218,7 +210,7 @@ func (msg TransactionMessage) MarshalJSON() ([]byte, error) {
 		// Handle nil logs
 		receipt := *msg.Receipt
 		if receipt.Logs == nil {
-			receipt.Logs = []*types1.Log{}
+			receipt.Logs = []*ethTypes.Log{}
 		}
 
 		// Handle nil topics

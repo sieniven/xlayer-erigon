@@ -36,7 +36,7 @@ import (
 	"github.com/ledgerwatch/erigon/zk/utils"
 )
 
-func SpawnExecuteBlocksStageZk(s *StageState, u Unwinder, tx kv.RwTx, toBlock uint64, ctx context.Context, cfg ExecuteBlockCfg, initialCycle bool, txInfoMap *zktypes.TxInfoMap, headerMap *zktypes.HeaderMap) (err error) {
+func SpawnExecuteBlocksStageZk(s *StageState, u Unwinder, tx kv.RwTx, toBlock uint64, ctx context.Context, cfg ExecuteBlockCfg, initialCycle bool, txInfoMap *zktypes.TxInfoMap, blockInfoMap *zktypes.BlockInfoMap) (err error) {
 	if cfg.historyV3 {
 		if err = ExecBlockV3(s, u, wrap.TxContainer{Tx: tx}, toBlock, ctx, cfg, initialCycle, log.New()); err != nil {
 			return fmt.Errorf("ExecBlockV3: %w", err)
@@ -219,7 +219,7 @@ Loop:
 			for _, tx := range block.Transactions() {
 				txInfoMap.Delete(tx.Hash())
 			}
-			headerMap.Delete(block.NumberU64())
+			blockInfoMap.Delete(block.NumberU64())
 		}
 	}
 

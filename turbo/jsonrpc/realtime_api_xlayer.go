@@ -18,21 +18,21 @@ type RealtimeAPIImpl struct {
 	ethApi *APIImpl
 
 	// For X Layer, realtime response
-	txInfoMap *zktypes.TxInfoMap
-	headerMap *zktypes.HeaderMap
+	txInfoMap    *zktypes.TxInfoMap
+	blockInfoMap *zktypes.BlockInfoMap
 }
 
 // NewRealtimeAPI returns RealtimeAPIImpl instance
 func NewRealtimeAPI(
 	base *APIImpl,
 	txInfoMap *zktypes.TxInfoMap,
-	headerMap *zktypes.HeaderMap,
+	blockInfoMap *zktypes.BlockInfoMap,
 ) *RealtimeAPIImpl {
 
 	return &RealtimeAPIImpl{
-		ethApi:    base,
-		txInfoMap: txInfoMap,
-		headerMap: headerMap,
+		ethApi:       base,
+		txInfoMap:    txInfoMap,
+		blockInfoMap: blockInfoMap,
 	}
 }
 
@@ -41,7 +41,7 @@ func (api *RealtimeAPIImpl) GetTransactionReceipt(ctx context.Context, hash comm
 	if !ok {
 		return api.ethApi.GetTransactionReceipt(ctx, hash)
 	}
-	header, ok := api.headerMap.Get(receipt.BlockNumber.Uint64())
+	header, _, ok := api.blockInfoMap.Get(receipt.BlockNumber.Uint64())
 	if !ok {
 		return api.ethApi.GetTransactionReceipt(ctx, hash)
 	}

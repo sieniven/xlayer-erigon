@@ -9,7 +9,7 @@ import (
 	libcommon "github.com/ledgerwatch/erigon-lib/common"
 	"github.com/ledgerwatch/erigon/common"
 	"github.com/ledgerwatch/erigon/common/u256"
-	types1 "github.com/ledgerwatch/erigon/core/types"
+	ethTypes "github.com/ledgerwatch/erigon/core/types"
 	"github.com/ledgerwatch/erigon/core/vm"
 	"github.com/ledgerwatch/erigon/eth/ethconfig"
 	kafkaTypes "github.com/ledgerwatch/erigon/zk/kafka/types"
@@ -23,7 +23,7 @@ var (
 	testToAddr   = libcommon.HexToAddress("b94f5374fce5edbc8e2a8697c15331677e6ebf0b")
 	sigBytes     = "98ff921201554726367d2be8c804a7ff89ccf285ebc57dff8ae4c44b9c19ac4a8887321be575c8095f789dd4c743dfe42c1820f9231f98a962b210e3ac2452a301"
 
-	rightvrsTx, _ = types1.NewTransaction(
+	rightvrsTx, _ = ethTypes.NewTransaction(
 		3,
 		testToAddr,
 		uint256.NewInt(10),
@@ -31,14 +31,14 @@ var (
 		u256.Num1,
 		libcommon.FromHex("5544"),
 	).WithSignature(
-		*types1.LatestSignerForChainID(nil),
+		*ethTypes.LatestSignerForChainID(nil),
 		libcommon.Hex2Bytes(sigBytes),
 	)
 
-	rightvrsTxReceipt = &types1.Receipt{
+	rightvrsTxReceipt = &ethTypes.Receipt{
 		PostState:         libcommon.Hash{2}.Bytes(),
 		CumulativeGasUsed: 3,
-		Logs: []*types1.Log{
+		Logs: []*ethTypes.Log{
 			{Address: libcommon.BytesToAddress([]byte{0x22})},
 			{Address: libcommon.BytesToAddress([]byte{0x02, 0x22})},
 		},
@@ -61,7 +61,7 @@ var (
 	}
 
 	difficulty, _ = new(big.Int).SetString("8398142613866510000000000000000000000000000000", 10)
-	blockHeader   = &types1.Header{
+	blockHeader   = &ethTypes.Header{
 		ParentHash:  libcommon.HexToHash("0x8b00fcf1e541d371a3a1b79cc999a85cc3db5ee5637b5159646e1acd3613fd15"),
 		UncleHash:   libcommon.HexToHash("1dcc4de8dec75d7aab85b567b6ccd41ad312451b948a7413f0a142fd40d49347"),
 		Coinbase:    libcommon.HexToAddress("0x571846e42308df2dad8ed792f44a8bfddf0acb4d"),
@@ -93,7 +93,7 @@ func TestKafkaConsumer(t *testing.T) {
 	consumer, err := NewKafkaConsumer(cfg)
 	assert.NilError(t, err)
 	ctx, ctxWithCancel := context.WithCancel(context.Background())
-	headersChan := make(chan types1.Header, 10)
+	headersChan := make(chan kafkaTypes.BlockMessage, 10)
 	txMsgsChan := make(chan kafkaTypes.TransactionMessage, 10)
 	errorMsgsChan := make(chan kafkaTypes.ErrorTriggerMessage, 10)
 	errorChan := make(chan error, 10)
@@ -105,7 +105,7 @@ func TestKafkaConsumer(t *testing.T) {
 		case err := <-errorChan:
 			t.Fatalf("Received error from consumer: %v", err)
 		case txMsg := <-txMsgsChan:
-			kafkaTypes.AssertCommonTx(t, txMsg, rightvrsTx, uint64(i), types1.LegacyTxType)
+			kafkaTypes.AssertCommonTx(t, txMsg, rightvrsTx, uint64(i), ethTypes.LegacyTxType)
 			kafkaTypes.AssertReceipt(t, txMsg, rightvrsTxReceipt)
 			kafkaTypes.AssertInnerTxs(t, txMsg, rightvrsTxInnerTxs)
 			kafkaTypes.AssertChangeseet(t, txMsg, rightvrsTxChangeset)
@@ -118,7 +118,9 @@ func TestKafkaConsumer(t *testing.T) {
 		case err := <-errorChan:
 			t.Fatalf("Received error from consumer: %v", err)
 		case rcvHeader := <-headersChan:
-			kafkaTypes.AssertHeader(t, blockHeader, &rcvHeader)
+			header, _, err := rcvHeader.GetBlockInfo()
+			assert.NilError(t, err)
+			kafkaTypes.AssertHeader(t, blockHeader, header)
 		}
 	}
 
@@ -154,7 +156,7 @@ func TestKafkaProducer(t *testing.T) {
 		err = producer.SendKafkaTransaction(context.Background(), uint64(i), rightvrsTx, rightvrsTxReceipt, rightvrsTxInnerTxs, rightvrsTxChangeset)
 		assert.NilError(t, err)
 
-		err = producer.SendKafkaBlockHeader(context.Background(), blockHeader)
+		err = producer.SendKafkaBlockInfo(context.Background(), blockHeader, 10)
 		assert.NilError(t, err)
 
 		err = producer.SendKafkaErrorTrigger(context.Background(), uint64(i))
