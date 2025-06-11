@@ -287,7 +287,7 @@ func attemptAddTransaction(
 	}
 
 	if cfg.zk.XLayer.Kafka.Enable {
-		ibs.GenerateChangesetSinceSnapshotAndSendTxInfo(snapshot, cfg.txInfoChan, transaction, receipt, innerTxs)
+		ibs.GenerateChangesetSinceSnapshotAndSendTxInfo(snapshot, cfg.kafkaTxInfoChan, transaction, receipt, innerTxs)
 	}
 
 	ibs.FinalizeTx(evm.ChainRules(), noop)

@@ -116,8 +116,8 @@ func NewSequencerZkStages(ctx context.Context,
 	txPoolDb kv.RwDB,
 	infoTreeUpdater *l1infotree.Updater,
 	hook *Hook,
-	headerChan chan *types.Header,
-	txInfoChan chan *state2.TxInfo,
+	kafkaHeaderChan chan *types.Header,
+	kafkaTxInfoChan chan *state2.TxInfo,
 ) []*stagedsync.Stage {
 	dirs := cfg.Dirs
 	blockReader := freezeblocks.NewBlockReader(snapshots, nil)
@@ -158,8 +158,8 @@ func NewSequencerZkStages(ctx context.Context,
 			uint16(cfg.YieldSize),
 			infoTreeUpdater,
 			hook,
-			headerChan,
-			txInfoChan,
+			kafkaHeaderChan,
+			kafkaTxInfoChan,
 		),
 		stagedsync.StageHashStateCfg(db, dirs, cfg.HistoryV3, agg),
 		// For X Layer, split db and ac
