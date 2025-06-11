@@ -8,7 +8,8 @@ import (
 	"github.com/ledgerwatch/erigon-lib/common/hexutility"
 )
 
-// GetTransactionByHash implements eth_getTransactionByHash. Returns information about a transaction given the transaction's hash.
+// GetTransactionByHash implements eth_getTransactionByHash.
+// Returns information about a transaction given the transaction's hash.
 func (api *RealtimeAPIImpl) GetTransactionByHash(ctx context.Context, txnHash common.Hash, includeExtraInfo *bool) (interface{}, error) {
 	txn, _, blockNum, _, ok := api.statelessCache.GetTxInfo(txnHash)
 	if !ok {
@@ -39,7 +40,8 @@ func (api *RealtimeAPIImpl) GetTransactionByHash(ctx context.Context, txnHash co
 	return newRPCTransaction_realtime(txn, blockNum, txnIndex, header.BaseFee), nil
 }
 
-// GetRawTransactionByHash returns the bytes of the transaction for the given hash.
+// GetRawTransactionByHash implements realtime_getRawTransactionByHash.
+// Returns the bytes of the transaction for the given hash.
 func (api *RealtimeAPIImpl) GetRawTransactionByHash(ctx context.Context, hash common.Hash) (hexutility.Bytes, error) {
 	txn, _, _, _, ok := api.statelessCache.GetTxInfo(hash)
 	if !ok || txn == nil {
