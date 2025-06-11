@@ -58,5 +58,6 @@ Outputs = ["stderr"]
 [AggSender]
 CertificateSendInterval = "1m"
 CheckSettledInterval = "5s"
+SaveCertificatesToFilesPath = "/tmp/certificates"
 LossCertType = 0
 ForcedStopBlock = 0
