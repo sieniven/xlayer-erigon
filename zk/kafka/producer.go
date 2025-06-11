@@ -89,3 +89,29 @@ func (client *KafkaProducer) SendKafkaBlockHeader(ctx context.Context, header *t
 
 	return nil
 }
+
+func (client *KafkaProducer) SendKafkaErrorTrigger(ctx context.Context, blockNumber uint64) error {
+	// Create error trigger message
+	msg := kafkaTypes.ErrorTriggerMessage{
+		BlockNumber: blockNumber,
+	}
+	jsonData, err := msg.MarshalJSON()
+	if err != nil {
+		return fmt.Errorf("error marshaling error trigger message: %v", err)
+	}
+
+	// Create Kafka message
+	kafkaMsg := &sarama.ProducerMessage{
+		Topic: client.config.ErrorTopic,
+		Value: sarama.StringEncoder(jsonData),
+		Key:   sarama.StringEncoder(fmt.Sprintf("%d", blockNumber)),
+	}
+
+	// Send message
+	_, _, err = client.producer.SendMessage(kafkaMsg)
+	if err != nil {
+		return fmt.Errorf("error sending message to Kafka: %v", err)
+	}
+
+	return nil
+}

@@ -65,6 +65,7 @@ func ApplyFlagsForEthXLayerConfig(ctx *cli.Context, cfg *ethconfig.Config) {
 			BootstrapServers: strings.Split(ctx.String(utils.KafkaSyncBootstrapServers.Name), ","),
 			BlockTopic:       ctx.String(utils.KafkaSyncBlockTopic.Name),
 			TxTopic:          ctx.String(utils.KafkaSyncTxTopic.Name),
+			ErrorTopic:       ctx.String(utils.KafkaSyncErrorTopic.Name),
 			ClientID:         ctx.String(utils.KafkaSyncClientID.Name),
 		},
 	}

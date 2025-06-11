@@ -37,13 +37,15 @@ func NewKafkaConsumer(config ethconfig.KafkaConfig) (*KafkaConsumer, error) {
 }
 
 type consumerGroupHandler struct {
-	ctx         context.Context
-	headersChan chan types1.Header
-	txMsgsChan  chan kafkaTypes.TransactionMessage
-	errorChan   chan error
-	logger      log.Logger
-	txTopic     string
-	blockTopic  string
+	ctx           context.Context
+	headersChan   chan types1.Header
+	txMsgsChan    chan kafkaTypes.TransactionMessage
+	errorMsgsChan chan kafkaTypes.ErrorTriggerMessage
+	errorChan     chan error
+	logger        log.Logger
+	txTopic       string
+	blockTopic    string
+	errorTopic    string
 }
 
 func (h *consumerGroupHandler) Setup(session sarama.ConsumerGroupSession) error {
@@ -74,7 +76,7 @@ func (h *consumerGroupHandler) ConsumeClaim(session sarama.ConsumerGroupSession,
 					continue
 				}
 
-				// Send message to channel
+				// Send message to header channel
 				select {
 				case h.headersChan <- header:
 					session.MarkMessage(msg, "")
@@ -90,9 +92,25 @@ func (h *consumerGroupHandler) ConsumeClaim(session sarama.ConsumerGroupSession,
 					continue
 				}
 
-				// Send message to channel
+				// Send message to tx channel
 				select {
 				case h.txMsgsChan <- txMsg:
+					session.MarkMessage(msg, "")
+				case <-h.ctx.Done():
+					err := fmt.Errorf("context cancelled - stopping consume claim")
+					h.errorChan <- err
+					return err
+				}
+			case h.errorTopic:
+				var errorMsg kafkaTypes.ErrorTriggerMessage
+				if err := json.Unmarshal(msg.Value, &errorMsg); err != nil {
+					h.logger.Warn("consume claim error, unmarshaling error trigger message", "error", err)
+					continue
+				}
+
+				// Send message to error trigger channel
+				select {
+				case h.errorMsgsChan <- errorMsg:
 					session.MarkMessage(msg, "")
 				case <-h.ctx.Done():
 					err := fmt.Errorf("context cancelled - stopping consume claim")
@@ -109,18 +127,20 @@ func (h *consumerGroupHandler) ConsumeClaim(session sarama.ConsumerGroupSession,
 }
 
 // ConsumeKafka starts consuming kafka messages from the specified topics
-func (client *KafkaConsumer) ConsumeKafka(ctx context.Context, headersChan chan types1.Header, txMsgsChan chan kafkaTypes.TransactionMessage, errorChan chan error, logger log.Logger) {
+func (client *KafkaConsumer) ConsumeKafka(ctx context.Context, headersChan chan types1.Header, txMsgsChan chan kafkaTypes.TransactionMessage, errorMsgsChan chan kafkaTypes.ErrorTriggerMessage, errorChan chan error, logger log.Logger) {
 	handler := &consumerGroupHandler{
-		ctx:         ctx,
-		headersChan: headersChan,
-		txMsgsChan:  txMsgsChan,
-		errorChan:   errorChan,
-		logger:      logger,
-		txTopic:     client.config.TxTopic,
-		blockTopic:  client.config.BlockTopic,
+		ctx:           ctx,
+		headersChan:   headersChan,
+		txMsgsChan:    txMsgsChan,
+		errorMsgsChan: errorMsgsChan,
+		errorChan:     errorChan,
+		logger:        logger,
+		txTopic:       client.config.TxTopic,
+		blockTopic:    client.config.BlockTopic,
+		errorTopic:    client.config.ErrorTopic,
 	}
 
-	topics := []string{client.config.TxTopic, client.config.BlockTopic}
+	topics := []string{client.config.TxTopic, client.config.BlockTopic, client.config.ErrorTopic}
 	err := client.consumer.Consume(ctx, topics, handler)
 	if err != nil {
 		errorChan <- fmt.Errorf("ConsumeKafkaTransactions error: %v", err)

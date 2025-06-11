@@ -84,9 +84,10 @@ func TestKafkaConsumer(t *testing.T) {
 	rightvrsTx.SetSender(testFromAddr)
 	cfg := ethconfig.KafkaConfig{
 		Enable:           true,
-		BootstrapServers: []string{"0.0.0.0:9095"},
+		BootstrapServers: []string{"0.0.0.0:9094"},
 		BlockTopic:       "xlayer-test-block",
 		TxTopic:          "xlayer-test-tx",
+		ErrorTopic:       "xlayer-test-error",
 		ClientID:         "xlayer-test-consumer",
 	}
 	consumer, err := NewKafkaConsumer(cfg)
@@ -94,8 +95,9 @@ func TestKafkaConsumer(t *testing.T) {
 	ctx, ctxWithCancel := context.WithCancel(context.Background())
 	headersChan := make(chan types1.Header, 10)
 	txMsgsChan := make(chan kafkaTypes.TransactionMessage, 10)
+	errorMsgsChan := make(chan kafkaTypes.ErrorTriggerMessage, 10)
 	errorChan := make(chan error, 10)
-	go consumer.ConsumeKafka(ctx, headersChan, txMsgsChan, errorChan, log.New())
+	go consumer.ConsumeKafka(ctx, headersChan, txMsgsChan, errorMsgsChan, errorChan, log.New())
 
 	// Verify tx messages
 	for i := 0; i < 10; i++ {
@@ -120,6 +122,16 @@ func TestKafkaConsumer(t *testing.T) {
 		}
 	}
 
+	// Verify error trigger messages
+	for i := 0; i < 10; i++ {
+		select {
+		case err := <-errorChan:
+			t.Fatalf("Received error from consumer: %v", err)
+		case errorMsg := <-errorMsgsChan:
+			assert.Equal(t, errorMsg.BlockNumber, uint64(i))
+		}
+	}
+
 	ctxWithCancel()
 	err = consumer.Close()
 	assert.NilError(t, err)
@@ -129,9 +141,10 @@ func TestKafkaProducer(t *testing.T) {
 	rightvrsTx.SetSender(testFromAddr)
 	cfg := ethconfig.KafkaConfig{
 		Enable:           true,
-		BootstrapServers: []string{"0.0.0.0:9095"},
+		BootstrapServers: []string{"0.0.0.0:9094"},
 		BlockTopic:       "xlayer-test-block",
 		TxTopic:          "xlayer-test-tx",
+		ErrorTopic:       "xlayer-test-error",
 		ClientID:         "xlayer-test-consumer",
 	}
 	producer, err := NewKafkaProducer(cfg)
@@ -142,6 +155,9 @@ func TestKafkaProducer(t *testing.T) {
 		assert.NilError(t, err)
 
 		err = producer.SendKafkaBlockHeader(context.Background(), blockHeader)
+		assert.NilError(t, err)
+
+		err = producer.SendKafkaErrorTrigger(context.Background(), uint64(i))
 		assert.NilError(t, err)
 	}
 
