@@ -15,8 +15,9 @@ type StatelessCache struct {
 
 func NewStatelessCache() *StatelessCache {
 	return &StatelessCache{
-		headerMap: NewHeaderMap(),
-		txInfoMap: NewTxInfoMap(),
+		highestHeight: atomic.Uint64{},
+		headerMap:     NewHeaderMap(),
+		txInfoMap:     NewTxInfoMap(),
 	}
 }
 
@@ -33,7 +34,7 @@ func (cache *StatelessCache) GetTxInfo(txHash common.Hash) (ethTypes.Transaction
 	return cache.txInfoMap.GetTx(txHash)
 }
 
-func (cache *StatelessCache) GetBlockTxs(blockNum uint64) []common.Hash {
+func (cache *StatelessCache) GetBlockTxs(blockNum uint64) ([]common.Hash, bool) {
 	return cache.txInfoMap.GetBlockTxs(blockNum)
 }
 

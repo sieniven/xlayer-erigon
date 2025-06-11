@@ -61,12 +61,9 @@ func (rm *TxInfoMap) GetTx(txHash common.Hash) (ethTypes.Transaction, *ethTypes.
 	return txInfo.Tx, txInfo.Receipt, txInfo.InnerTxs, exists
 }
 
-func (rm *TxInfoMap) GetBlockTxs(blockNumber uint64) []common.Hash {
+func (rm *TxInfoMap) GetBlockTxs(blockNumber uint64) ([]common.Hash, bool) {
 	rm.mu.RLock()
 	defer rm.mu.RUnlock()
 	hashes, exists := rm.blockTxs[blockNumber]
-	if !exists {
-		return nil
-	}
-	return hashes
+	return hashes, exists
 }

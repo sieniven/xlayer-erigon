@@ -214,7 +214,7 @@ Loop:
 			return fmt.Errorf("postExecuteCommitValues: %w", err)
 		}
 
-		// For X Layer, delete receipts from the map
+		// For X Layer, delete block data from the stateless cache
 		if cfg.zk.XLayer.Kafka.Enable {
 			statelessCache.DeleteBlock(blockNum, block)
 		}
