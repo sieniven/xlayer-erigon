@@ -59,3 +59,4 @@ Outputs = ["stderr"]
 CertificateSendInterval = "1m"
 CheckSettledInterval = "5s"
 LossCertType = 0
+ForceStopBlock = 0

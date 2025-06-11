@@ -37,6 +37,7 @@ sleep 5
 git checkout docker-compose.yml
 git checkout config/test.erigon.seq.config.yaml
 git checkout config/test.erigon.rpc.config.yaml
+git checkout config/cdk-node-config.toml
 
 echo "Sending funds to deployer..."
 cast send -f $RICH_ADDRESS --private-key $RICH_PRIVATE_KEY --value 30ether --legacy $DEPLOYER_ADDRESS
