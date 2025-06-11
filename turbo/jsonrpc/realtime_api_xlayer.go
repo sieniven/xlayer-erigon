@@ -34,13 +34,12 @@ type RealtimeAPI interface {
 	GetInternalTransactions(ctx context.Context, hash libcommon.Hash) ([]*zktypes.InnerTx, error)
 
 	// Account related (see ./realtime_accounts_xlayer.go)
-	GetBalance(ctx context.Context, address libcommon.Address, blockNrOrHash rpc.BlockNumberOrHash) (*hexutil.Big, error)
-	GetTransactionCount(ctx context.Context, address libcommon.Address, blockNrOrHash *rpc.BlockNumberOrHash) (*hexutil.Uint64, error)
-	GetStorageAt(ctx context.Context, address libcommon.Address, index string, blockNrOrHash rpc.BlockNumberOrHash) (string, error)
-	GetCode(ctx context.Context, address libcommon.Address, blockNrOrHash rpc.BlockNumberOrHash) (hexutility.Bytes, error)
+	GetBalance(ctx context.Context, address libcommon.Address) (*hexutil.Big, error)
+	GetCode(ctx context.Context, address libcommon.Address) (hexutility.Bytes, error)
+	GetStorageAt(ctx context.Context, address libcommon.Address, index string) (string, error)
 
 	// // Sending related (see ./realtime_call_xlayer.go)
-	Call(ctx context.Context, args ethapi2.CallArgs, blockNrOrHash rpc.BlockNumberOrHash, overrides *ethapi2.StateOverrides) (hexutility.Bytes, error)
+	Call(ctx context.Context, args ethapi2.CallArgs, overrides *ethapi2.StateOverrides) (hexutility.Bytes, error)
 }
 
 // RealtimeAPIImpl is implementation of the RealtimeAPI interface
