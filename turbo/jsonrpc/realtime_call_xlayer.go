@@ -14,7 +14,7 @@ import (
 // Call implements eth_call.
 // Executes a new message call immediately without creating a transaction on the block chain.
 // Note that realtime API only supports execution on the latest block.
-func (api *RealtimeAPIImpl) Call(ctx context.Context, args ethapi2.CallArgs, blockNrOrHash rpc.BlockNumberOrHash, overrides *ethapi2.StateOverrides) (hexutility.Bytes, error) {
+func (api *RealtimeAPIImpl) Call(ctx context.Context, args ethapi2.CallArgs, overrides *ethapi2.StateOverrides) (hexutility.Bytes, error) {
 	tx, err := api.ethApi.db.BeginRo(ctx)
 	if err != nil {
 		return nil, err
@@ -41,7 +41,9 @@ func (api *RealtimeAPIImpl) Call(ctx context.Context, args ethapi2.CallArgs, blo
 		return nil, fmt.Errorf("header not found for block number %d", blockNumber)
 	}
 
-	result, err := transactions.DoCall(ctx, engine, args, tx, blockNrOrHash, header, overrides, api.ethApi.GasCap, chainConfig, api.stateCache, api.statelessCache, api.ethApi.evmCallTimeout)
+	bn := rpc.BlockNumber(blockNumber)
+	rpcBlockNr := rpc.BlockNumberOrHash{BlockNumber: &bn}
+	result, err := transactions.DoCall(ctx, engine, args, tx, rpcBlockNr, header, overrides, api.ethApi.GasCap, chainConfig, api.stateCache, api.statelessCache, api.ethApi.evmCallTimeout)
 	if err != nil {
 		return nil, err
 	}
