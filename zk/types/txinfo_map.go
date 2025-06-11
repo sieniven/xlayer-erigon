@@ -54,11 +54,11 @@ func (rm *TxInfoMap) DeleteTxInfo(txHash common.Hash) {
 	delete(rm.txInfos, txHash)
 }
 
-func (rm *TxInfoMap) GetTx(txHash common.Hash) (ethTypes.Transaction, *ethTypes.Receipt, []*InnerTx, bool) {
+func (rm *TxInfoMap) GetTx(txHash common.Hash) (ethTypes.Transaction, *ethTypes.Receipt, uint64, []*InnerTx, bool) {
 	rm.mu.RLock()
 	defer rm.mu.RUnlock()
 	txInfo, exists := rm.txInfos[txHash]
-	return txInfo.Tx, txInfo.Receipt, txInfo.InnerTxs, exists
+	return txInfo.Tx, txInfo.Receipt, txInfo.BlockNumber, txInfo.InnerTxs, exists
 }
 
 func (rm *TxInfoMap) GetBlockTxs(blockNumber uint64) ([]common.Hash, bool) {

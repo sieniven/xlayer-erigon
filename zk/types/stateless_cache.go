@@ -30,7 +30,7 @@ func (cache *StatelessCache) GetHeader(blockNum uint64) (*ethTypes.Header, bool)
 	return cache.headerMap.Get(blockNum)
 }
 
-func (cache *StatelessCache) GetTxInfo(txHash common.Hash) (ethTypes.Transaction, *ethTypes.Receipt, []*InnerTx, bool) {
+func (cache *StatelessCache) GetTxInfo(txHash common.Hash) (ethTypes.Transaction, *ethTypes.Receipt, uint64, []*InnerTx, bool) {
 	return cache.txInfoMap.GetTx(txHash)
 }
 
@@ -38,6 +38,7 @@ func (cache *StatelessCache) GetBlockTxs(blockNum uint64) ([]common.Hash, bool) 
 	return cache.txInfoMap.GetBlockTxs(blockNum)
 }
 
+// -------------- Write operations --------------
 func (cache *StatelessCache) PutHeader(blockNum uint64, header *ethTypes.Header) {
 	if blockNum > cache.highestHeight.Load() {
 		cache.highestHeight.Store(blockNum)
@@ -45,7 +46,6 @@ func (cache *StatelessCache) PutHeader(blockNum uint64, header *ethTypes.Header)
 	cache.headerMap.Put(blockNum, header)
 }
 
-// -------------- Write operations --------------
 func (cache *StatelessCache) PutTxInfo(blockNum uint64, txHash common.Hash, tx ethTypes.Transaction, receipt *ethTypes.Receipt, innerTxs []*InnerTx) {
 	if blockNum > cache.highestHeight.Load() {
 		cache.highestHeight.Store(blockNum)

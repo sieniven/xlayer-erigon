@@ -3,13 +3,19 @@ package jsonrpc
 import (
 	"context"
 	"fmt"
+	"math/big"
 
 	"github.com/ledgerwatch/erigon-lib/common"
 	"github.com/ledgerwatch/erigon-lib/common/hexutil"
 	"github.com/ledgerwatch/erigon-lib/common/hexutility"
 	"github.com/ledgerwatch/erigon/core/state"
+	"github.com/ledgerwatch/erigon/core/types"
 	"github.com/ledgerwatch/erigon/rpc"
 	zktypes "github.com/ledgerwatch/erigon/zk/types"
+)
+
+var (
+	mockBlockHash = common.BytesToHash([]byte{1})
 )
 
 // RealtimeAPI is a collection of functions that are exposed in rpc only
@@ -83,4 +89,13 @@ func (api *RealtimeAPIImpl) getBlockNumber(blockNr rpc.BlockNumber) (uint64, boo
 		}
 		return blockNumber, blockNumber == currentBlockNumber, nil
 	}
+}
+
+// newRPCTransaction_realtime returns a transaction that will serialize to the RPC
+// representation, with the given location metadata set (if available).
+// Note that realtime API do not support blockHash.
+func newRPCTransaction_realtime(tx types.Transaction, blockNumber uint64, index uint64, baseFee *big.Int) *RPCTransaction {
+	result := NewRPCTransaction(tx, mockBlockHash, blockNumber, index, baseFee)
+	result.BlockHash = &common.Hash{}
+	return result
 }

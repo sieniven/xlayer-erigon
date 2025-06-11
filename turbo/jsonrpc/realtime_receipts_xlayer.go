@@ -8,7 +8,7 @@ import (
 )
 
 func (api *RealtimeAPIImpl) GetTransactionReceipt(ctx context.Context, hash common.Hash) (map[string]interface{}, error) {
-	txn, receipt, _, ok := api.statelessCache.GetTxInfo(hash)
+	txn, receipt, _, _, ok := api.statelessCache.GetTxInfo(hash)
 	if !ok {
 		return api.ethApi.GetTransactionReceipt(ctx, hash)
 	}
@@ -32,7 +32,7 @@ func (api *RealtimeAPIImpl) GetTransactionReceipt(ctx context.Context, hash comm
 }
 
 func (api *RealtimeAPIImpl) GetInternalTransactions(ctx context.Context, hash common.Hash) ([]*zktypes.InnerTx, error) {
-	_, _, innerTxs, ok := api.statelessCache.GetTxInfo(hash)
+	_, _, _, innerTxs, ok := api.statelessCache.GetTxInfo(hash)
 	if !ok {
 		return api.ethApi.GetInternalTransactions(ctx, hash)
 	}
