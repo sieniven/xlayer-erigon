@@ -133,6 +133,7 @@ import (
 	"github.com/ledgerwatch/erigon/zk/datastream/server"
 	"github.com/ledgerwatch/erigon/zk/hermez_db"
 	"github.com/ledgerwatch/erigon/zk/kafka"
+	kafkaTypes "github.com/ledgerwatch/erigon/zk/kafka/types"
 	"github.com/ledgerwatch/erigon/zk/l1_cache"
 	"github.com/ledgerwatch/erigon/zk/l1infotree"
 	zkStages "github.com/ledgerwatch/erigon/zk/stages"
@@ -259,6 +260,7 @@ type Ethereum struct {
 	stateCache       *state.PlainStateCache
 	blockInfoChan    chan *zktypes.BlockInfo
 	txInfoChan       chan *state.TxInfo
+	deliverChan      chan kafkaTypes.TransactionMessage
 	finishNotifyChan chan struct{}
 }
 
@@ -1299,6 +1301,7 @@ func New(ctx context.Context, stack *node.Node, config *ethconfig.Config, logger
 				backend.txInfoMap = zktypes.NewTxInfoMap()
 				backend.blockInfoMap = zktypes.NewBlockInfoMap()
 				backend.stateCache = state.NewPlainStateCache(tx)
+				backend.deliverChan = make(chan kafkaTypes.TransactionMessage, kafkaBufferSize)
 			}
 
 			backend.syncStages = stages2.NewDefaultZkStages(
@@ -2010,11 +2013,11 @@ func (s *Ethereum) Start() error {
 
 		go stages2.StageLoop(s.sentryCtx, s.chainDB, s.stagedSync, s.sentriesClient.Hd, s.waitForStageLoopStop, s.config.Sync.LoopThrottle, s.logger, s.blockReader, hook, s.config.ForcePartialCommit)
 
-		go stages2.ListenTxKafkaConsumer(s.sentryCtx, s.txKafkaConsumer, s.config.Zk.XLayer, s.logger, s.txInfoMap, s.blockInfoMap, s.stateCache)
+		go stages2.ListenTxKafkaConsumer(s.sentryCtx, s.txKafkaConsumer, s.config.Zk.XLayer, s.logger, s.txInfoMap, s.blockInfoMap, s.stateCache, s.deliverChan)
 
 		go stages2.ListenTxKafkaProducer(s.sentryCtx, s.txKafkaProducer, s.config.Zk.XLayer, s.logger, s.blockInfoChan, s.txInfoChan)
 
-		go stages2.HandleTxKafkaMessage(s.sentryCtx, s.chainDB, s.config, s.logger, nil, nil, s.stateCache, s.blockInfoMap)
+		go stages2.HandleTxKafkaMessage(s.sentryCtx, s.chainDB, s.config, s.logger, s.deliverChan, nil, s.stateCache, s.blockInfoMap)
 	}
 
 	stages := diagnostics.InitStagesFromList(nodeStages)

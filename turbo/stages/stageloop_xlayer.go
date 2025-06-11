@@ -144,7 +144,15 @@ func FlushDataToDB(ctx context.Context, db *mdbx.MdbxKV, logger log.Logger, cach
 	cache.TruncateSmtCacheList(saveData.BlockHeight)
 }
 
-func ListenTxKafkaConsumer(ctx context.Context, txKafkaConsumer *kafka.KafkaConsumer, config ethconfig.XLayerConfig, logger log.Logger, txInfoMap *zktypes.TxInfoMap, blockInfoMap *zktypes.BlockInfoMap, stateCache *state.PlainStateCache) {
+func ListenTxKafkaConsumer(
+	ctx context.Context,
+	txKafkaConsumer *kafka.KafkaConsumer,
+	config ethconfig.XLayerConfig,
+	logger log.Logger,
+	txInfoMap *zktypes.TxInfoMap,
+	blockInfoMap *zktypes.BlockInfoMap,
+	stateCache *state.PlainStateCache,
+	deliverChan chan kafkaTypes.TransactionMessage) {
 	if sequencer.IsSequencer() {
 		logger.Info("TxKafkaConsumer is disabled on sequencer, skipping")
 		return
@@ -178,7 +186,7 @@ func ListenTxKafkaConsumer(ctx context.Context, txKafkaConsumer *kafka.KafkaCons
 			blockInfoMap.PutTxCount(header.Number.Uint64()-1, prevBlockTxCount)
 			logger.Info("Received block message", "header", header, "prevBlockTxCount", prevBlockTxCount)
 		case txMsg := <-txMsgsChan:
-			// 1. Process non-state data
+			// 1. Check non-state data
 			tx, blockNumber, err := txMsg.GetTransaction()
 			if err != nil {
 				logger.Error("Failed to consume transaction message from kafka", "error", err)
@@ -196,13 +204,14 @@ func ListenTxKafkaConsumer(ctx context.Context, txKafkaConsumer *kafka.KafkaCons
 			}
 			txInfoMap.Put(tx.Hash(), tx, receipt, innerTxs)
 
-			// 2. Process state data
+			// 2. Check state data
 			changeset, err := txMsg.GetChangeset()
 			if err != nil {
 				logger.Error("Failed to consume tx changeset message from kafka", "error", err)
 				continue
 			}
-			stateCache.ApplyChangeset(changeset)
+
+			deliverChan <- txMsg
 
 			logger.Info("Received transaction message", "tx", tx, "blockNumber", blockNumber, "receipt", receipt, "innerTxs", innerTxs, "changeset", changeset)
 		case errorTriggerMsg := <-errorMsgsChan:
@@ -269,7 +278,7 @@ func HandleTxKafkaMessage(
 	db kv.RwDB,
 	ethCfg *ethconfig.Config,
 	logger log.Logger,
-	deliverChan chan *kafkaTypes.TransactionMessage,
+	deliverChan chan kafkaTypes.TransactionMessage,
 	finishChan chan struct{},
 	stateCache *state.PlainStateCache,
 	blockInfoMap *zktypes.BlockInfoMap) {
@@ -349,7 +358,7 @@ func HandleTxKafkaMessage(
 						logger.Error("Failed to apply pending tx changeset to state cache", "lastHeight", lastHeight, "nextTxIndex", nextTxIndex, "error", err)
 					}
 				} else {
-					pendingTxMsgs = append(pendingTxMsgs, msg)
+					pendingTxMsgs = append(pendingTxMsgs, &msg)
 					sort.Sort(pendingTxMsgs)
 
 					// TODO: if pending msgs length is too large, should ask kafka for the missing tx msgs
@@ -376,7 +385,7 @@ func HandleTxKafkaMessage(
 					continue
 				}
 
-				pendingTxMsgs = append(pendingTxMsgs, msg)
+				pendingTxMsgs = append(pendingTxMsgs, &msg)
 				sort.Sort(pendingTxMsgs)
 			}
 		}
