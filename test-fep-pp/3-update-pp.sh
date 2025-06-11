@@ -101,7 +101,7 @@ while [ "$current_block" -ge 0 ]; do
     if [ "$consolidated" = "true" ]; then
         echo "Block $current_block is consolidated"
         CDK_CONFIG_FILE="config/cdk-node-config.toml"
-        sed_inplace "s|ForceStopBlock = 0|ForceStopBlock = $current_block|g" "$CDK_CONFIG_FILE"
+        sed_inplace "s|ForcedStopBlock = 0|ForcedStopBlock = $current_block|g" "$CDK_CONFIG_FILE"
         break
     else
         echo "Block $current_block not consolidated. Checking previous block..."
