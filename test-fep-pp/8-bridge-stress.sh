@@ -141,7 +141,7 @@ while true; do
     echo "Current GER on L1: $GER, waiting for GER to be updated on L1..."
     sleep 10
 done
-echo "GER updated to $GER on L1, and sleep 60s for all txs"
+echo "GER updated to $GER on L1, and sleep 180s for all txs"
 sleep 180
 
 CURRENT_NONCE=$(cast nonce --rpc-url $L1RPC $ACCOUNT)
