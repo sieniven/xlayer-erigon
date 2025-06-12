@@ -335,7 +335,7 @@ func HandleTxKafkaMessage(
 			logger.Info("Fetched a blockInfo message", "blockNumber", msg.Header.Number.Uint64(), "lastFinishHeight", lastFinishHeight)
 			lastIncomplete := blockInfoMap.GetLastIncomplete()
 
-			if lastIncomplete == msg.Header.Number.Uint64()-1 && (msg.PrevBlockTxCount == int64(nextTxIndex) || msg.PrevBlockTxCount == int64(nextTxIndex)) {
+			if lastIncomplete == msg.Header.Number.Uint64()-1 && (msg.PrevBlockTxCount == int64(nextTxIndex) || msg.PrevBlockTxCount == int64(0)) {
 				nextTxIndex = 0
 				blockInfoMap.MarkCompleted(lastIncomplete)
 				lastIncomplete = skipEmptyBlock(blockInfoMap, lastIncomplete+1)
