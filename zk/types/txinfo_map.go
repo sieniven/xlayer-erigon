@@ -16,35 +16,54 @@ type TxInfo struct {
 }
 
 type TxInfoMap struct {
-	txInfos map[common.Hash]TxInfo
-	mu      sync.RWMutex
+	txInfos  map[common.Hash]TxInfo
+	blockTxs map[uint64][]common.Hash
+	mu       sync.RWMutex
 }
 
 func NewTxInfoMap() *TxInfoMap {
 	return &TxInfoMap{
-		txInfos: make(map[common.Hash]TxInfo),
+		txInfos:  make(map[common.Hash]TxInfo),
+		blockTxs: make(map[uint64][]common.Hash),
 	}
 }
 
-func (rm *TxInfoMap) Get(txHash common.Hash) (ethTypes.Transaction, *ethTypes.Receipt, []*InnerTx, bool) {
-	rm.mu.RLock()
-	defer rm.mu.RUnlock()
-	txInfo, exists := rm.txInfos[txHash]
-	return txInfo.Tx, txInfo.Receipt, txInfo.InnerTxs, exists
-}
-
-func (rm *TxInfoMap) Put(txHash common.Hash, tx ethTypes.Transaction, receipt *ethTypes.Receipt, innerTxs []*InnerTx) {
+func (rm *TxInfoMap) Put(blockNumber uint64, txHash common.Hash, tx ethTypes.Transaction, receipt *ethTypes.Receipt, innerTxs []*InnerTx) {
 	rm.mu.Lock()
 	defer rm.mu.Unlock()
-	rm.txInfos[txHash] = TxInfo{
-		Tx:       tx,
-		Receipt:  receipt,
-		InnerTxs: innerTxs,
+	txInfo := TxInfo{
+		BlockNumber: blockNumber,
+		Tx:          tx,
+		Receipt:     receipt,
+		InnerTxs:    innerTxs,
 	}
+
+	rm.txInfos[txHash] = txInfo
+	rm.blockTxs[blockNumber] = append(rm.blockTxs[blockNumber], txHash)
 }
 
-func (rm *TxInfoMap) Delete(txHash common.Hash) {
+func (rm *TxInfoMap) DeleteBlockTxs(blockNumber uint64) {
+	rm.mu.Lock()
+	defer rm.mu.Unlock()
+	delete(rm.blockTxs, blockNumber)
+}
+
+func (rm *TxInfoMap) DeleteTxInfo(txHash common.Hash) {
 	rm.mu.Lock()
 	defer rm.mu.Unlock()
 	delete(rm.txInfos, txHash)
+}
+
+func (rm *TxInfoMap) GetTx(txHash common.Hash) (ethTypes.Transaction, *ethTypes.Receipt, uint64, []*InnerTx, bool) {
+	rm.mu.RLock()
+	defer rm.mu.RUnlock()
+	txInfo, exists := rm.txInfos[txHash]
+	return txInfo.Tx, txInfo.Receipt, txInfo.BlockNumber, txInfo.InnerTxs, exists
+}
+
+func (rm *TxInfoMap) GetBlockTxs(blockNumber uint64) ([]common.Hash, bool) {
+	rm.mu.RLock()
+	defer rm.mu.RUnlock()
+	hashes, exists := rm.blockTxs[blockNumber]
+	return hashes, exists
 }
