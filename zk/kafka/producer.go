@@ -68,7 +68,7 @@ func (client *KafkaProducer) Close() error {
 	return client.producer.Close()
 }
 
-func (client *KafkaProducer) SendKafkaBlockInfo(ctx context.Context, header *types.Header, prevBlockTxCount uint64) error {
+func (client *KafkaProducer) SendKafkaBlockInfo(ctx context.Context, header *types.Header, prevBlockTxCount int64) error {
 	msg, err := kafkaTypes.ToKafkaBlockMessage(header, prevBlockTxCount)
 	if err != nil {
 		return fmt.Errorf("SendKafkaBlockInfo error: %v", err)

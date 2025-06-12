@@ -9,10 +9,10 @@ import (
 
 type BlockMessage struct {
 	Header           *ethTypes.Header
-	PrevBlockTxCount uint64
+	PrevBlockTxCount int64
 }
 
-func ToKafkaBlockMessage(header *ethTypes.Header, prevBlockTxCount uint64) (blockMsg BlockMessage, err error) {
+func ToKafkaBlockMessage(header *ethTypes.Header, prevBlockTxCount int64) (blockMsg BlockMessage, err error) {
 	blockMsg = BlockMessage{
 		Header:           header,
 		PrevBlockTxCount: prevBlockTxCount,
@@ -21,7 +21,7 @@ func ToKafkaBlockMessage(header *ethTypes.Header, prevBlockTxCount uint64) (bloc
 	return blockMsg, nil
 }
 
-func (msg BlockMessage) GetBlockInfo() (*ethTypes.Header, uint64, error) {
+func (msg BlockMessage) GetBlockInfo() (*ethTypes.Header, int64, error) {
 	if msg.Header == nil {
 		return nil, 0, fmt.Errorf("header is nil")
 	}
@@ -32,7 +32,7 @@ func (msg BlockMessage) GetBlockInfo() (*ethTypes.Header, uint64, error) {
 func (msg BlockMessage) MarshalJSON() ([]byte, error) {
 	type BlockMessage struct {
 		Header           *ethTypes.Header `json:"header"`
-		PrevBlockTxCount uint64           `json:"prevBlockTxCount"`
+		PrevBlockTxCount int64            `json:"prevBlockTxCount"`
 	}
 
 	var enc BlockMessage

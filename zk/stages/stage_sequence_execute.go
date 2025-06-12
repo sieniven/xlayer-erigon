@@ -28,7 +28,7 @@ import (
 )
 
 var shouldCheckForExecutionAndDataStreamAlignment = true
-var prevBlockTxCount = uint64(0)
+var prevBlockTxCount = int64(0)
 
 func SpawnSequencingStage(
 	s *stagedsync.StageState,
@@ -880,7 +880,7 @@ BatchLoop:
 			return err
 		}
 
-		prevBlockTxCount = uint64(len(batchState.blockState.builtBlockElements.transactions))
+		prevBlockTxCount = int64(len(batchState.blockState.builtBlockElements.transactions))
 
 		// lets commit everything after updateStreamAndCheckRollback no matter of its result unless
 		// we're in L1 recovery where losing some blocks on restart doesn't matter

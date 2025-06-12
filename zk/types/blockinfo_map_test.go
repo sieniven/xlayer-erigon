@@ -17,7 +17,7 @@ func TestBlockInfoMap(t *testing.T) {
 		Number: big.NewInt(1),
 		Time:   1000,
 	}
-	txCount := uint64(10)
+	txCount := int64(10)
 
 	t.Run("PutHeader and Get", func(t *testing.T) {
 		bm.PutHeader(blockNum, header)
@@ -70,7 +70,7 @@ func TestBlockInfoMap(t *testing.T) {
 					Number: big.NewInt(int64(i)),
 					Time:   uint64(i * 1000),
 				}
-				txCount := uint64(i * 5)
+				txCount := int64(i * 5)
 
 				// 测试PutHeader
 				bm.PutHeader(blockNum, header)

@@ -43,7 +43,7 @@ func NewDefaultZkStages(ctx context.Context,
 	// For X Layer. RPC latency optimization
 	txInfoMap *zktypes.TxInfoMap,
 	blockInfoMap *zktypes.BlockInfoMap,
-	finishNotifyChan chan struct{},
+	finishChan chan uint64,
 ) []*stagedsync.Stage {
 	dirs := cfg.Dirs
 	blockWriter := blockio.NewBlockWriter(cfg.HistoryV3)
@@ -92,7 +92,7 @@ func NewDefaultZkStages(ctx context.Context,
 		stagedsync.StageCallTracesCfg(db, cfg.Prune, 0, dirs.Tmp),
 		stagedsync.StageTxLookupCfg(db, cfg.Prune, dirs.Tmp, controlServer.ChainConfig.Bor, blockReader),
 		// For X Layer. RPC latency optimization
-		stagedsync.StageFinishCfg(db, dirs.Tmp, forkValidator, finishNotifyChan, cfg.XLayer.Kafka.Enable),
+		stagedsync.StageFinishCfg(db, dirs.Tmp, forkValidator, finishChan, cfg.XLayer.Kafka.Enable),
 		txInfoMap,
 		blockInfoMap,
 		runInTestMode)
