@@ -12,6 +12,7 @@ import (
 	"github.com/ledgerwatch/erigon/core/types/accounts"
 	"github.com/ledgerwatch/erigon/turbo/trie"
 	zktypes "github.com/ledgerwatch/erigon/zk/types"
+	"github.com/ledgerwatch/erigon/zkevm/log"
 )
 
 const (
@@ -22,7 +23,6 @@ const (
 // The cache holds a snapshot of the statedb, with a changeset cache layer that
 // stores in-memory the state changes.
 type PlainStateCache struct {
-	snapshotHeight uint64
 	snapshotReader *PlainStateReader
 
 	cacheLock        sync.RWMutex
@@ -30,23 +30,26 @@ type PlainStateCache struct {
 	storageCache     map[string]*uint256.Int
 	codeCache        map[libcommon.Hash][]byte
 	incarnationCache map[libcommon.Address]uint64
+	ready            bool
+	txBlockNumber    uint64
 }
 
-func NewPlainStateCache(db kv.Getter, snapshotHeight uint64) *PlainStateCache {
+func NewPlainStateCache(db kv.Getter) *PlainStateCache {
 	return &PlainStateCache{
-		snapshotHeight:   snapshotHeight,
 		snapshotReader:   NewPlainStateReader(db),
 		accountCache:     make(map[libcommon.Address]*accounts.Account, DefaultRealtimeCacheSize),
 		storageCache:     make(map[string]*uint256.Int, DefaultRealtimeCacheSize),
 		codeCache:        make(map[libcommon.Hash][]byte, DefaultRealtimeCacheSize),
 		incarnationCache: make(map[libcommon.Address]uint64, DefaultRealtimeCacheSize),
+		ready:            false,
+		txBlockNumber:    0,
 	}
 }
 
-func (cache *PlainStateCache) ApplyChangeset(changeset *zktypes.Changeset) error {
+func (cache *PlainStateCache) ApplyChangeset(changeset *zktypes.Changeset, blockNumber uint64, txIndex uint) error {
 	// Handle account data changes
 	addressChanges := make(map[libcommon.Address]*accounts.Account)
-	cache.ApplyChangesetToAccountData(changeset, addressChanges)
+	cache.applyChangesetToAccountData(changeset, addressChanges)
 
 	cache.cacheLock.Lock()
 	defer cache.cacheLock.Unlock()
@@ -83,12 +86,19 @@ func (cache *PlainStateCache) ApplyChangeset(changeset *zktypes.Changeset) error
 	for address, account := range addressChanges {
 		delete(cache.accountCache, address)
 		cache.accountCache[address] = account
+		log.Info("ApplyChangeset: ", address)
 	}
+
+	if cache.txBlockNumber == 0 {
+		cache.txBlockNumber = blockNumber
+	}
+
+	log.Info(fmt.Sprintf("Apply changeset from tx with height: %d, txIndex: %d\n", blockNumber, txIndex))
 
 	return nil
 }
 
-func (cache *PlainStateCache) ApplyChangesetToAccountData(changeset *zktypes.Changeset, addressChanges map[libcommon.Address]*accounts.Account) (err error) {
+func (cache *PlainStateCache) applyChangesetToAccountData(changeset *zktypes.Changeset, addressChanges map[libcommon.Address]*accounts.Account) (err error) {
 	// Apply balance changes
 	for address, balance := range changeset.BalanceChanges {
 		if _, ok := changeset.DeletedAccounts[address]; ok {
@@ -148,6 +158,10 @@ func (cache *PlainStateCache) ApplyChangesetToAccountData(changeset *zktypes.Cha
 }
 
 func (cache *PlainStateCache) ReadAccountData(address libcommon.Address) (*accounts.Account, error) {
+	if !cache.ready {
+		return cache.snapshotReader.ReadAccountData(address)
+	}
+
 	cache.cacheLock.RLock()
 	acc, ok := cache.accountCache[address]
 	if ok {
@@ -162,6 +176,10 @@ func (cache *PlainStateCache) ReadAccountData(address libcommon.Address) (*accou
 }
 
 func (cache *PlainStateCache) ReadAccountStorage(address libcommon.Address, incarnation uint64, key *libcommon.Hash) ([]byte, error) {
+	if !cache.ready {
+		return cache.snapshotReader.ReadAccountStorage(address, incarnation, key)
+	}
+
 	compositeKey := dbutils.PlainGenerateCompositeStorageKey(address.Bytes(), incarnation, key.Bytes())
 
 	cache.cacheLock.RLock()
@@ -180,6 +198,10 @@ func (cache *PlainStateCache) ReadAccountStorage(address libcommon.Address, inca
 func (cache *PlainStateCache) ReadAccountCode(address libcommon.Address, incarnation uint64, codeHash libcommon.Hash) ([]byte, error) {
 	if bytes.Equal(codeHash.Bytes(), emptyCodeHash) {
 		return nil, nil
+	}
+
+	if !cache.ready {
+		return cache.snapshotReader.ReadAccountCode(address, incarnation, codeHash)
 	}
 
 	cache.cacheLock.RLock()
@@ -201,6 +223,10 @@ func (cache *PlainStateCache) ReadAccountCodeSize(address libcommon.Address, inc
 }
 
 func (cache *PlainStateCache) ReadAccountIncarnation(address libcommon.Address) (uint64, error) {
+	if !cache.ready {
+		return cache.snapshotReader.ReadAccountIncarnation(address)
+	}
+
 	cache.cacheLock.RLock()
 	incarnation, ok := cache.incarnationCache[address]
 	cache.cacheLock.RUnlock()
@@ -247,8 +273,19 @@ func (cache *PlainStateCache) getOrCreateAccount(address libcommon.Address, addr
 func (cache *PlainStateCache) createAccount() (*accounts.Account, error) {
 	return &accounts.Account{
 		Initialised: true,
-		Nonce:       0,
 		Root:        libcommon.BytesToHash(trie.EmptyRoot[:]),
 		CodeHash:    libcommon.BytesToHash(emptyCodeHash),
 	}, nil
+}
+
+func (cache *PlainStateCache) UpdateReady(current bool) {
+	cache.ready = current
+}
+
+func (cache *PlainStateCache) IsReady() bool {
+	return cache.ready
+}
+
+func (cache *PlainStateCache) TxBlockNumber() uint64 {
+	return cache.txBlockNumber
 }

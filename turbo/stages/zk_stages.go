@@ -9,7 +9,6 @@ import (
 	"github.com/ledgerwatch/erigon/consensus"
 	"github.com/ledgerwatch/erigon/core/rawdb/blockio"
 	state2 "github.com/ledgerwatch/erigon/core/state"
-	"github.com/ledgerwatch/erigon/core/types"
 	"github.com/ledgerwatch/erigon/core/vm"
 	"github.com/ledgerwatch/erigon/eth/ethconfig"
 	"github.com/ledgerwatch/erigon/eth/stagedsync"
@@ -41,7 +40,9 @@ func NewDefaultZkStages(ctx context.Context,
 	datastreamClient zkStages.DatastreamClient,
 	dataStreamServer server.DataStreamServer,
 	infoTreeUpdater *l1infotree.Updater,
+	// For X Layer. RPC latency optimization
 	statelessCache *zktypes.StatelessCache,
+	finishChan chan uint64,
 ) []*stagedsync.Stage {
 	dirs := cfg.Dirs
 	blockWriter := blockio.NewBlockWriter(cfg.HistoryV3)
@@ -89,7 +90,8 @@ func NewDefaultZkStages(ctx context.Context,
 		stagedsync.StageLogIndexCfg(db, cfg.Prune, dirs.Tmp, cfg.Genesis.Config.NoPruneContracts),
 		stagedsync.StageCallTracesCfg(db, cfg.Prune, 0, dirs.Tmp),
 		stagedsync.StageTxLookupCfg(db, cfg.Prune, dirs.Tmp, controlServer.ChainConfig.Bor, blockReader),
-		stagedsync.StageFinishCfg(db, dirs.Tmp, forkValidator),
+		// For X Layer. RPC latency optimization
+		stagedsync.StageFinishCfg(db, dirs.Tmp, forkValidator, finishChan, cfg.XLayer.Kafka.Enable),
 		statelessCache,
 		runInTestMode)
 }
@@ -114,7 +116,7 @@ func NewSequencerZkStages(ctx context.Context,
 	txPoolDb kv.RwDB,
 	infoTreeUpdater *l1infotree.Updater,
 	hook *Hook,
-	kafkaHeaderChan chan *types.Header,
+	kafkaBlockInfoChan chan *zktypes.BlockInfo,
 	kafkaTxInfoChan chan *state2.TxInfo,
 ) []*stagedsync.Stage {
 	dirs := cfg.Dirs
@@ -156,7 +158,7 @@ func NewSequencerZkStages(ctx context.Context,
 			uint16(cfg.YieldSize),
 			infoTreeUpdater,
 			hook,
-			kafkaHeaderChan,
+			kafkaBlockInfoChan,
 			kafkaTxInfoChan,
 		),
 		stagedsync.StageHashStateCfg(db, dirs, cfg.HistoryV3, agg),
@@ -166,6 +168,7 @@ func NewSequencerZkStages(ctx context.Context,
 		stagedsync.StageLogIndexCfg(db, cfg.Prune, dirs.Tmp, cfg.Genesis.Config.NoPruneContracts),
 		stagedsync.StageCallTracesCfg(db, cfg.Prune, 0, dirs.Tmp),
 		stagedsync.StageTxLookupCfg(db, cfg.Prune, dirs.Tmp, controlServer.ChainConfig.Bor, blockReader),
-		stagedsync.StageFinishCfg(db, dirs.Tmp, forkValidator),
+		// For X Layer, RPC latency optimization
+		stagedsync.StageFinishCfg(db, dirs.Tmp, forkValidator, nil, false),
 		runInTestMode)
 }

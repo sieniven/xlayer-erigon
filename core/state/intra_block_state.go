@@ -630,7 +630,7 @@ func (sdb *IntraBlockState) CreateAccount(addr libcommon.Address, contractCreati
 		newObj.selfdestructed = false
 		// In case the account was selfdestructed, and then the native token is transferred to it,
 		// we need to set the incarnation value to zero as an EOA account.
-		if previous.selfdestructed {
+		if previous != nil && previous.selfdestructed {
 			sdb.journal.append(incarnationChange{
 				account: &addr,
 				post:    newObj.data.Incarnation,

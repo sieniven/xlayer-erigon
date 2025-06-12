@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"sort"
 	"sync"
 
 	"github.com/ledgerwatch/erigon-lib/kv/mdbx"
@@ -13,7 +14,6 @@ import (
 
 	"github.com/ledgerwatch/erigon-lib/kv"
 	"github.com/ledgerwatch/erigon/core/state"
-	"github.com/ledgerwatch/erigon/core/types"
 	"github.com/ledgerwatch/erigon/zk/kafka"
 	kafkaTypes "github.com/ledgerwatch/erigon/zk/kafka/types"
 	"github.com/ledgerwatch/erigon/zk/sequencer"
@@ -136,15 +136,22 @@ func FlushDataToDB(ctx context.Context, db *mdbx.MdbxKV, logger log.Logger, cach
 		return batch.Flush(ctx, tx)
 	})
 	if err != nil {
-		logger.Error("failed to flush data to DB", "error", err)
+		logger.Error("Failed to flush data to DB", "error", err)
 		return
 	}
 	cache.TruncateSmtCacheList(saveData.BlockHeight)
 }
 
-func ListenTxKafkaConsumer(ctx context.Context, txKafkaConsumer *kafka.KafkaConsumer, config ethconfig.XLayerConfig, logger log.Logger, stateCache *state.PlainStateCache, statelessCache *zktypes.StatelessCache) {
+func ListenTxKafkaConsumer(
+	ctx context.Context,
+	txKafkaConsumer *kafka.KafkaConsumer,
+	config ethconfig.XLayerConfig,
+	logger log.Logger,
+	statelessCache *zktypes.StatelessCache,
+	deliverTxChan chan kafkaTypes.TransactionMessage,
+	deliverBlockInfoChan chan kafkaTypes.BlockMessage) {
 	if sequencer.IsSequencer() {
-		logger.Info("txKafkaConsumer is disabled on sequencer, skipping")
+		logger.Info("TxKafkaConsumer is disabled on sequencer, skipping")
 		return
 	}
 
@@ -154,11 +161,11 @@ func ListenTxKafkaConsumer(ctx context.Context, txKafkaConsumer *kafka.KafkaCons
 	}
 
 	// Start the kafka consumer
-	headersChan := make(chan types.Header, MaxKafkaChanSize)
+	blockMsgsChan := make(chan kafkaTypes.BlockMessage, MaxKafkaChanSize)
 	txMsgsChan := make(chan kafkaTypes.TransactionMessage, MaxKafkaChanSize)
 	errorMsgsChan := make(chan kafkaTypes.ErrorTriggerMessage, MaxKafkaChanSize)
 	errorChan := make(chan error, 1)
-	go txKafkaConsumer.ConsumeKafka(ctx, headersChan, txMsgsChan, errorMsgsChan, errorChan, logger)
+	go txKafkaConsumer.ConsumeKafka(ctx, blockMsgsChan, txMsgsChan, errorMsgsChan, errorChan, logger)
 
 	// TODO: Start snapshot and sync height with incoming kafka messages
 
@@ -166,37 +173,50 @@ func ListenTxKafkaConsumer(ctx context.Context, txKafkaConsumer *kafka.KafkaCons
 		select {
 		case <-ctx.Done():
 			return
-		case header := <-headersChan:
-			statelessCache.PutHeader(header.Number.Uint64(), &header)
-			logger.Info("Received header message", "header", header)
+		case blockMsg := <-blockMsgsChan:
+			header, prevBlockTxCount, err := blockMsg.GetBlockInfo()
+			if err != nil {
+				logger.Error("Failed to consume block message from kafka", "error", err)
+				continue
+			}
+			statelessCache.PutHeader(header.Number.Uint64(), header)
+			statelessCache.PutTxCount(header.Number.Uint64()-1, int64(prevBlockTxCount))
+
+			deliverBlockInfoChan <- blockMsg
+
+			logger.Info("Received block message", "header", header.Number, "prevBlockTxCount", prevBlockTxCount)
 		case txMsg := <-txMsgsChan:
-			// 1. Process non-state data
+			// 1. Check non-state data
 			tx, blockNumber, err := txMsg.GetTransaction()
 			if err != nil {
-				logger.Error("failed to consume transaction message from kafka", "error", err)
+				logger.Error("Failed to consume transaction message from kafka", "error", err)
 				continue
 			}
 			receipt, err := txMsg.GetReceipt()
 			if err != nil {
-				logger.Error("failed to consume tx receipt message from kafka", "error", err)
+				logger.Error("Failed to consume tx receipt message from kafka", "error", err)
 				continue
 			}
 			innerTxs, err := txMsg.GetInnerTxs()
 			if err != nil {
-				logger.Error("failed to consume tx innerTxs message from kafka", "error", err)
+				logger.Error("Failed to consume tx innerTxs message from kafka", "error", err)
 				continue
 			}
 			statelessCache.PutTxInfo(blockNumber, tx.Hash(), tx, receipt, innerTxs)
 
-			// 2. Process state data
+			// 2. Check state data
 			changeset, err := txMsg.GetChangeset()
 			if err != nil {
-				logger.Error("failed to consume tx changeset message from kafka", "error", err)
+				logger.Error("Failed to consume tx changeset message from kafka", "error", err)
 				continue
 			}
-			stateCache.ApplyChangeset(changeset)
+
+			deliverTxChan <- txMsg
 
 			logger.Info("Received transaction message", "tx", tx, "blockNumber", blockNumber, "receipt", receipt, "innerTxs", innerTxs, "changeset", changeset)
+			for _, log := range receipt.Logs {
+				logger.Info("    log message", "log", log)
+			}
 		case errorTriggerMsg := <-errorMsgsChan:
 			triggerHeight := errorTriggerMsg.BlockNumber
 			logger.Info("Received error trigger message", "triggerHeight", triggerHeight)
@@ -204,7 +224,7 @@ func ListenTxKafkaConsumer(ctx context.Context, txKafkaConsumer *kafka.KafkaCons
 			// TODO: handle trigger unwind here on producer side error
 
 		case err := <-errorChan:
-			logger.Error("kafka consumer failed", "error", err)
+			logger.Error("Kafka consumer Failed", "error", err)
 			return
 		}
 	}
@@ -215,10 +235,10 @@ func ListenTxKafkaProducer(
 	txKafkaProducer *kafka.KafkaProducer,
 	config ethconfig.XLayerConfig,
 	logger log.Logger,
-	headersChan chan *types.Header,
+	blockInfoChan chan *zktypes.BlockInfo,
 	txInfoChan chan *state.TxInfo) {
 	if !sequencer.IsSequencer() {
-		logger.Info("txKafkaProducer is disabled on non-sequencer, skipping")
+		logger.Info("TxKafkaProducer is disabled on non-sequencer, skipping")
 		return
 	}
 
@@ -234,12 +254,16 @@ func ListenTxKafkaProducer(
 		select {
 		case <-ctx.Done():
 			return
-		case header := <-headersChan:
-			currHeight = header.Number.Uint64()
-			// log.Info("Kafka prepare to send header", "header", header)
-			err = txKafkaProducer.SendKafkaBlockHeader(ctx, header)
+		case blockInfo := <-blockInfoChan:
+			currHeight = blockInfo.Header.Number.Uint64()
+			// log.Info("Kafka prepare to send blockInfo", "blockInfo", blockInfo)
+			err = txKafkaProducer.SendKafkaBlockInfo(ctx, blockInfo.Header, blockInfo.TxCount)
 		case txInfo := <-txInfoChan:
 			currHeight = txInfo.BlockNumber
+			if currHeight <= 1 {
+				continue
+			}
+
 			changeset := state.CollectChangeset(txInfo.Entries)
 			// log.Info("Kafka prepare to send transaction", "txhash", txInfo.Tx.Hash(), "receipt", txInfo.Receipt, "innerTxs", txInfo.InnerTxs, "changeset", changeset)
 			err = txKafkaProducer.SendKafkaTransaction(ctx, txInfo.BlockNumber, txInfo.Tx, txInfo.Receipt, txInfo.InnerTxs, changeset)
@@ -254,4 +278,233 @@ func ListenTxKafkaProducer(
 			continue
 		}
 	}
+}
+
+func HandleTxKafkaMessage(
+	ctx context.Context,
+	db kv.RwDB,
+	ethCfg *ethconfig.Config,
+	logger log.Logger,
+	deliverTxChan chan kafkaTypes.TransactionMessage,
+	deliverBlockInfoChan chan kafkaTypes.BlockMessage,
+	finishChan chan uint64,
+	statelessCache *zktypes.StatelessCache) {
+	if sequencer.IsSequencer() {
+		logger.Info("HandleTxKafkaMessage is disabled on sequencer, skipping")
+		return
+	}
+
+	tx, err := db.BeginRo(ctx)
+	if err != nil {
+		logger.Error("Failed to begin db tranasaction", "err", err)
+		return
+	}
+
+	stateCache := state.NewPlainStateCache(tx)
+
+	var (
+		lastFinishHeight = uint64(0)
+		nextTxIndex      = uint64(0)
+		pendingTxMsgs    = kafkaTypes.TransactionMessageSlice{}
+	)
+
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case finishHeight := <-finishChan:
+			logger.Info("Fetched a finish signal", "finishHeight", finishHeight)
+			lastFinishHeight = finishHeight
+			lastIncomplete := statelessCache.GetLastIncomplete()
+
+			if lastIncomplete <= finishHeight {
+				// Reset state cache
+				stateCache = state.NewPlainStateCache(tx)
+				stateCache.UpdateReady(false)
+				nextTxIndex = 0
+				statelessCache.MarkCompleted(finishHeight)
+				continue
+			}
+
+			if stateCache.IsReady() {
+				continue
+			}
+
+			if finishHeight >= stateCache.TxBlockNumber() {
+				stateCache.UpdateReady(true)
+			}
+		case msg := <-deliverBlockInfoChan:
+			logger.Info("Fetched a blockInfo message", "blockNumber", msg.Header.Number.Uint64(), "lastFinishHeight", lastFinishHeight)
+			lastIncomplete := statelessCache.GetLastIncomplete()
+
+			if lastIncomplete == msg.Header.Number.Uint64()-1 && (msg.PrevBlockTxCount == int64(nextTxIndex) || msg.PrevBlockTxCount == int64(0)) {
+				nextTxIndex = 0
+				statelessCache.MarkCompleted(lastIncomplete)
+				lastIncomplete = skipEmptyBlock(statelessCache, lastIncomplete+1)
+				nextTxIndex, err := handlePending(stateCache, &pendingTxMsgs, statelessCache, lastIncomplete, nextTxIndex, false)
+				if err != nil {
+					logger.Error("Failed to apply pending tx changeset to state cache", "nextTxIndex", nextTxIndex, "error", err)
+				}
+			}
+
+		case msg := <-deliverTxChan:
+			logger.Info("Fetched a transaction message", "blockNumber", msg.BlockNumber, "txIndex", msg.Receipt.TransactionIndex, "lastFinishHeight", lastFinishHeight)
+			if msg.BlockNumber <= lastFinishHeight {
+				// Discard this stale transaction message
+				continue
+			}
+
+			lastIncomplete := statelessCache.GetLastIncomplete()
+			logger.Info("GetLastIncomplete", "lastIncomplete", lastIncomplete)
+			if msg.BlockNumber < lastIncomplete {
+				// Discard this stale transaction message
+				continue
+			} else if msg.BlockNumber == lastIncomplete {
+				// Check if the transaction index is matched
+				logger.Info("Check tx index", "msg.TxIndex", msg.Receipt.TransactionIndex, "nextTxIndex", nextTxIndex)
+				if msg.Receipt.TransactionIndex == uint(nextTxIndex) {
+					if err := stateCache.ApplyChangeset(msg.Changeset, msg.BlockNumber, msg.Receipt.TransactionIndex); err != nil {
+						// TODO：need to record the invalid changeset and apply it again later?
+						logger.Error("Failed to apply tx changeset to state cache", "error", err)
+						continue
+					}
+					nextTxIndex++
+
+					_, txCount, exist := (*statelessCache).GetHeader(lastIncomplete)
+					logger.Info("Get blockInfo", "lastIncomplete", lastIncomplete, "txCount", txCount, "nextTxIndex", nextTxIndex, "exist", exist)
+					if exist && txCount >= 0 {
+						// Check if the transaction is the last one of corresponding block
+						if txCount == int64(nextTxIndex) {
+							nextTxIndex = 0
+							statelessCache.MarkCompleted(lastIncomplete)
+							lastIncomplete = skipEmptyBlock(statelessCache, lastIncomplete+1)
+							nextTxIndex, err = handlePending(stateCache, &pendingTxMsgs, statelessCache, lastIncomplete, nextTxIndex, false)
+							if err != nil {
+								logger.Error("Failed to apply pending tx changeset to state cache", "nextTxIndex", nextTxIndex, "error", err)
+							}
+							logger.Info("After handle pending", "len", pendingTxMsgs.Len())
+						}
+					} else {
+						nextTxIndex, err = handlePending(stateCache, &pendingTxMsgs, statelessCache, lastIncomplete, nextTxIndex, true)
+						if err != nil {
+							logger.Error("Failed to apply pending tx changeset to state cache", "nextTxIndex", nextTxIndex, "error", err)
+						}
+						logger.Info("After handle pending", "len", pendingTxMsgs.Len())
+					}
+				} else if msg.Receipt.TransactionIndex > uint(nextTxIndex) {
+					addPendingTx(&pendingTxMsgs, &msg)
+					logger.Info("After add tx to pending", "len", pendingTxMsgs.Len())
+				} else {
+					// discard this stale transaction message
+					continue
+				}
+			} else {
+				_, txCount, exist := statelessCache.GetHeader(lastIncomplete)
+				logger.Info("Get blockInfo", "lastIncomplete", lastIncomplete, "txCount", txCount, "nextTxIndex", nextTxIndex, "exist", exist)
+				if exist && (txCount == 0 || (txCount > 0 && txCount == int64(nextTxIndex))) {
+					statelessCache.MarkCompleted(lastIncomplete)
+					lastIncomplete = skipEmptyBlock(statelessCache, lastIncomplete+1)
+					nextTxIndex = 0
+
+					logger.Info("get blockInfo", "height", lastIncomplete, "msgHeight", msg.BlockNumber, "txIndex", msg.Receipt.TransactionIndex)
+					if lastIncomplete == msg.BlockNumber && msg.Receipt.TransactionIndex == 0 {
+						if err := stateCache.ApplyChangeset(msg.Changeset, msg.BlockNumber, msg.Receipt.TransactionIndex); err != nil {
+							// TODO：need to record the invalid changeset and apply it again later?
+							logger.Error("Failed to apply tx changeset to state cache", "error", err)
+							continue
+						}
+						nextTxIndex++
+
+						nextTxIndex, err = handlePending(stateCache, &pendingTxMsgs, statelessCache, lastIncomplete, nextTxIndex, false)
+						if err != nil {
+							logger.Error("Failed to apply pending tx changeset to state cache", "nextTxIndex", nextTxIndex, "error", err)
+						}
+						logger.Info("After add tx to pending", "len", pendingTxMsgs.Len())
+					} else {
+						addPendingTx(&pendingTxMsgs, &msg)
+						logger.Info("After add tx to pending", "len", pendingTxMsgs.Len())
+					}
+				} else {
+					addPendingTx(&pendingTxMsgs, &msg)
+					logger.Info("After add tx to pending", "len", pendingTxMsgs.Len())
+				}
+			}
+		}
+
+		logger.Info("Get the latest state value", "lastFinishHeight", lastFinishHeight, "nextTxIndex", nextTxIndex, "lastIncomplete", statelessCache.GetLastIncomplete(), "pendingLen", pendingTxMsgs.Len())
+	}
+}
+
+func handlePending(stateCache *state.PlainStateCache, pendingTxMsgs *kafkaTypes.TransactionMessageSlice, statelessCache *zktypes.StatelessCache, curHeight, nextTxIndex uint64, heightLock bool) (uint64, error) {
+	var handled int
+	for ; handled < pendingTxMsgs.Len(); handled++ {
+		msg := (*pendingTxMsgs)[handled]
+		height := msg.BlockNumber
+		if height < curHeight {
+			continue
+		}
+
+		if heightLock {
+			if height != curHeight {
+				break
+			}
+
+			if msg.Receipt.TransactionIndex == uint(nextTxIndex) {
+				if err := stateCache.ApplyChangeset(msg.Changeset, msg.BlockNumber, msg.Receipt.TransactionIndex); err != nil {
+					*pendingTxMsgs = (*pendingTxMsgs)[handled:]
+					return nextTxIndex, err
+				}
+				nextTxIndex++
+			} else {
+				break
+			}
+		} else {
+			// Since curHeight is non-empty block height, it must contain transactions
+			if height != curHeight {
+				break
+			}
+
+			_, txCount, exist := statelessCache.GetHeader(curHeight)
+			// Not sure how many transactions there are in curHeight block
+			if !exist || txCount < 0 {
+				heightLock = true
+				handled--
+				continue
+			}
+
+			// Apply changeset and also skip empty block if it is necessary
+			if msg.Receipt.TransactionIndex == uint(nextTxIndex) {
+				if err := stateCache.ApplyChangeset(msg.Changeset, msg.BlockNumber, msg.Receipt.TransactionIndex); err != nil {
+					*pendingTxMsgs = (*pendingTxMsgs)[handled:]
+					return nextTxIndex, err
+				}
+				nextTxIndex++
+
+				if txCount == int64(nextTxIndex) {
+					statelessCache.MarkCompleted(curHeight)
+					curHeight = skipEmptyBlock(statelessCache, curHeight+1)
+					nextTxIndex = 0
+				}
+			}
+		}
+	}
+
+	*pendingTxMsgs = (*pendingTxMsgs)[handled:]
+	return nextTxIndex, nil
+}
+
+func skipEmptyBlock(statelessCache *zktypes.StatelessCache, start uint64) uint64 {
+	for {
+		_, txCount, exist := statelessCache.GetHeader(start)
+		if !exist || txCount != 0 {
+			return start
+		}
+		statelessCache.MarkCompleted(start)
+		start++
+	}
+}
+
+func addPendingTx(pendingTxMsgs *kafkaTypes.TransactionMessageSlice, msg *kafkaTypes.TransactionMessage) {
+	*pendingTxMsgs = append(*pendingTxMsgs, msg)
+	sort.Sort(pendingTxMsgs)
 }

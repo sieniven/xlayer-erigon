@@ -6,7 +6,6 @@ import (
 	"fmt"
 
 	"github.com/IBM/sarama"
-	types1 "github.com/ledgerwatch/erigon/core/types"
 	"github.com/ledgerwatch/erigon/eth/ethconfig"
 	kafkaTypes "github.com/ledgerwatch/erigon/zk/kafka/types"
 	"github.com/ledgerwatch/log/v3"
@@ -38,7 +37,7 @@ func NewKafkaConsumer(config ethconfig.KafkaConfig) (*KafkaConsumer, error) {
 
 type consumerGroupHandler struct {
 	ctx           context.Context
-	headersChan   chan types1.Header
+	blockMsgsChan chan kafkaTypes.BlockMessage
 	txMsgsChan    chan kafkaTypes.TransactionMessage
 	errorMsgsChan chan kafkaTypes.ErrorTriggerMessage
 	errorChan     chan error
@@ -70,15 +69,15 @@ func (h *consumerGroupHandler) ConsumeClaim(session sarama.ConsumerGroupSession,
 			}
 			switch msg.Topic {
 			case h.blockTopic:
-				var header types1.Header
-				if err := header.UnmarshalJSON(msg.Value); err != nil {
-					h.logger.Warn("consume claim error, unmarshaling block header", "error", err)
+				var blockMsg kafkaTypes.BlockMessage
+				if err := json.Unmarshal(msg.Value, &blockMsg); err != nil {
+					h.logger.Warn("consume claim error, unmarshaling block message", "error", err)
 					continue
 				}
 
 				// Send message to header channel
 				select {
-				case h.headersChan <- header:
+				case h.blockMsgsChan <- blockMsg:
 					session.MarkMessage(msg, "")
 				case <-h.ctx.Done():
 					err := fmt.Errorf("context cancelled - stopping consume claim")
@@ -127,10 +126,10 @@ func (h *consumerGroupHandler) ConsumeClaim(session sarama.ConsumerGroupSession,
 }
 
 // ConsumeKafka starts consuming kafka messages from the specified topics
-func (client *KafkaConsumer) ConsumeKafka(ctx context.Context, headersChan chan types1.Header, txMsgsChan chan kafkaTypes.TransactionMessage, errorMsgsChan chan kafkaTypes.ErrorTriggerMessage, errorChan chan error, logger log.Logger) {
+func (client *KafkaConsumer) ConsumeKafka(ctx context.Context, blockMsgsChan chan kafkaTypes.BlockMessage, txMsgsChan chan kafkaTypes.TransactionMessage, errorMsgsChan chan kafkaTypes.ErrorTriggerMessage, errorChan chan error, logger log.Logger) {
 	handler := &consumerGroupHandler{
 		ctx:           ctx,
-		headersChan:   headersChan,
+		blockMsgsChan: blockMsgsChan,
 		txMsgsChan:    txMsgsChan,
 		errorMsgsChan: errorMsgsChan,
 		errorChan:     errorChan,

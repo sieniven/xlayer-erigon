@@ -12,14 +12,14 @@ import (
 
 type StatelessCache struct {
 	highestHeight atomic.Uint64
-	headerMap     *HeaderMap
+	blockInfoMap  *BlockInfoMap
 	txInfoMap     *TxInfoMap
 }
 
 func NewStatelessCache() *StatelessCache {
 	return &StatelessCache{
 		highestHeight: atomic.Uint64{},
-		headerMap:     NewHeaderMap(),
+		blockInfoMap:  NewBlockInfoMap(),
 		txInfoMap:     NewTxInfoMap(),
 	}
 }
@@ -29,8 +29,8 @@ func (cache *StatelessCache) GetHeight() uint64 {
 	return cache.highestHeight.Load()
 }
 
-func (cache *StatelessCache) GetHeader(blockNum uint64) (*ethTypes.Header, bool) {
-	return cache.headerMap.Get(blockNum)
+func (cache *StatelessCache) GetHeader(blockNum uint64) (*ethTypes.Header, int64, bool) {
+	return cache.blockInfoMap.Get(blockNum)
 }
 
 func (cache *StatelessCache) GetTxInfo(txHash libcommon.Hash) (ethTypes.Transaction, *ethTypes.Receipt, uint64, []*InnerTx, bool) {
@@ -41,12 +41,20 @@ func (cache *StatelessCache) GetBlockTxs(blockNum uint64) ([]libcommon.Hash, boo
 	return cache.txInfoMap.GetBlockTxs(blockNum)
 }
 
+func (cache *StatelessCache) GetLastCompleted() uint64 {
+	return cache.blockInfoMap.GetLastCompleted()
+}
+
+func (cache *StatelessCache) GetLastIncomplete() uint64 {
+	return cache.blockInfoMap.GetLastIncomplete()
+}
+
 // -------------- Write operations --------------
 func (cache *StatelessCache) PutHeader(blockNum uint64, header *ethTypes.Header) {
 	if blockNum > cache.highestHeight.Load() {
 		cache.highestHeight.Store(blockNum)
 	}
-	cache.headerMap.Put(blockNum, header)
+	cache.blockInfoMap.PutHeader(blockNum, header)
 }
 
 func (cache *StatelessCache) PutTxInfo(blockNum uint64, txHash libcommon.Hash, tx ethTypes.Transaction, receipt *ethTypes.Receipt, innerTxs []*InnerTx) {
@@ -56,8 +64,15 @@ func (cache *StatelessCache) PutTxInfo(blockNum uint64, txHash libcommon.Hash, t
 	cache.txInfoMap.Put(blockNum, txHash, tx, receipt, innerTxs)
 }
 
+func (cache *StatelessCache) PutTxCount(blockNum uint64, txCount int64) {
+	if blockNum > cache.highestHeight.Load() {
+		cache.highestHeight.Store(blockNum)
+	}
+	cache.blockInfoMap.PutTxCount(blockNum, txCount)
+}
+
 func (cache *StatelessCache) DeleteBlock(blockNum uint64, block *ethTypes.Block) {
-	cache.headerMap.Delete(blockNum)
+	cache.blockInfoMap.Delete(blockNum)
 	cache.txInfoMap.DeleteBlockTxs(blockNum)
 
 	for _, tx := range block.Transactions() {
@@ -65,9 +80,13 @@ func (cache *StatelessCache) DeleteBlock(blockNum uint64, block *ethTypes.Block)
 	}
 }
 
+func (cache *StatelessCache) MarkCompleted(blockNum uint64) {
+	cache.blockInfoMap.MarkCompleted(blockNum)
+}
+
 // -------------- For HeaderReader --------------
 func (cache *StatelessCache) Header(ctx context.Context, tx kv.Getter, hash libcommon.Hash, blockNum uint64) (*ethTypes.Header, error) {
-	header, ok := cache.GetHeader(blockNum)
+	header, _, ok := cache.GetHeader(blockNum)
 	if !ok {
 		return nil, fmt.Errorf("header not found for block number %d", blockNum)
 	}
@@ -75,7 +94,7 @@ func (cache *StatelessCache) Header(ctx context.Context, tx kv.Getter, hash libc
 }
 
 func (cache *StatelessCache) HeaderByNumber(ctx context.Context, tx kv.Getter, blockNum uint64) (*ethTypes.Header, error) {
-	header, ok := cache.GetHeader(blockNum)
+	header, _, ok := cache.GetHeader(blockNum)
 	if !ok {
 		return nil, fmt.Errorf("header not found for block number %d", blockNum)
 	}

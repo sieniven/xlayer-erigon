@@ -19,7 +19,7 @@ func (api *RealtimeAPIImpl) GetTransactionByHash(ctx context.Context, txnHash co
 	if !ok {
 		return api.ethApi.GetTransactionByHash(ctx, txnHash, includeExtraInfo)
 	}
-	header, ok := api.statelessCache.GetHeader(blockNum)
+	header, _, ok := api.statelessCache.GetHeader(blockNum)
 	if !ok {
 		return api.ethApi.GetTransactionByHash(ctx, txnHash, includeExtraInfo)
 	}

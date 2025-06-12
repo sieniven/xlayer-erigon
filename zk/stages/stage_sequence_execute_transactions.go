@@ -213,6 +213,7 @@ func attemptAddTransaction(
 	l1Recovery bool,
 	forkId, l1InfoIndex uint64,
 	ethBlockGasPool *core.GasPool,
+	txIndex int,
 ) (*types.Receipt, *core.ExecutionResult, []*zktypes.InnerTx, overflowType, error) {
 	// Batch data size checking removed along with counters
 
@@ -228,7 +229,7 @@ func attemptAddTransaction(
 	cfg.zkVmConfig.CounterCollector = nil
 
 	snapshot := ibs.Snapshot()
-	ibs.Init(transaction.Hash(), common.Hash{}, 0)
+	ibs.Init(transaction.Hash(), common.Hash{}, txIndex)
 
 	evm := vm.NewZkEVM(*blockContext, evmtypes.TxContext{}, ibs, cfg.chainConfig, *cfg.zkVmConfig)
 

@@ -22,11 +22,13 @@ import (
 	"github.com/ledgerwatch/erigon/zk/metrics"
 	zktx "github.com/ledgerwatch/erigon/zk/tx"
 	"github.com/ledgerwatch/erigon/zk/txpool"
+	zktypes "github.com/ledgerwatch/erigon/zk/types"
 	"github.com/ledgerwatch/erigon/zk/utils"
 	"github.com/ledgerwatch/log/v3"
 )
 
 var shouldCheckForExecutionAndDataStreamAlignment = true
+var prevBlockTxCount = int64(0)
 
 func SpawnSequencingStage(
 	s *stagedsync.StageState,
@@ -457,7 +459,10 @@ BatchLoop:
 
 		// For X Layer, send kafka block header
 		if cfg.zk.XLayer.Kafka.Enable {
-			cfg.kafkaHeaderChan <- header
+			cfg.kafkaBlockInfoChan <- &zktypes.BlockInfo{
+				Header:  header,
+				TxCount: prevBlockTxCount,
+			}
 		}
 
 	OuterLoopTransactions:
@@ -612,7 +617,7 @@ BatchLoop:
 
 				effectiveGas := batchState.blockState.getL1EffectiveGases(cfg, i)
 
-				receipt, execResult, _, anyOverflow, err := attemptAddTransaction(cfg, sdb, ibs, &blockContext, header, transaction, effectiveGas, batchState.isL1Recovery(), batchState.forkId, l1TreeUpdateIndex, ethBlockGasPool)
+				receipt, execResult, _, anyOverflow, err := attemptAddTransaction(cfg, sdb, ibs, &blockContext, header, transaction, effectiveGas, batchState.isL1Recovery(), batchState.forkId, l1TreeUpdateIndex, ethBlockGasPool, len(batchState.blockState.builtBlockElements.transactions))
 				if err != nil {
 					metrics.GetLogStatistics().CumulativeCounting(metrics.ProcessingInvalidTxCounter)
 					if batchState.isLimboRecovery() {
@@ -874,6 +879,8 @@ BatchLoop:
 		if err := streamWriter.WriteBlockDetailsToDatastream(batchState.forkId, batchState.batchNumber, batchState.builtBlocks); err != nil {
 			return err
 		}
+
+		prevBlockTxCount = int64(len(batchState.blockState.builtBlockElements.transactions))
 
 		// lets commit everything after updateStreamAndCheckRollback no matter of its result unless
 		// we're in L1 recovery where losing some blocks on restart doesn't matter

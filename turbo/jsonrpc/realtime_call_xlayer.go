@@ -36,7 +36,7 @@ func (api *RealtimeAPIImpl) Call(ctx context.Context, args ethapi2.CallArgs, ove
 		return nil, err
 	}
 
-	header, ok := api.statelessCache.GetHeader(blockNumber)
+	header, _, ok := api.statelessCache.GetHeader(blockNumber)
 	if !ok {
 		return nil, fmt.Errorf("header not found for block number %d", blockNumber)
 	}
