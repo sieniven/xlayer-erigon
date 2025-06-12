@@ -338,7 +338,7 @@ func HandleTxKafkaMessage(
 				nextTxIndex = 0
 				blockInfoMap.MarkCompleted(lastIncomplete)
 				lastIncomplete = skipEmptyBlock(blockInfoMap, lastIncomplete)
-				_, err := handlePending(stateCache, &pendingTxMsgs, blockInfoMap, lastIncomplete, nextTxIndex, false)
+				nextTxIndex, err := handlePending(stateCache, &pendingTxMsgs, blockInfoMap, lastIncomplete, nextTxIndex, false)
 				if err != nil {
 					logger.Error("Failed to apply pending tx changeset to state cache", "nextTxIndex", nextTxIndex, "error", err)
 				}
