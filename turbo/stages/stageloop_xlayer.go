@@ -214,6 +214,9 @@ func ListenTxKafkaConsumer(
 			deliverTxChan <- txMsg
 
 			logger.Info("Received transaction message", "tx", tx, "blockNumber", blockNumber, "receipt", receipt, "innerTxs", innerTxs, "changeset", changeset)
+			for _, log := range receipt.Logs {
+				logger.Info("    log message", "log", log)
+			}
 		case errorTriggerMsg := <-errorMsgsChan:
 			triggerHeight := errorTriggerMsg.BlockNumber
 			logger.Info("Received error trigger message", "triggerHeight", triggerHeight)
