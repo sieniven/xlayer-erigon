@@ -21,7 +21,7 @@ var (
 
 // RealtimeAPI is a collection of functions that are exposed in rpc only
 type RealtimeAPI interface {
-	// // Block related (see ./realtime_blocks_xlayer.go)
+	// Block related (see ./realtime_blocks_xlayer.go)
 	BlockNumber(ctx context.Context) (hexutil.Uint64, error)
 	GetBlockTransactionCountByNumber(ctx context.Context, blockNr rpc.BlockNumber) (*hexutil.Uint, error)
 
