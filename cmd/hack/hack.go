@@ -5,9 +5,12 @@ import (
 	"bytes"
 	"context"
 	"encoding/binary"
+	"encoding/hex"
 	"encoding/json"
+
 	"flag"
 	"fmt"
+	"github.com/ledgerwatch/erigon-lib/common/hexutil"
 	"math/big"
 	"net/http"
 	_ "net/http/pprof" //nolint:gosec
@@ -394,6 +397,95 @@ func dumpAll(chaindata, output string) error {
 		return nil
 	}
 	return db.View(context.Background(), fdumper)
+}
+
+func migrateGenesis(chaindata, output string) error {
+	db := mdbx.MustOpen(chaindata)
+	defer db.Close()
+
+	var count uint64
+	var keys []string
+
+	if err := db.View(context.Background(), func(tx kv.Tx) error {
+		return tx.ForEach(kv.PlainState, nil, func(k, v []byte) error {
+			if len(k) == 20 {
+				count++
+				keys = append(keys, common.Bytes2Hex(k))
+			}
+			return nil
+		})
+	}); err != nil {
+		return err
+	}
+
+	fmt.Printf("count=%d\n", count)
+	sort.Strings(keys)
+	tx, txErr := db.BeginRo(context.Background())
+	if txErr != nil {
+		return txErr
+	}
+	defer tx.Rollback()
+	plainStateReader := state.NewPlainStateReader(tx)
+	c, err := tx.Cursor(kv.PlainState)
+	if err != nil {
+		return err
+	}
+	defer c.Close()
+
+	cc, err := tx.Cursor(kv.PlainContractCode)
+	if err != nil {
+		return err
+	}
+	defer cc.Close()
+	for _, acc_hex := range keys {
+		acc_addr := libcommon.HexToAddress(acc_hex)
+		fmt.Printf("acc_addr: %s\n", acc_addr)
+
+		a, err := plainStateReader.ReadAccountData(acc_addr)
+		if err != nil {
+			return err
+		} else if a == nil {
+			return fmt.Errorf("acc not found")
+		}
+		fmt.Printf("CodeHash:%x\nIncarnation:%d\nNonce:%d\nblance:%s\n", a.CodeHash, a.Incarnation, a.Nonce, a.Balance.String())
+		if hex.EncodeToString(a.CodeHash.Bytes()) != "c5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470" {
+			code, err := tx.GetOne(kv.Code, a.CodeHash[:])
+			if err != nil {
+				return err
+			}
+			fmt.Printf("acc: %s => %s\n", acc_addr, hexutil.Encode(code))
+			acc_bytes := common.FromHex(acc_hex)
+			for k, v, e := c.Seek(acc_bytes); k != nil; k, v, e = c.Next() {
+				if e != nil {
+					return e
+				}
+				if !bytes.HasPrefix(k, acc_bytes) {
+					break
+				}
+				if len(k) > 28 {
+					fmt.Printf("%x slot => %x\n", k[28:], v)
+				}
+				/// code hash
+				//else {
+				//	fmt.Printf("###################################%x slot => %x\n", k, v)
+				//}
+			}
+
+			//fmt.Printf("code hashes\n")
+			//
+			//for k, v, e := cc.Seek(acc_bytes); k != nil; k, v, e = c.Next() {
+			//	if e != nil {
+			//		return e
+			//	}
+			//	if !bytes.HasPrefix(k, acc_bytes) {
+			//		break
+			//	}
+			//	fmt.Printf("%x => %x\n", k, v)
+			//}
+		}
+
+	}
+	return nil
 }
 
 func printBucket(chaindata, bucket string) {
@@ -1582,6 +1674,8 @@ func main() {
 		err = getOldAccInputHash(uint64(*block))
 	case "dumpAll":
 		err = dumpAll(*chaindata, *output)
+	case "migrateGenesis":
+		err = migrateGenesis(*chaindata, *output)
 	}
 
 	if err != nil {
