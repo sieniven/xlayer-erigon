@@ -42,14 +42,14 @@ git checkout config/cdk-node-config.toml
 echo "Sending funds to deployer..."
 cast send -f $RICH_ADDRESS --private-key $RICH_PRIVATE_KEY --value 30ether --legacy $DEPLOYER_ADDRESS
 
-if [ ! -d "./xlayer-contracts" ]; then
+if [ ! -d "./agglayer-contracts" ]; then
   echo "Cloning contract repository..."
-  git clone -b upstream/v8.1.0-rc.1-fork.13 https://github.com/okx/xlayer-contracts.git
+  git clone -b upstream/feature/zkEVMToPP https://github.com/agglayer/agglayer-contracts.git
 fi
 
-cd ./xlayer-contracts
+cd ./agglayer-contracts
 echo "Cleaning and resting contract repository..."
-rm -rf *; git reset --hard; git checkout upstream/v8.1.0-rc.1-fork.13
+rm -rf *; git reset --hard; git checkout feature/zkEVMToPP
 
 echo "Creating .env file..."
 cat > .env << EOF
@@ -109,14 +109,14 @@ npm i
 npm run deploy:v2:localhost
 
 cd "$ROOT_DIR"
-ROLLUP_OUTPUT_PATH="./test-fep-pp/xlayer-contracts/deployment/v2/create_rollup_output.json"
+ROLLUP_OUTPUT_PATH="./test-fep-pp/agglayer-contracts/deployment/v2/create_rollup_output.json"
 
 rm -rf ./test-fep-pp/contract/*
 cp -rf $ROLLUP_OUTPUT_PATH ./test-fep-pp/contract/create_rollup_output.json
-cp -rf ./test-fep-pp/xlayer-contracts/deployment/v2/create_rollup_parameters.json ./test-fep-pp/contract/
-cp -rf ./test-fep-pp/xlayer-contracts/deployment/v2/deploy_parameters.json ./test-fep-pp/contract/
-cp -rf ./test-fep-pp/xlayer-contracts/deployment/v2/deploy_output.json ./test-fep-pp/contract/
-cp -rf ./test-fep-pp/xlayer-contracts/deployment/v2/genesis.json ./test-fep-pp/contract/
+cp -rf ./test-fep-pp/agglayer-contracts/deployment/v2/create_rollup_parameters.json ./test-fep-pp/contract/
+cp -rf ./test-fep-pp/agglayer-contracts/deployment/v2/deploy_parameters.json ./test-fep-pp/contract/
+cp -rf ./test-fep-pp/agglayer-contracts/deployment/v2/deploy_output.json ./test-fep-pp/contract/
+cp -rf ./test-fep-pp/agglayer-contracts/deployment/v2/genesis.json ./test-fep-pp/contract/
 ROLLUP_OUTPUT_PATH="./test-fep-pp/contract/create_rollup_output.json"
 DEPLOY_OUTPUT_PATH="./test-fep-pp/contract/deploy_output.json"
 
@@ -152,7 +152,7 @@ cast send --legacy --from $DEPLOYER_ADDRESS --private-key $DEPLOYER_PRIVATE_KEY 
 echo "Generating configuration files..."
 go install ./cmd/hack/allocs
 which allocs
-allocs ./test-fep-pp/xlayer-contracts/deployment/v2/genesis.json
+allocs ./test-fep-pp/agglayer-contracts/deployment/v2/genesis.json
 mv allocs.json ./test-fep-pp/config/dynamic-mynetwork-allocs.json
 
 cat > ./test-fep-pp/config/dynamic-mynetwork-conf.json << EOF
