@@ -14,6 +14,7 @@ import (
 func TestTxInfoMap(t *testing.T) {
 	tm := NewTxInfoMap()
 
+	blockNumber := uint64(5)
 	txHash := common.HexToHash("0x123")
 	value := uint256.NewInt(0)
 	gasPrice := uint256.NewInt(0)
@@ -63,36 +64,41 @@ func TestTxInfoMap(t *testing.T) {
 	}
 
 	t.Run("Put and Get", func(t *testing.T) {
-		tm.Put(txHash, tx, receipt, innerTxs)
-		gotTx, gotReceipt, gotInnerTxs, exists := tm.Get(txHash)
+		tm.Put(blockNumber, txHash, tx, receipt, innerTxs)
+		gotTx, gotReceipt, _, gotInnerTxs, exists := tm.GetTx(txHash)
 		assert.True(t, exists)
 		assert.Equal(t, tx, gotTx)
 		assert.Equal(t, receipt, gotReceipt)
 		assert.Equal(t, innerTxs, gotInnerTxs)
+		txHashes, ok := tm.GetBlockTxs(blockNumber)
+		assert.True(t, ok)
+		assert.Equal(t, txHashes, []common.Hash{txHash})
 	})
 
 	t.Run("Get non-existent", func(t *testing.T) {
 		nonExistentHash := common.HexToHash("0x456")
-		_, _, _, exists := tm.Get(nonExistentHash)
+		_, _, _, _, exists := tm.GetTx(nonExistentHash)
 		assert.False(t, exists)
 	})
 
 	t.Run("Delete", func(t *testing.T) {
-		tm.Delete(txHash)
-		_, _, _, exists := tm.Get(txHash)
+		tm.DeleteTxInfo(txHash)
+		_, _, _, _, exists := tm.GetTx(txHash)
 		assert.False(t, exists)
 	})
 
+	blockNumber = 10
 	t.Run("Concurrent operations", func(t *testing.T) {
 		const goroutines = 10
 		var wg sync.WaitGroup
+		hashes := make([]common.Hash, 0, goroutines)
 
 		for i := 0; i < goroutines; i++ {
 			wg.Add(1)
-			go func(i int) {
+			hash := common.HexToHash(string(rune(i + 100)))
+			go func(i int, hash common.Hash) {
 				defer wg.Done()
 
-				hash := common.HexToHash(string(rune(i + 100)))
 				value := uint256.NewInt(uint64(i))
 				gasPrice := uint256.NewInt(uint64(i))
 				tx := ethTypes.NewTransaction(uint64(i), common.Address{}, value, uint64(i), gasPrice, nil)
@@ -138,28 +144,41 @@ func TestTxInfoMap(t *testing.T) {
 					},
 				}
 
-				tm.Put(hash, tx, receipt, innerTxs)
+				tm.Put(blockNumber, hash, tx, receipt, innerTxs)
 
-				gotTx, gotReceipt, gotInnerTxs, exists := tm.Get(hash)
+				gotTx, gotReceipt, _, gotInnerTxs, exists := tm.GetTx(hash)
 				assert.True(t, exists)
 				assert.NotNil(t, gotTx)
 				assert.NotNil(t, gotReceipt)
 				assert.Equal(t, uint64(i), gotReceipt.Status)
 				assert.Equal(t, innerTxs, gotInnerTxs)
 
-				tm.Delete(hash)
+				tm.DeleteTxInfo(hash)
 
-				_, _, _, exists = tm.Get(hash)
+				_, _, _, _, exists = tm.GetTx(hash)
 				assert.False(t, exists)
-			}(i)
+			}(i, hash)
+			hashes = append(hashes, hash)
 		}
 
 		wg.Wait()
 
 		for i := 0; i < goroutines; i++ {
 			hash := common.HexToHash(string(rune(i + 100)))
-			_, _, _, exists := tm.Get(hash)
+			_, _, _, _, exists := tm.GetTx(hash)
 			assert.False(t, exists)
 		}
+
+		// Check if all hashes are in the block
+		txHashes, ok := tm.GetBlockTxs(blockNumber)
+		assert.True(t, ok)
+		assert.Equal(t, len(txHashes), len(hashes))
+		for _, hash := range hashes {
+			assert.Contains(t, txHashes, hash)
+		}
+
+		tm.DeleteBlockTxs(blockNumber)
+		_, ok = tm.GetBlockTxs(blockNumber)
+		assert.False(t, ok)
 	})
 }
