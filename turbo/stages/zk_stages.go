@@ -41,8 +41,7 @@ func NewDefaultZkStages(ctx context.Context,
 	dataStreamServer server.DataStreamServer,
 	infoTreeUpdater *l1infotree.Updater,
 	// For X Layer. RPC latency optimization
-	txInfoMap *zktypes.TxInfoMap,
-	blockInfoMap *zktypes.BlockInfoMap,
+	statelessCache *zktypes.StatelessCache,
 	finishChan chan uint64,
 ) []*stagedsync.Stage {
 	dirs := cfg.Dirs
@@ -93,8 +92,7 @@ func NewDefaultZkStages(ctx context.Context,
 		stagedsync.StageTxLookupCfg(db, cfg.Prune, dirs.Tmp, controlServer.ChainConfig.Bor, blockReader),
 		// For X Layer. RPC latency optimization
 		stagedsync.StageFinishCfg(db, dirs.Tmp, forkValidator, finishChan, cfg.XLayer.Kafka.Enable),
-		txInfoMap,
-		blockInfoMap,
+		statelessCache,
 		runInTestMode)
 }
 

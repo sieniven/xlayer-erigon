@@ -147,8 +147,7 @@ func ListenTxKafkaConsumer(
 	txKafkaConsumer *kafka.KafkaConsumer,
 	config ethconfig.XLayerConfig,
 	logger log.Logger,
-	txInfoMap *zktypes.TxInfoMap,
-	blockInfoMap *zktypes.BlockInfoMap,
+	statelessCache *zktypes.StatelessCache,
 	deliverTxChan chan kafkaTypes.TransactionMessage,
 	deliverBlockInfoChan chan kafkaTypes.BlockMessage) {
 	if sequencer.IsSequencer() {
@@ -180,8 +179,8 @@ func ListenTxKafkaConsumer(
 				logger.Error("Failed to consume block message from kafka", "error", err)
 				continue
 			}
-			blockInfoMap.PutHeader(header.Number.Uint64(), header)
-			blockInfoMap.PutTxCount(header.Number.Uint64()-1, int64(prevBlockTxCount))
+			statelessCache.PutHeader(header.Number.Uint64(), header)
+			statelessCache.PutTxCount(header.Number.Uint64()-1, int64(prevBlockTxCount))
 
 			deliverBlockInfoChan <- blockMsg
 
@@ -203,7 +202,7 @@ func ListenTxKafkaConsumer(
 				logger.Error("Failed to consume tx innerTxs message from kafka", "error", err)
 				continue
 			}
-			txInfoMap.Put(tx.Hash(), tx, receipt, innerTxs)
+			statelessCache.PutTxInfo(blockNumber, tx.Hash(), tx, receipt, innerTxs)
 
 			// 2. Check state data
 			changeset, err := txMsg.GetChangeset()
@@ -286,7 +285,7 @@ func HandleTxKafkaMessage(
 	deliverTxChan chan kafkaTypes.TransactionMessage,
 	deliverBlockInfoChan chan kafkaTypes.BlockMessage,
 	finishChan chan uint64,
-	blockInfoMap *zktypes.BlockInfoMap) {
+	statelessCache *zktypes.StatelessCache) {
 	if sequencer.IsSequencer() {
 		logger.Info("HandleTxKafkaMessage is disabled on sequencer, skipping")
 		return
@@ -313,14 +312,14 @@ func HandleTxKafkaMessage(
 		case finishHeight := <-finishChan:
 			logger.Info("Fetched a finish signal", "finishHeight", finishHeight)
 			lastFinishHeight = finishHeight
-			lastIncomplete := blockInfoMap.GetLastIncomplete()
+			lastIncomplete := statelessCache.GetLastIncomplete()
 
 			if lastIncomplete <= finishHeight {
 				// Reset state cache
 				stateCache = state.NewPlainStateCache(tx)
 				stateCache.UpdateReady(false)
 				nextTxIndex = 0
-				blockInfoMap.MarkCompleted(finishHeight)
+				statelessCache.MarkCompleted(finishHeight)
 				continue
 			}
 
@@ -333,13 +332,13 @@ func HandleTxKafkaMessage(
 			}
 		case msg := <-deliverBlockInfoChan:
 			logger.Info("Fetched a blockInfo message", "blockNumber", msg.Header.Number.Uint64(), "lastFinishHeight", lastFinishHeight)
-			lastIncomplete := blockInfoMap.GetLastIncomplete()
+			lastIncomplete := statelessCache.GetLastIncomplete()
 
 			if lastIncomplete == msg.Header.Number.Uint64()-1 && (msg.PrevBlockTxCount == int64(nextTxIndex) || msg.PrevBlockTxCount == int64(0)) {
 				nextTxIndex = 0
-				blockInfoMap.MarkCompleted(lastIncomplete)
-				lastIncomplete = skipEmptyBlock(blockInfoMap, lastIncomplete+1)
-				nextTxIndex, err := handlePending(stateCache, &pendingTxMsgs, blockInfoMap, lastIncomplete, nextTxIndex, false)
+				statelessCache.MarkCompleted(lastIncomplete)
+				lastIncomplete = skipEmptyBlock(statelessCache, lastIncomplete+1)
+				nextTxIndex, err := handlePending(stateCache, &pendingTxMsgs, statelessCache, lastIncomplete, nextTxIndex, false)
 				if err != nil {
 					logger.Error("Failed to apply pending tx changeset to state cache", "nextTxIndex", nextTxIndex, "error", err)
 				}
@@ -352,7 +351,7 @@ func HandleTxKafkaMessage(
 				continue
 			}
 
-			lastIncomplete := blockInfoMap.GetLastIncomplete()
+			lastIncomplete := statelessCache.GetLastIncomplete()
 			logger.Info("GetLastIncomplete", "lastIncomplete", lastIncomplete)
 			if msg.BlockNumber < lastIncomplete {
 				// Discard this stale transaction message
@@ -368,22 +367,22 @@ func HandleTxKafkaMessage(
 					}
 					nextTxIndex++
 
-					_, txCount, exist := (*blockInfoMap).Get(lastIncomplete)
+					_, txCount, exist := (*statelessCache).GetHeader(lastIncomplete)
 					logger.Info("Get blockInfo", "lastIncomplete", lastIncomplete, "txCount", txCount, "nextTxIndex", nextTxIndex, "exist", exist)
 					if exist && txCount >= 0 {
 						// Check if the transaction is the last one of corresponding block
 						if txCount == int64(nextTxIndex) {
 							nextTxIndex = 0
-							blockInfoMap.MarkCompleted(lastIncomplete)
-							lastIncomplete = skipEmptyBlock(blockInfoMap, lastIncomplete+1)
-							nextTxIndex, err = handlePending(stateCache, &pendingTxMsgs, blockInfoMap, lastIncomplete, nextTxIndex, false)
+							statelessCache.MarkCompleted(lastIncomplete)
+							lastIncomplete = skipEmptyBlock(statelessCache, lastIncomplete+1)
+							nextTxIndex, err = handlePending(stateCache, &pendingTxMsgs, statelessCache, lastIncomplete, nextTxIndex, false)
 							if err != nil {
 								logger.Error("Failed to apply pending tx changeset to state cache", "nextTxIndex", nextTxIndex, "error", err)
 							}
 							logger.Info("After handle pending", "len", pendingTxMsgs.Len())
 						}
 					} else {
-						nextTxIndex, err = handlePending(stateCache, &pendingTxMsgs, blockInfoMap, lastIncomplete, nextTxIndex, true)
+						nextTxIndex, err = handlePending(stateCache, &pendingTxMsgs, statelessCache, lastIncomplete, nextTxIndex, true)
 						if err != nil {
 							logger.Error("Failed to apply pending tx changeset to state cache", "nextTxIndex", nextTxIndex, "error", err)
 						}
@@ -397,11 +396,11 @@ func HandleTxKafkaMessage(
 					continue
 				}
 			} else {
-				_, txCount, exist := blockInfoMap.Get(lastIncomplete)
+				_, txCount, exist := statelessCache.GetHeader(lastIncomplete)
 				logger.Info("Get blockInfo", "lastIncomplete", lastIncomplete, "txCount", txCount, "nextTxIndex", nextTxIndex, "exist", exist)
 				if exist && (txCount == 0 || (txCount > 0 && txCount == int64(nextTxIndex))) {
-					blockInfoMap.MarkCompleted(lastIncomplete)
-					lastIncomplete = skipEmptyBlock(blockInfoMap, lastIncomplete+1)
+					statelessCache.MarkCompleted(lastIncomplete)
+					lastIncomplete = skipEmptyBlock(statelessCache, lastIncomplete+1)
 					nextTxIndex = 0
 
 					logger.Info("get blockInfo", "height", lastIncomplete, "msgHeight", msg.BlockNumber, "txIndex", msg.Receipt.TransactionIndex)
@@ -413,7 +412,7 @@ func HandleTxKafkaMessage(
 						}
 						nextTxIndex++
 
-						nextTxIndex, err = handlePending(stateCache, &pendingTxMsgs, blockInfoMap, lastIncomplete, nextTxIndex, false)
+						nextTxIndex, err = handlePending(stateCache, &pendingTxMsgs, statelessCache, lastIncomplete, nextTxIndex, false)
 						if err != nil {
 							logger.Error("Failed to apply pending tx changeset to state cache", "nextTxIndex", nextTxIndex, "error", err)
 						}
@@ -429,11 +428,11 @@ func HandleTxKafkaMessage(
 			}
 		}
 
-		logger.Info("Get the latest state value", "lastFinishHeight", lastFinishHeight, "nextTxIndex", nextTxIndex, "lastIncomplete", blockInfoMap.GetLastIncomplete(), "pendingLen", pendingTxMsgs.Len())
+		logger.Info("Get the latest state value", "lastFinishHeight", lastFinishHeight, "nextTxIndex", nextTxIndex, "lastIncomplete", statelessCache.GetLastIncomplete(), "pendingLen", pendingTxMsgs.Len())
 	}
 }
 
-func handlePending(stateCache *state.PlainStateCache, pendingTxMsgs *kafkaTypes.TransactionMessageSlice, blockInfoMap *zktypes.BlockInfoMap, curHeight, nextTxIndex uint64, heightLock bool) (uint64, error) {
+func handlePending(stateCache *state.PlainStateCache, pendingTxMsgs *kafkaTypes.TransactionMessageSlice, statelessCache *zktypes.StatelessCache, curHeight, nextTxIndex uint64, heightLock bool) (uint64, error) {
 	var handled int
 	for ; handled < pendingTxMsgs.Len(); handled++ {
 		msg := (*pendingTxMsgs)[handled]
@@ -462,7 +461,7 @@ func handlePending(stateCache *state.PlainStateCache, pendingTxMsgs *kafkaTypes.
 				break
 			}
 
-			_, txCount, exist := blockInfoMap.Get(curHeight)
+			_, txCount, exist := statelessCache.GetHeader(curHeight)
 			// Not sure how many transactions there are in curHeight block
 			if !exist || txCount < 0 {
 				heightLock = true
@@ -479,8 +478,8 @@ func handlePending(stateCache *state.PlainStateCache, pendingTxMsgs *kafkaTypes.
 				nextTxIndex++
 
 				if txCount == int64(nextTxIndex) {
-					blockInfoMap.MarkCompleted(curHeight)
-					curHeight = skipEmptyBlock(blockInfoMap, curHeight+1)
+					statelessCache.MarkCompleted(curHeight)
+					curHeight = skipEmptyBlock(statelessCache, curHeight+1)
 					nextTxIndex = 0
 				}
 			}
@@ -491,13 +490,13 @@ func handlePending(stateCache *state.PlainStateCache, pendingTxMsgs *kafkaTypes.
 	return nextTxIndex, nil
 }
 
-func skipEmptyBlock(blockInfoMap *zktypes.BlockInfoMap, start uint64) uint64 {
+func skipEmptyBlock(statelessCache *zktypes.StatelessCache, start uint64) uint64 {
 	for {
-		_, txCount, exist := blockInfoMap.Get(start)
+		_, txCount, exist := statelessCache.GetHeader(start)
 		if !exist || txCount != 0 {
 			return start
 		}
-		blockInfoMap.MarkCompleted(start)
+		statelessCache.MarkCompleted(start)
 		start++
 	}
 }

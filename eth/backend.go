@@ -255,8 +255,8 @@ type Ethereum struct {
 	// For X Layer, kafka
 	txKafkaProducer      *kafka.KafkaProducer
 	txKafkaConsumer      *kafka.KafkaConsumer
-	txInfoMap            *zktypes.TxInfoMap
-	blockInfoMap         *zktypes.BlockInfoMap
+	stateCache           *state.PlainStateCache
+	statelessCache       *zktypes.StatelessCache
 	blockInfoChan        chan *zktypes.BlockInfo
 	txInfoChan           chan *state.TxInfo
 	deliverTxChan        chan kafkaTypes.TransactionMessage
@@ -1297,8 +1297,7 @@ func New(ctx context.Context, stack *node.Node, config *ethconfig.Config, logger
 					return nil, err
 				}
 				backend.txKafkaConsumer = kafkaConsumer
-				backend.txInfoMap = zktypes.NewTxInfoMap()
-				backend.blockInfoMap = zktypes.NewBlockInfoMap()
+				backend.statelessCache = zktypes.NewStatelessCache()
 				backend.deliverTxChan = make(chan kafkaTypes.TransactionMessage, kafkaBufferSize)
 				backend.deleverBlockInfoChan = make(chan kafkaTypes.BlockMessage, kafkaBufferSize)
 				backend.finishChan = make(chan uint64)
@@ -1320,8 +1319,7 @@ func New(ctx context.Context, stack *node.Node, config *ethconfig.Config, logger
 				streamClient,
 				dataStreamServer,
 				l1InfoTreeUpdater,
-				backend.txInfoMap,
-				backend.blockInfoMap,
+				backend.statelessCache,
 				backend.finishChan,
 			)
 
@@ -1443,7 +1441,7 @@ func (s *Ethereum) Init(stack *node.Node, config *ethconfig.Config, chainConfig 
 
 	var gpCache *jsonrpc.GasPriceCache
 	// For X Layer, split db
-	s.apiList, gpCache = jsonrpc.APIList(chainKv, s.smtDB, ethRpcClient, txPoolRpcClient, s.txPool2, miningRpcClient, ff, stateCache, blockReader, s.agg, &httpRpcCfg, s.engine, config, s.l1Syncer, s.logger, dataStreamServer, s.gasTracker, s.stagedSync.GetCache(), s.txInfoMap, s.blockInfoMap)
+	s.apiList, gpCache = jsonrpc.APIList(chainKv, s.smtDB, ethRpcClient, txPoolRpcClient, s.txPool2, miningRpcClient, ff, stateCache, blockReader, s.agg, &httpRpcCfg, s.engine, config, s.l1Syncer, s.logger, dataStreamServer, s.gasTracker, s.stagedSync.GetCache(), s.stateCache, s.statelessCache)
 
 	// For X Layer
 	if s.txPool2 != nil && gpCache != nil {
@@ -2013,11 +2011,11 @@ func (s *Ethereum) Start() error {
 
 		go stages2.StageLoop(s.sentryCtx, s.chainDB, s.stagedSync, s.sentriesClient.Hd, s.waitForStageLoopStop, s.config.Sync.LoopThrottle, s.logger, s.blockReader, hook, s.config.ForcePartialCommit)
 
-		go stages2.ListenTxKafkaConsumer(s.sentryCtx, s.txKafkaConsumer, s.config.Zk.XLayer, s.logger, s.txInfoMap, s.blockInfoMap, s.deliverTxChan, s.deleverBlockInfoChan)
+		go stages2.ListenTxKafkaConsumer(s.sentryCtx, s.txKafkaConsumer, s.config.Zk.XLayer, s.logger, s.statelessCache, s.deliverTxChan, s.deleverBlockInfoChan)
 
 		go stages2.ListenTxKafkaProducer(s.sentryCtx, s.txKafkaProducer, s.config.Zk.XLayer, s.logger, s.blockInfoChan, s.txInfoChan)
 
-		go stages2.HandleTxKafkaMessage(s.sentryCtx, s.chainDB, s.config, s.logger, s.deliverTxChan, s.deleverBlockInfoChan, s.finishChan, s.blockInfoMap)
+		go stages2.HandleTxKafkaMessage(s.sentryCtx, s.chainDB, s.config, s.logger, s.deliverTxChan, s.deleverBlockInfoChan, s.finishChan, s.statelessCache)
 	}
 
 	stages := diagnostics.InitStagesFromList(nodeStages)

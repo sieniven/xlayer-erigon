@@ -56,10 +56,6 @@ func (cache *PlainStateCache) ApplyChangeset(changeset *zktypes.Changeset, block
 
 	// Apply code changes
 	for address, code := range changeset.CodeChanges {
-		if _, ok := changeset.DeletedAccounts[address]; ok {
-			continue
-		}
-
 		account, ok := addressChanges[address]
 		if !ok {
 			return fmt.Errorf("apply code changes failed: no codehash received")
@@ -69,10 +65,6 @@ func (cache *PlainStateCache) ApplyChangeset(changeset *zktypes.Changeset, block
 
 	// Apply storage changes
 	for address, storage := range changeset.StorageChanges {
-		if _, ok := changeset.DeletedAccounts[address]; ok {
-			continue
-		}
-
 		account, err := cache.getOrCreateAccount(address, addressChanges)
 		if err != nil {
 			return fmt.Errorf("apply storage changes failed: %v", err)
@@ -82,6 +74,12 @@ func (cache *PlainStateCache) ApplyChangeset(changeset *zktypes.Changeset, block
 			compositeKey := dbutils.PlainGenerateCompositeStorageKey(address.Bytes(), account.Incarnation, key.Bytes())
 			cache.storageCache[string(compositeKey)] = value
 		}
+	}
+
+	// Apply deleted accounts changes
+	for address := range changeset.DeletedAccounts {
+		// Non-existent / deleted accounts are set to nil
+		addressChanges[address] = nil
 	}
 
 	// Apply account changes
@@ -142,6 +140,8 @@ func (cache *PlainStateCache) applyChangesetToAccountData(changeset *zktypes.Cha
 
 	// Apply incarnation changes
 	for address, incarnation := range changeset.IncarnationChanges {
+		cache.incarnationCache[address] = incarnation
+
 		if _, ok := changeset.DeletedAccounts[address]; ok {
 			continue
 		}
@@ -152,12 +152,6 @@ func (cache *PlainStateCache) applyChangesetToAccountData(changeset *zktypes.Cha
 		}
 		account.PrevIncarnation = incarnation - 1
 		account.Incarnation = incarnation
-	}
-
-	// Apply deleted accounts changes
-	for address := range changeset.DeletedAccounts {
-		// Non-existent / deleted accounts are set to nil
-		addressChanges[address] = nil
 	}
 
 	return nil
@@ -265,7 +259,7 @@ func (cache *PlainStateCache) getOrCreateAccount(address libcommon.Address, addr
 
 		if account == nil {
 			// Non-existent account, create new account
-			account, err = cache.createAccount(address)
+			account, err = cache.createAccount()
 			if err != nil {
 				return nil, err
 			}
@@ -276,7 +270,7 @@ func (cache *PlainStateCache) getOrCreateAccount(address libcommon.Address, addr
 	return account, nil
 }
 
-func (cache *PlainStateCache) createAccount(address libcommon.Address) (*accounts.Account, error) {
+func (cache *PlainStateCache) createAccount() (*accounts.Account, error) {
 	return &accounts.Account{
 		Initialised: true,
 		Root:        libcommon.BytesToHash(trie.EmptyRoot[:]),
