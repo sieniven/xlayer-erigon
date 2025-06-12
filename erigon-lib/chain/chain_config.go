@@ -47,8 +47,9 @@ var ForkIdsOrdered = []ForkId{
 // that any network, identified by its genesis block, can have its own
 // set of configuration options.
 type Config struct {
-	ChainName string   `json:"chainName"` // chain name, eg: mainnet, sepolia, bor-mainnet
-	ChainID   *big.Int `json:"chainId"`   // chainId identifies the current chain and is used for replay protection
+	ChainName      string   `json:"chainName"` // chain name, eg: mainnet, sepolia, bor-mainnet
+	ChainID        *big.Int `json:"chainId"`   // chainId identifies the current chain and is used for replay protection
+	PerformMapping bool     `json:"performMapping"`
 
 	Consensus ConsensusName `json:"consensus,omitempty"` // aura, ethash or clique
 

@@ -405,6 +405,11 @@ var (
 		Usage: "L2 chain ID",
 		Value: 0,
 	}
+	L2PerformMapFlag = cli.Uint64Flag{
+		Name:  "zkevm.l2-perform-map",
+		Usage: "L2 whether perform native asset mapping",
+		Value: 0,
+	}
 	L2RpcUrlFlag = cli.StringFlag{
 		Name:  "zkevm.l2-sequencer-rpc-url",
 		Usage: "Upstream L2 node RPC endpoint",

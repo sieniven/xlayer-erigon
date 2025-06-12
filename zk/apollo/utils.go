@@ -30,6 +30,9 @@ func loadZkConfig(ctx *cli.Context, ethCfg *ethconfig.Config) {
 	if ctx.IsSet(utils.L2ChainIdFlag.Name) {
 		ethCfg.Zk.L2ChainId = ctx.Uint64(utils.L2ChainIdFlag.Name)
 	}
+	if ctx.IsSet(utils.L2PerformMapFlag.Name) {
+		ethCfg.Zk.L2PerformMap = ctx.Bool(utils.L2PerformMapFlag.Name)
+	}
 	if ctx.IsSet(utils.L2RpcUrlFlag.Name) {
 		ethCfg.Zk.L2RpcUrl = ctx.String(utils.L2RpcUrlFlag.Name)
 	}

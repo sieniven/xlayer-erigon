@@ -175,6 +175,7 @@ var DefaultFlags = []cli.Flag{
 	&utils.YieldSizeFlag,
 
 	&utils.L2ChainIdFlag,
+	&utils.L2PerformMapFlag,
 	&utils.L2RpcUrlFlag,
 	&utils.L2DataStreamerUrlFlag,
 	&utils.L2DataStreamerUseTLSFlag,

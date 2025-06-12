@@ -59,6 +59,7 @@ func setDefaults(cfg *Config) {
 	if cfg.ChainConfig == nil {
 		cfg.ChainConfig = &chain.Config{
 			ChainID:               big.NewInt(1),
+			PerformMapping:        false,
 			HomesteadBlock:        new(big.Int),
 			TangerineWhistleBlock: new(big.Int),
 			SpuriousDragonBlock:   new(big.Int),

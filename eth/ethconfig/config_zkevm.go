@@ -9,6 +9,7 @@ import (
 
 type Zk struct {
 	L2ChainId                              uint64
+	L2PerformMap                           bool
 	L2RpcUrl                               string
 	L2DataStreamerUrl                      string
 	L2DataStreamerUseTLS                   bool

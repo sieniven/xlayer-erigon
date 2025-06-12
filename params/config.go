@@ -107,6 +107,7 @@ var (
 	// and accepted by the Ethereum core developers into the main net protocol.
 	AllProtocolChanges = &chain.Config{
 		ChainID:                       big.NewInt(1337),
+		PerformMapping:                false,
 		Consensus:                     chain.EtHashConsensus,
 		HomesteadBlock:                big.NewInt(0),
 		TangerineWhistleBlock:         big.NewInt(0),
@@ -131,6 +132,7 @@ var (
 	// and accepted by the Ethereum core developers into the Clique consensus.
 	AllCliqueProtocolChanges = &chain.Config{
 		ChainID:               big.NewInt(1337),
+		PerformMapping:        false,
 		Consensus:             chain.CliqueConsensus,
 		HomesteadBlock:        big.NewInt(0),
 		TangerineWhistleBlock: big.NewInt(0),
