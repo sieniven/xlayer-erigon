@@ -38,7 +38,7 @@ type RealtimeAPI interface {
 	GetCode(ctx context.Context, address libcommon.Address) (hexutility.Bytes, error)
 	GetStorageAt(ctx context.Context, address libcommon.Address, index string) (string, error)
 
-	// // Sending related (see ./realtime_call_xlayer.go)
+	// Sending related (see ./realtime_call_xlayer.go)
 	Call(ctx context.Context, args ethapi2.CallArgs, overrides *ethapi2.StateOverrides) (hexutility.Bytes, error)
 }
 
