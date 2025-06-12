@@ -25,6 +25,9 @@ func (msg BlockMessage) GetBlockInfo() (*ethTypes.Header, int64, error) {
 	if msg.Header == nil {
 		return nil, 0, fmt.Errorf("header is nil")
 	}
+	if msg.Header.Number.Uint64() == 0 {
+		return nil, 0, fmt.Errorf("block number is 0")
+	}
 
 	return msg.Header, msg.PrevBlockTxCount, nil
 }

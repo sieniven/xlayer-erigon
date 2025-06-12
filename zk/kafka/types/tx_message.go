@@ -168,6 +168,23 @@ func (msg TransactionMessage) GetChangeset() (*zktypes.Changeset, error) {
 	return msg.Changeset, nil
 }
 
+func (msg TransactionMessage) Validate() error {
+	if _, _, err := msg.GetTransaction(); err != nil {
+		return err
+	}
+	if _, err := msg.GetReceipt(); err != nil {
+		return err
+	}
+	if _, err := msg.GetInnerTxs(); err != nil {
+		return err
+	}
+	if _, err := msg.GetChangeset(); err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (msg TransactionMessage) MarshalJSON() ([]byte, error) {
 	type TransactionMessage struct {
 		BlockNumber uint64             `json:"blockNumber"`

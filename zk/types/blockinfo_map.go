@@ -4,7 +4,6 @@ import (
 	"sync"
 
 	ethTypes "github.com/ledgerwatch/erigon/core/types"
-	"github.com/ledgerwatch/erigon/zkevm/log"
 )
 
 type BlockInfo struct {
@@ -13,9 +12,8 @@ type BlockInfo struct {
 }
 
 type BlockInfoMap struct {
-	blockInfos    map[uint64]*BlockInfo
-	lastCompleted uint64
-	mu            sync.RWMutex
+	blockInfos map[uint64]*BlockInfo
+	mu         sync.RWMutex
 }
 
 func NewBlockInfoMap() *BlockInfoMap {
@@ -34,27 +32,21 @@ func (bm *BlockInfoMap) Get(blockNum uint64) (*ethTypes.Header, int64, bool) {
 	return nil, 0, exists
 }
 
-func (bm *BlockInfoMap) PutHeader(blockNum uint64, header *ethTypes.Header) {
+func (bm *BlockInfoMap) PutHeader(blockNum uint64, header *ethTypes.Header, prevTxCount int64) {
 	bm.mu.Lock()
 	defer bm.mu.Unlock()
 	bm.blockInfos[blockNum] = &BlockInfo{
 		Header:  header,
 		TxCount: -1,
 	}
-}
 
-func (bm *BlockInfoMap) PutTxCount(blockNum uint64, txCount int64) {
-	bm.mu.Lock()
-	defer bm.mu.Unlock()
-	blockInfo, exists := bm.blockInfos[blockNum]
+	// Update previous block header tx count
+	blockInfo, exists := bm.blockInfos[blockNum-1]
 	if exists {
-		bm.blockInfos[blockNum] = &BlockInfo{
-			Header:  blockInfo.Header,
-			TxCount: txCount,
-		}
+		blockInfo.TxCount = prevTxCount
 	} else {
 		bm.blockInfos[blockNum] = &BlockInfo{
-			TxCount: txCount,
+			TxCount: prevTxCount,
 		}
 	}
 }
@@ -63,23 +55,4 @@ func (bm *BlockInfoMap) Delete(blockNum uint64) {
 	bm.mu.Lock()
 	defer bm.mu.Unlock()
 	delete(bm.blockInfos, blockNum)
-	bm.MarkCompleted(blockNum)
-}
-
-func (bm *BlockInfoMap) GetLastIncomplete() uint64 {
-	bm.mu.RLock()
-	defer bm.mu.RUnlock()
-
-	return bm.lastCompleted + 1
-}
-
-func (bm *BlockInfoMap) MarkCompleted(blockNumber uint64) {
-	if blockNumber > bm.lastCompleted {
-		bm.lastCompleted = blockNumber
-		log.Info("LastCompleted updated: ", bm.lastCompleted)
-	}
-}
-
-func (bm *BlockInfoMap) GetLastCompleted() uint64 {
-	return bm.lastCompleted
 }

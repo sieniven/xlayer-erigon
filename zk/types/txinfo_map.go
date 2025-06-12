@@ -17,14 +17,14 @@ type TxInfo struct {
 
 type TxInfoMap struct {
 	txInfos  map[common.Hash]TxInfo
-	blockTxs map[uint64][]common.Hash
+	blockTxs map[uint64]map[common.Hash]struct{}
 	mu       sync.RWMutex
 }
 
 func NewTxInfoMap() *TxInfoMap {
 	return &TxInfoMap{
 		txInfos:  make(map[common.Hash]TxInfo),
-		blockTxs: make(map[uint64][]common.Hash),
+		blockTxs: make(map[uint64]map[common.Hash]struct{}),
 	}
 }
 
@@ -39,7 +39,10 @@ func (rm *TxInfoMap) Put(blockNumber uint64, txHash common.Hash, tx ethTypes.Tra
 	}
 
 	rm.txInfos[txHash] = txInfo
-	rm.blockTxs[blockNumber] = append(rm.blockTxs[blockNumber], txHash)
+	if _, exists := rm.blockTxs[blockNumber]; !exists {
+		rm.blockTxs[blockNumber] = make(map[common.Hash]struct{})
+	}
+	rm.blockTxs[blockNumber][txHash] = struct{}{}
 }
 
 func (rm *TxInfoMap) DeleteBlockTxs(blockNumber uint64) {
@@ -64,6 +67,15 @@ func (rm *TxInfoMap) GetTx(txHash common.Hash) (ethTypes.Transaction, *ethTypes.
 func (rm *TxInfoMap) GetBlockTxs(blockNumber uint64) ([]common.Hash, bool) {
 	rm.mu.RLock()
 	defer rm.mu.RUnlock()
-	hashes, exists := rm.blockTxs[blockNumber]
-	return hashes, exists
+	hashSet, exists := rm.blockTxs[blockNumber]
+	if !exists {
+		return nil, false
+	}
+
+	hashes := make([]common.Hash, 0, len(hashSet))
+	for hash := range hashSet {
+		hashes = append(hashes, hash)
+	}
+
+	return hashes, true
 }
