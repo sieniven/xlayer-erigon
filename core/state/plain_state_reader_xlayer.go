@@ -30,6 +30,7 @@ type PlainStateCache struct {
 	codeCache        map[libcommon.Hash][]byte
 	incarnationCache map[libcommon.Address]uint64
 	ready            bool
+	txBlockNumber    uint64
 }
 
 func NewPlainStateCache(db kv.Getter) *PlainStateCache {
@@ -40,10 +41,11 @@ func NewPlainStateCache(db kv.Getter) *PlainStateCache {
 		codeCache:        make(map[libcommon.Hash][]byte, DefaultRealtimeCacheSize),
 		incarnationCache: make(map[libcommon.Address]uint64, DefaultRealtimeCacheSize),
 		ready:            false,
+		txBlockNumber:    0,
 	}
 }
 
-func (cache *PlainStateCache) ApplyChangeset(changeset *zktypes.Changeset) error {
+func (cache *PlainStateCache) ApplyChangeset(changeset *zktypes.Changeset, blockNumber uint64) error {
 	// Handle account data changes
 	addressChanges := make(map[libcommon.Address]*accounts.Account)
 	cache.applyChangesetToAccountData(changeset, addressChanges)
@@ -85,6 +87,10 @@ func (cache *PlainStateCache) ApplyChangeset(changeset *zktypes.Changeset) error
 	for address, account := range addressChanges {
 		delete(cache.accountCache, address)
 		cache.accountCache[address] = account
+	}
+
+	if cache.txBlockNumber == 0 {
+		cache.txBlockNumber = blockNumber
 	}
 
 	return nil
@@ -280,4 +286,8 @@ func (cache *PlainStateCache) UpdateReady(current bool) {
 
 func (cache *PlainStateCache) IsReady() bool {
 	return cache.ready
+}
+
+func (cache *PlainStateCache) TxBlockNumber() uint64 {
+	return cache.txBlockNumber
 }
