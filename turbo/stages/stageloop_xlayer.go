@@ -313,7 +313,7 @@ func HandleTxKafkaMessage(
 		case finishHeight := <-finishChan:
 			logger.Info("Fetched a finish signal", "finishHeight", finishHeight)
 			lastFinishHeight = finishHeight
-			lastIncomplete := blockInfoMap.GetLastIncomplete(0, lastFinishHeight)
+			lastIncomplete := blockInfoMap.GetLastIncomplete(0)
 
 			if lastIncomplete <= finishHeight {
 				// Reset state cache
@@ -331,20 +331,19 @@ func HandleTxKafkaMessage(
 				stateCache.UpdateReady(true)
 			}
 		case msg := <-deliverBlockInfoChan:
-			logger.Info("Fetched a blockInfo message", "blockNumber", msg.Header.Number.Uint64()-1, "lastFinishHeight", lastFinishHeight)
-			if !blockInfoMap.IsCompleted(msg.Header.Number.Uint64() - 1) {
-				lastIncomplete := blockInfoMap.GetLastIncomplete(msg.Header.Number.Uint64()-1, lastFinishHeight)
+			logger.Info("Fetched a blockInfo message", "blockNumber", msg.Header.Number.Uint64(), "lastFinishHeight", lastFinishHeight)
+			lastIncomplete := blockInfoMap.GetLastIncomplete(0)
 
-				if lastIncomplete == msg.Header.Number.Uint64()-1 && msg.PrevBlockTxCount == int64(nextTxIndex) {
-					nextTxIndex = 0
-					blockInfoMap.MarkCompleted(lastIncomplete)
-					lastIncomplete = skipEmptyBlock(blockInfoMap, lastIncomplete)
-					_, err := handlePending(stateCache, &pendingTxMsgs, blockInfoMap, lastIncomplete, nextTxIndex, false)
-					if err != nil {
-						logger.Error("Failed to apply pending tx changeset to state cache", "nextTxIndex", nextTxIndex, "error", err)
-					}
+			if lastIncomplete == msg.Header.Number.Uint64()-1 && msg.PrevBlockTxCount == int64(nextTxIndex) {
+				nextTxIndex = 0
+				blockInfoMap.MarkCompleted(lastIncomplete)
+				lastIncomplete = skipEmptyBlock(blockInfoMap, lastIncomplete)
+				_, err := handlePending(stateCache, &pendingTxMsgs, blockInfoMap, lastIncomplete, nextTxIndex, false)
+				if err != nil {
+					logger.Error("Failed to apply pending tx changeset to state cache", "nextTxIndex", nextTxIndex, "error", err)
 				}
 			}
+
 		case msg := <-deliverTxChan:
 			logger.Info("Fetched a transaction message", "blockNumber", msg.BlockNumber, "txIndex", msg.Receipt.TransactionIndex, "lastFinishHeight", lastFinishHeight)
 			if msg.BlockNumber <= lastFinishHeight {
@@ -352,7 +351,7 @@ func HandleTxKafkaMessage(
 				continue
 			}
 
-			lastIncomplete := blockInfoMap.GetLastIncomplete(msg.BlockNumber, lastFinishHeight)
+			lastIncomplete := blockInfoMap.GetLastIncomplete(msg.BlockNumber)
 			logger.Info("GetLastIncomplete", "lastIncomplete", lastIncomplete)
 			if msg.BlockNumber < lastIncomplete {
 				// Discard this stale transaction message

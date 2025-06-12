@@ -7,14 +7,14 @@ import (
 )
 
 type BlockInfo struct {
-	Header    *ethTypes.Header
-	TxCount   int64
-	Completed bool
+	Header  *ethTypes.Header
+	TxCount int64
 }
 
 type BlockInfoMap struct {
-	blockInfos map[uint64]*BlockInfo
-	mu         sync.RWMutex
+	blockInfos    map[uint64]*BlockInfo
+	lastCompleted uint64
+	mu            sync.RWMutex
 }
 
 func NewBlockInfoMap() *BlockInfoMap {
@@ -62,34 +62,26 @@ func (bm *BlockInfoMap) Delete(blockNum uint64) {
 	bm.mu.Lock()
 	defer bm.mu.Unlock()
 	delete(bm.blockInfos, blockNum)
+	bm.MarkCompleted(blockNum)
 }
 
-func (bm *BlockInfoMap) GetLastIncomplete(blockNumber, lastFinishHeight uint64) uint64 {
+func (bm *BlockInfoMap) GetLastIncomplete(blockNumber uint64) uint64 {
 	bm.mu.RLock()
 	defer bm.mu.RUnlock()
 
 	if blockNumber == 0 {
-		return lastFinishHeight + 1
+		return bm.lastCompleted + 1
 	}
 
-	temp := blockNumber
-	for temp > lastFinishHeight {
-		if bm.blockInfos[temp] == nil || bm.blockInfos[temp].Completed {
-			return min(temp+1, blockNumber)
-		}
-		temp--
-	}
-	return lastFinishHeight + 1
+	return min(bm.lastCompleted+1, blockNumber)
 }
 
 func (bm *BlockInfoMap) MarkCompleted(blockNumber uint64) {
-	bm.blockInfos[blockNumber].Completed = true
+	if blockNumber > bm.lastCompleted {
+		bm.lastCompleted = blockNumber
+	}
 }
 
-func (bm *BlockInfoMap) IsCompleted(blockNumber uint64) bool {
-	blockInfo, exists := bm.blockInfos[blockNumber]
-	if !exists {
-		return true
-	}
-	return blockInfo.Completed
+func (bm *BlockInfoMap) GetLastCompleted() uint64 {
+	return bm.lastCompleted
 }
