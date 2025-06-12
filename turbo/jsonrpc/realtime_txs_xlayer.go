@@ -8,7 +8,7 @@ import (
 	"github.com/ledgerwatch/erigon-lib/common/hexutility"
 )
 
-// GetTransactionByHash implements eth_getTransactionByHash.
+// GetTransactionByHash implements realtime_getTransactionByHash.
 // Returns information about a transaction given the transaction's hash.
 func (api *RealtimeAPIImpl) GetTransactionByHash(ctx context.Context, txnHash common.Hash, includeExtraInfo *bool) (interface{}, error) {
 	txn, _, blockNum, _, ok := api.statelessCache.GetTxInfo(txnHash)
