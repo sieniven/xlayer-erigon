@@ -361,7 +361,7 @@ func HandleTxKafkaMessage(
 				// Check if the transaction index is matched
 				logger.Info("Check tx index", "msg.TxIndex", msg.Receipt.TransactionIndex, "nextTxIndex", nextTxIndex)
 				if msg.Receipt.TransactionIndex == uint(nextTxIndex) {
-					if err := stateCache.ApplyChangeset(msg.Changeset, msg.BlockNumber); err != nil {
+					if err := stateCache.ApplyChangeset(msg.Changeset, msg.BlockNumber, msg.Receipt.TransactionIndex); err != nil {
 						// TODO：need to record the invalid changeset and apply it again later?
 						logger.Error("Failed to apply tx changeset to state cache", "error", err)
 						continue
@@ -369,7 +369,7 @@ func HandleTxKafkaMessage(
 					nextTxIndex++
 
 					_, txCount, exist := (*blockInfoMap).Get(lastIncomplete)
-					logger.Info("Get blockInfo", "lastIncomplete", lastIncomplete, "txCount", txCount, "exist", exist)
+					logger.Info("Get blockInfo", "lastIncomplete", lastIncomplete, "txCount", txCount, "nextTxIndex", nextTxIndex, "exist", exist)
 					if exist && txCount >= 0 {
 						// Check if the transaction is the last one of corresponding block
 						if txCount == int64(nextTxIndex) {
@@ -391,21 +391,22 @@ func HandleTxKafkaMessage(
 					}
 				} else if msg.Receipt.TransactionIndex > uint(nextTxIndex) {
 					addPendingTx(&pendingTxMsgs, &msg)
-					logger.Info("Pending length", "len", pendingTxMsgs.Len())
+					logger.Info("After add tx to pending", "len", pendingTxMsgs.Len())
 				} else {
 					// discard this stale transaction message
 					continue
 				}
 			} else {
 				_, txCount, exist := blockInfoMap.Get(lastIncomplete)
-				logger.Info("XXX", "txCount", txCount, "nextTxIndex", nextTxIndex, "exist", exist)
+				logger.Info("Get blockInfo", "lastIncomplete", lastIncomplete, "txCount", txCount, "nextTxIndex", nextTxIndex, "exist", exist)
 				if exist && (txCount == 0 || (txCount > 0 && txCount == int64(nextTxIndex))) {
 					blockInfoMap.MarkCompleted(lastIncomplete)
 					lastIncomplete = skipEmptyBlock(blockInfoMap, lastIncomplete+1)
+					nextTxIndex = 0
 
 					logger.Info("get blockInfo", "height", lastIncomplete, "msgHeight", msg.BlockNumber, "txIndex", msg.Receipt.TransactionIndex)
 					if lastIncomplete == msg.BlockNumber && msg.Receipt.TransactionIndex == 0 {
-						if err := stateCache.ApplyChangeset(msg.Changeset, msg.BlockNumber); err != nil {
+						if err := stateCache.ApplyChangeset(msg.Changeset, msg.BlockNumber, msg.Receipt.TransactionIndex); err != nil {
 							// TODO：need to record the invalid changeset and apply it again later?
 							logger.Error("Failed to apply tx changeset to state cache", "error", err)
 							continue
@@ -416,17 +417,19 @@ func HandleTxKafkaMessage(
 						if err != nil {
 							logger.Error("Failed to apply pending tx changeset to state cache", "nextTxIndex", nextTxIndex, "error", err)
 						}
-						logger.Info("After handle pending", "len", pendingTxMsgs.Len())
+						logger.Info("After add tx to pending", "len", pendingTxMsgs.Len())
 					} else {
 						addPendingTx(&pendingTxMsgs, &msg)
-						logger.Info("Pending length", "len", pendingTxMsgs.Len())
+						logger.Info("After add tx to pending", "len", pendingTxMsgs.Len())
 					}
 				} else {
 					addPendingTx(&pendingTxMsgs, &msg)
-					logger.Info("Pending length", "len", pendingTxMsgs.Len())
+					logger.Info("After add tx to pending", "len", pendingTxMsgs.Len())
 				}
 			}
 		}
+
+		logger.Info("Get the latest state value", "lastFinishHeight", lastFinishHeight, "nextTxIndex", nextTxIndex, "lastIncomplete", blockInfoMap.GetLastIncomplete(), "pendingLen", pendingTxMsgs.Len())
 	}
 }
 
@@ -445,7 +448,7 @@ func handlePending(stateCache *state.PlainStateCache, pendingTxMsgs *kafkaTypes.
 			}
 
 			if msg.Receipt.TransactionIndex == uint(nextTxIndex) {
-				if err := stateCache.ApplyChangeset(msg.Changeset, msg.BlockNumber); err != nil {
+				if err := stateCache.ApplyChangeset(msg.Changeset, msg.BlockNumber, msg.Receipt.TransactionIndex); err != nil {
 					*pendingTxMsgs = (*pendingTxMsgs)[handled:]
 					return nextTxIndex, err
 				}
@@ -469,7 +472,7 @@ func handlePending(stateCache *state.PlainStateCache, pendingTxMsgs *kafkaTypes.
 
 			// Apply changeset and also skip empty block if it is necessary
 			if msg.Receipt.TransactionIndex == uint(nextTxIndex) {
-				if err := stateCache.ApplyChangeset(msg.Changeset, msg.BlockNumber); err != nil {
+				if err := stateCache.ApplyChangeset(msg.Changeset, msg.BlockNumber, msg.Receipt.TransactionIndex); err != nil {
 					*pendingTxMsgs = (*pendingTxMsgs)[handled:]
 					return nextTxIndex, err
 				}

@@ -4,6 +4,7 @@ import (
 	"sync"
 
 	ethTypes "github.com/ledgerwatch/erigon/core/types"
+	"github.com/ledgerwatch/erigon/zkevm/log"
 )
 
 type BlockInfo struct {
@@ -75,6 +76,7 @@ func (bm *BlockInfoMap) GetLastIncomplete() uint64 {
 func (bm *BlockInfoMap) MarkCompleted(blockNumber uint64) {
 	if blockNumber > bm.lastCompleted {
 		bm.lastCompleted = blockNumber
+		log.Info("LastCompleted updated: ", bm.lastCompleted)
 	}
 }
 

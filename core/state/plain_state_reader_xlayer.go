@@ -12,6 +12,7 @@ import (
 	"github.com/ledgerwatch/erigon/core/types/accounts"
 	"github.com/ledgerwatch/erigon/turbo/trie"
 	zktypes "github.com/ledgerwatch/erigon/zk/types"
+	"github.com/ledgerwatch/erigon/zkevm/log"
 )
 
 const (
@@ -45,7 +46,7 @@ func NewPlainStateCache(db kv.Getter) *PlainStateCache {
 	}
 }
 
-func (cache *PlainStateCache) ApplyChangeset(changeset *zktypes.Changeset, blockNumber uint64) error {
+func (cache *PlainStateCache) ApplyChangeset(changeset *zktypes.Changeset, blockNumber uint64, txIndex uint) error {
 	// Handle account data changes
 	addressChanges := make(map[libcommon.Address]*accounts.Account)
 	cache.applyChangesetToAccountData(changeset, addressChanges)
@@ -87,11 +88,14 @@ func (cache *PlainStateCache) ApplyChangeset(changeset *zktypes.Changeset, block
 	for address, account := range addressChanges {
 		delete(cache.accountCache, address)
 		cache.accountCache[address] = account
+		log.Info("ApplyChangeset: ", address)
 	}
 
 	if cache.txBlockNumber == 0 {
 		cache.txBlockNumber = blockNumber
 	}
+
+	log.Info(fmt.Sprintf("Apply changeset from tx with height: %d, txIndex: %d\n", blockNumber, txIndex))
 
 	return nil
 }
