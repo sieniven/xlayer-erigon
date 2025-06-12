@@ -11,7 +11,7 @@ import (
 	"github.com/ledgerwatch/erigon/turbo/transactions"
 )
 
-// Call implements eth_call.
+// Call implements realtime_call.
 // Executes a new message call immediately without creating a transaction on the block chain.
 // Note that realtime API only supports execution on the latest block.
 func (api *RealtimeAPIImpl) Call(ctx context.Context, args ethapi2.CallArgs, overrides *ethapi2.StateOverrides) (hexutility.Bytes, error) {
