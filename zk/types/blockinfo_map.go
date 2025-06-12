@@ -65,15 +65,11 @@ func (bm *BlockInfoMap) Delete(blockNum uint64) {
 	bm.MarkCompleted(blockNum)
 }
 
-func (bm *BlockInfoMap) GetLastIncomplete(blockNumber uint64) uint64 {
+func (bm *BlockInfoMap) GetLastIncomplete() uint64 {
 	bm.mu.RLock()
 	defer bm.mu.RUnlock()
 
-	if blockNumber == 0 {
-		return bm.lastCompleted + 1
-	}
-
-	return min(bm.lastCompleted+1, blockNumber)
+	return bm.lastCompleted + 1
 }
 
 func (bm *BlockInfoMap) MarkCompleted(blockNumber uint64) {

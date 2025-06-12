@@ -313,13 +313,14 @@ func HandleTxKafkaMessage(
 		case finishHeight := <-finishChan:
 			logger.Info("Fetched a finish signal", "finishHeight", finishHeight)
 			lastFinishHeight = finishHeight
-			lastIncomplete := blockInfoMap.GetLastIncomplete(0)
+			lastIncomplete := blockInfoMap.GetLastIncomplete()
 
 			if lastIncomplete <= finishHeight {
 				// Reset state cache
 				stateCache = state.NewPlainStateCache(tx)
 				stateCache.UpdateReady(false)
 				nextTxIndex = 0
+				blockInfoMap.MarkCompleted(finishHeight)
 				continue
 			}
 
@@ -332,12 +333,12 @@ func HandleTxKafkaMessage(
 			}
 		case msg := <-deliverBlockInfoChan:
 			logger.Info("Fetched a blockInfo message", "blockNumber", msg.Header.Number.Uint64(), "lastFinishHeight", lastFinishHeight)
-			lastIncomplete := blockInfoMap.GetLastIncomplete(0)
+			lastIncomplete := blockInfoMap.GetLastIncomplete()
 
-			if lastIncomplete == msg.Header.Number.Uint64()-1 && msg.PrevBlockTxCount == int64(nextTxIndex) {
+			if lastIncomplete == msg.Header.Number.Uint64()-1 && (msg.PrevBlockTxCount == int64(nextTxIndex) || msg.PrevBlockTxCount == int64(nextTxIndex)) {
 				nextTxIndex = 0
 				blockInfoMap.MarkCompleted(lastIncomplete)
-				lastIncomplete = skipEmptyBlock(blockInfoMap, lastIncomplete)
+				lastIncomplete = skipEmptyBlock(blockInfoMap, lastIncomplete+1)
 				nextTxIndex, err := handlePending(stateCache, &pendingTxMsgs, blockInfoMap, lastIncomplete, nextTxIndex, false)
 				if err != nil {
 					logger.Error("Failed to apply pending tx changeset to state cache", "nextTxIndex", nextTxIndex, "error", err)
@@ -351,7 +352,7 @@ func HandleTxKafkaMessage(
 				continue
 			}
 
-			lastIncomplete := blockInfoMap.GetLastIncomplete(msg.BlockNumber)
+			lastIncomplete := blockInfoMap.GetLastIncomplete()
 			logger.Info("GetLastIncomplete", "lastIncomplete", lastIncomplete)
 			if msg.BlockNumber < lastIncomplete {
 				// Discard this stale transaction message
@@ -388,16 +389,19 @@ func HandleTxKafkaMessage(
 						}
 						logger.Info("After handle pending", "len", pendingTxMsgs.Len())
 					}
-				} else {
+				} else if msg.Receipt.TransactionIndex > uint(nextTxIndex) {
 					addPendingTx(&pendingTxMsgs, &msg)
 					logger.Info("Pending length", "len", pendingTxMsgs.Len())
+				} else {
+					// discard this stale transaction message
+					continue
 				}
 			} else {
 				_, txCount, exist := blockInfoMap.Get(lastIncomplete)
 				logger.Info("XXX", "txCount", txCount, "nextTxIndex", nextTxIndex, "exist", exist)
 				if exist && (txCount == 0 || (txCount > 0 && txCount == int64(nextTxIndex))) {
 					blockInfoMap.MarkCompleted(lastIncomplete)
-					lastIncomplete = skipEmptyBlock(blockInfoMap, lastIncomplete)
+					lastIncomplete = skipEmptyBlock(blockInfoMap, lastIncomplete+1)
 
 					logger.Info("get blockInfo", "height", lastIncomplete, "msgHeight", msg.BlockNumber, "txIndex", msg.Receipt.TransactionIndex)
 					if lastIncomplete == msg.BlockNumber && msg.Receipt.TransactionIndex == 0 {
