@@ -733,3 +733,200 @@ func transHexToBigInt(hexStr json.RawMessage) (*big.Int, error) {
 
 	return value, nil
 }
+
+// RealtimeBlockNumber returns the number of the most recent block in real-time
+func RealtimeBlockNumber() (uint64, error) {
+	response, err := client.JSONRPCCall(DefaultL2NetworkURL, "realtime_blockNumber")
+	if err != nil {
+		return 0, err
+	}
+	if response.Error != nil {
+		return 0, fmt.Errorf("%d - %s", response.Error.Code, response.Error.Message)
+	}
+
+	return transHexToUint64(response.Result)
+}
+
+// RealtimeGetBlockTransactionCountByNumber returns the number of transactions in a block by number in real-time
+func RealtimeGetBlockTransactionCountByNumber(blockNumber uint64) (uint64, error) {
+	response, err := client.JSONRPCCall(DefaultL2NetworkURL, "realtime_getBlockTransactionCountByNumber", blockNumber)
+	if err != nil {
+		return 0, err
+	}
+	if response.Error != nil {
+		return 0, fmt.Errorf("%d - %s", response.Error.Code, response.Error.Message)
+	}
+
+	return transHexToUint64(response.Result)
+}
+
+// RealtimeGetTransactionByHash returns the information about a transaction requested by transaction hash in real-time
+func RealtimeGetTransactionByHash(txHash common.Hash, includeExtraInfo *bool) (interface{}, error) {
+	response, err := client.JSONRPCCall(DefaultL2NetworkURL, "realtime_getTransactionByHash", txHash, includeExtraInfo)
+	if err != nil {
+		return nil, err
+	}
+	if response.Error != nil {
+		return nil, fmt.Errorf("%d - %s", response.Error.Code, response.Error.Message)
+	}
+
+	var result interface{}
+	err = json.Unmarshal(response.Result, &result)
+	if err != nil {
+		return nil, err
+	}
+
+	return result, nil
+}
+
+// RealtimeGetTransactionByHash returns raw information about a transaction requested by transaction hash in real-time
+func RealtimeGetRawTransactionByHash(txHash common.Hash) (interface{}, error) {
+	response, err := client.JSONRPCCall(DefaultL2NetworkURL, "realtime_getRawTransactionByHash", txHash)
+	if err != nil {
+		return nil, err
+	}
+	if response.Error != nil {
+		return nil, fmt.Errorf("%d - %s", response.Error.Code, response.Error.Message)
+	}
+
+	var result interface{}
+	err = json.Unmarshal(response.Result, &result)
+	if err != nil {
+		return nil, err
+	}
+
+	return result, nil
+}
+
+// RealtimeGetTransactionReceipt returns the receipt of a transaction by transaction hash in real-time
+func RealtimeGetTransactionReceipt(txHash common.Hash) (interface{}, error) {
+	response, err := client.JSONRPCCall(DefaultL2NetworkURL, "realtime_getTransactionReceipt", txHash)
+	if err != nil {
+		return nil, err
+	}
+	if response.Error != nil {
+		return nil, fmt.Errorf("%d - %s", response.Error.Code, response.Error.Message)
+	}
+
+	var result interface{}
+	err = json.Unmarshal(response.Result, &result)
+	if err != nil {
+		return nil, err
+	}
+
+	return result, nil
+}
+
+// RealtimeGetInternalTransactions returns the internal transactions for a given transaction hash in real-time
+func RealtimeGetInternalTransactions(txHash common.Hash) (interface{}, error) {
+	response, err := client.JSONRPCCall(DefaultL2NetworkURL, "realtime_getInternalTransactions", txHash)
+	if err != nil {
+		return nil, err
+	}
+	if response.Error != nil {
+		return nil, fmt.Errorf("%d - %s", response.Error.Code, response.Error.Message)
+	}
+
+	var result interface{}
+	err = json.Unmarshal(response.Result, &result)
+	if err != nil {
+		return nil, err
+	}
+
+	return result, nil
+}
+
+// RealtimeGetBalance returns the balance of an account in real-time
+func RealtimeGetBalance(address common.Address) (*big.Int, error) {
+	response, err := client.JSONRPCCall(DefaultL2NetworkURL, "realtime_getBalance", address)
+	if err != nil {
+		return nil, err
+	}
+	if response.Error != nil {
+		return nil, fmt.Errorf("%d - %s", response.Error.Code, response.Error.Message)
+	}
+
+	var hexBalance string
+	err = json.Unmarshal(response.Result, &hexBalance)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(hexBalance) > 2 && (hexBalance[:2] == "0x" || hexBalance[:2] == "0X") {
+		hexBalance = hexBalance[2:]
+	}
+
+	balance := new(big.Int)
+	balance, ok := balance.SetString(hexBalance, 16)
+	if !ok {
+		return nil, fmt.Errorf("failed to convert hex to big.Int: %s", hexBalance)
+	}
+
+	return balance, nil
+}
+
+// RealtimeGetCode returns the code at a given address in real-time
+func RealtimeGetCode(address common.Address) (string, error) {
+	response, err := client.JSONRPCCall(DefaultL2NetworkURL, "realtime_getCode", address)
+	if err != nil {
+		return "", err
+	}
+	if response.Error != nil {
+		return "", fmt.Errorf("%d - %s", response.Error.Code, response.Error.Message)
+	}
+
+	var code string
+	err = json.Unmarshal(response.Result, &code)
+	if err != nil {
+		return "", err
+	}
+
+	return code, nil
+}
+
+// RealtimeGetStorageAt returns the value from a storage position at a given address in real-time
+func RealtimeGetStorageAt(address common.Address, position string) (string, error) {
+	response, err := client.JSONRPCCall(DefaultL2NetworkURL, "realtime_getStorageAt", address, position)
+	if err != nil {
+		return "", err
+	}
+	if response.Error != nil {
+		return "", fmt.Errorf("%d - %s", response.Error.Code, response.Error.Message)
+	}
+
+	var result string
+	err = json.Unmarshal(response.Result, &result)
+	if err != nil {
+		return "", err
+	}
+
+	return result, nil
+}
+
+// RealtimeCall executes a new message call immediately without creating a transaction in real-time
+func RealtimeCall(from, to common.Address, gas string, gasPrice string, value string, data string) (string, error) {
+	txParams := map[string]interface{}{
+		"from":     from,
+		"to":       to,
+		"gas":      gas,
+		"gasPrice": gasPrice,
+		"value":    value,
+		"data":     data,
+	}
+
+	response, err := client.JSONRPCCall(DefaultL2NetworkURL, "realtime_call", txParams)
+	if err != nil {
+		return "", err
+	}
+	if response.Error != nil {
+		return "", fmt.Errorf("%d - %s", response.Error.Code, response.Error.Message)
+	}
+
+	var result string
+	err = json.Unmarshal(response.Result, &result)
+	if err != nil {
+		return "", err
+	}
+
+	return result, nil
+}
