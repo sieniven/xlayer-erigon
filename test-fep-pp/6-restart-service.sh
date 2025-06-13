@@ -21,5 +21,5 @@ sed_inplace "s|zkevm.executor-mock: true| |g" "$DOCK_CONFIG_FILE"
 DOCK_CONFIG_FILE="./config/test.erigon.rpc.config.yaml"
 sed_inplace "s|zkevm.mock-witness-generation: true| |g" "$DOCK_CONFIG_FILE"
 
-./5-build-ckd-node.sh 0
+./7-build-ckd-node.sh 0
 make run-new

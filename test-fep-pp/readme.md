@@ -1,9 +1,9 @@
 # How to run
 ```shell
 ./1-init-fep.sh
-./2-update-rollupmgr.sh
-./3-update-pp.sh
-./4-restart-service.sh
+./4-update-rollupmgr2.sh
+./3-add-pp-type.sh
+./6-restart-service.sh
 ```
 
 # How to use bridge

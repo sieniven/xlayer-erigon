@@ -26,7 +26,8 @@ fi
 
 cd "./xlayer-contracts"
 
-git stash
+git add .
+git stash push
 git pull
 git checkout zjg/v10.0.0-rc.6-v2; git pull
 git stash apply
