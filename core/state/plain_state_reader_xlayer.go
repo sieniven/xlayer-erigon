@@ -29,13 +29,13 @@ const (
 type PlainStateCache struct {
 	snapshotReader *PlainStateReader
 
-	cacheLock        sync.RWMutex
-	accountCache     map[libcommon.Address]*accounts.Account
-	storageCache     map[string]*uint256.Int
-	codeCache        map[libcommon.Hash][]byte
-	incarnationCache map[libcommon.Address]uint64
-	ready            bool
-	txBlockNumber    uint64
+	cacheLock           sync.RWMutex
+	accountCache        map[libcommon.Address]*accounts.Account
+	storageCache        map[string]*uint256.Int
+	codeCache           map[libcommon.Hash][]byte
+	incarnationMapCache map[libcommon.Address]uint64
+	ready               bool
+	txBlockNumber       uint64
 }
 
 func NewPlainStateCache() *PlainStateCache {
@@ -50,7 +50,7 @@ func (cache *PlainStateCache) Reset(db kv.Getter) {
 	cache.accountCache = make(map[libcommon.Address]*accounts.Account, DefaultRealtimeCacheSize)
 	cache.storageCache = make(map[string]*uint256.Int, DefaultRealtimeCacheSize)
 	cache.codeCache = make(map[libcommon.Hash][]byte, DefaultRealtimeCacheSize)
-	cache.incarnationCache = make(map[libcommon.Address]uint64, DefaultRealtimeCacheSize)
+	cache.incarnationMapCache = make(map[libcommon.Address]uint64, DefaultRealtimeCacheSize)
 	cache.ready = false
 	cache.txBlockNumber = 0
 }
@@ -79,6 +79,11 @@ func (cache *PlainStateCache) ApplyChangeset(changeset *zktypes.Changeset, block
 			compositeKey := dbutils.PlainGenerateCompositeStorageKey(address.Bytes(), account.Incarnation, key.Bytes())
 			cache.storageCache[string(compositeKey)] = value
 		}
+	}
+
+	// Apply incarnation map changes
+	for address, incarnation := range changeset.IncarnationMapChanges {
+		cache.incarnationMapCache[address] = incarnation
 	}
 
 	// Apply deleted accounts changes
@@ -145,8 +150,6 @@ func (cache *PlainStateCache) applyChangesetToAccountData(changeset *zktypes.Cha
 
 	// Apply incarnation changes
 	for address, incarnation := range changeset.IncarnationChanges {
-		cache.incarnationCache[address] = incarnation
-
 		if _, ok := changeset.DeletedAccounts[address]; ok {
 			continue
 		}
@@ -155,7 +158,6 @@ func (cache *PlainStateCache) applyChangesetToAccountData(changeset *zktypes.Cha
 		if err != nil {
 			return fmt.Errorf("apply incarnation changes failed: %v", err)
 		}
-		account.PrevIncarnation = incarnation - 1
 		account.Incarnation = incarnation
 	}
 
@@ -233,7 +235,7 @@ func (cache *PlainStateCache) ReadAccountIncarnation(address libcommon.Address) 
 	}
 
 	cache.cacheLock.RLock()
-	incarnation, ok := cache.incarnationCache[address]
+	incarnation, ok := cache.incarnationMapCache[address]
 	cache.cacheLock.RUnlock()
 	if ok {
 		return incarnation, nil
@@ -326,7 +328,7 @@ func (cache *PlainStateCache) Dump() error {
 	}
 
 	incarnationData := make(map[string]uint64)
-	for addr, incarnation := range cache.incarnationCache {
+	for addr, incarnation := range cache.incarnationMapCache {
 		incarnationData[hex.EncodeToString(addr[:])] = incarnation
 	}
 	if err := writeToJSON("/home/erigon/data/cache/incarnation_cache.json", incarnationData); err != nil {

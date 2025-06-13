@@ -180,6 +180,11 @@ type (
 	}
 
 	incarnationChange struct {
+		account *libcommon.Address
+		post    uint64
+	}
+
+	incarnationMapChange struct {
 		account  *libcommon.Address
 		original uint64
 	}
@@ -245,6 +250,7 @@ func (ch selfdestructChange) collectChangeset(cs *types.Changeset) {
 	delete(cs.NonceChanges, *ch.account)
 	delete(cs.CodeHashChanges, *ch.account)
 	delete(cs.IncarnationChanges, *ch.account)
+	delete(cs.IncarnationMapChanges, *ch.account)
 	delete(cs.StorageChanges, *ch.account)
 }
 
@@ -427,5 +433,15 @@ func (ch incarnationChange) dirtied() *libcommon.Address {
 }
 
 func (ch incarnationChange) collectChangeset(cs *types.Changeset) {
-	cs.IncarnationChanges[*ch.account] = ch.original
+	cs.IncarnationChanges[*ch.account] = ch.post
+}
+
+func (ch incarnationMapChange) revert(s *IntraBlockState) {}
+
+func (ch incarnationMapChange) dirtied() *libcommon.Address {
+	return nil
+}
+
+func (ch incarnationMapChange) collectChangeset(cs *types.Changeset) {
+	cs.IncarnationMapChanges[*ch.account] = ch.original
 }

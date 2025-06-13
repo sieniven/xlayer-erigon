@@ -628,12 +628,16 @@ func (sdb *IntraBlockState) CreateAccount(addr libcommon.Address, contractCreati
 		// the current incarnation should be zero as an EOA account,
 		// but the previous incarnation that will be written to kv.IncarnationMap should be the original incarnation.
 		if previous != nil && previous.selfdestructed {
-			sdb.journal.append(incarnationChange{
+			sdb.journal.append(incarnationMapChange{
 				account:  &addr,
 				original: previous.original.Incarnation,
 			})
 		}
 	}
+	sdb.journal.append(incarnationChange{
+		account: &addr,
+		post:    newObj.data.Incarnation,
+	})
 }
 
 // Snapshot returns an identifier for the current revision of the state.
