@@ -180,8 +180,8 @@ type (
 	}
 
 	incarnationChange struct {
-		account *libcommon.Address
-		post    uint64
+		account  *libcommon.Address
+		original uint64
 	}
 )
 
@@ -428,5 +428,5 @@ func (ch incarnationChange) dirtied() *libcommon.Address {
 }
 
 func (ch incarnationChange) collectChangeset(cs *types.Changeset) {
-	cs.IncarnationChanges[*ch.account] = ch.post
+	cs.IncarnationChanges[*ch.account] = ch.original
 }

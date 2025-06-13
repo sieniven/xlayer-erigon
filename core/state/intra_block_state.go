@@ -629,8 +629,8 @@ func (sdb *IntraBlockState) CreateAccount(addr libcommon.Address, contractCreati
 		// but the previous incarnation that will be written to kv.IncarnationMap should be the original incarnation.
 		if previous != nil && previous.selfdestructed {
 			sdb.journal.append(incarnationChange{
-				account: &addr,
-				post:    previous.original.Incarnation,
+				account:  &addr,
+				original: previous.original.Incarnation,
 			})
 		}
 	}
