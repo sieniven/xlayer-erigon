@@ -155,30 +155,24 @@ rollupTypeCount=$((16#${hex#0x}))
 echo "$rollupTypeCount"
 cast call 0x2d42E2899662EFf08b13eeb65b154b904C7a1c8a "rollupTypeMap(uint32)(address,address,uint64,uint8,bool,bytes32)" $rollupTypeCount
 
-echo "Creating ./tools/updateRollup/updateRollup.json..."
-cat > ./tools/updateRollup/updateRollup.json << EOF
+echo "Creating ./tools/initMigrationToPP/initMigrationToPP.json..."
+cat > ./tools/initMigrationToPP/initMigrationToPP.json << EOF
 {
     "type": "EOA",
     "polygonRollupManagerAddress": "0x2d42E2899662EFf08b13eeb65b154b904C7a1c8a",
+    "rollupID": 1,
+    "newRollupTypeID": $rollupTypeCount,
     "timelockDelay": 0,
-    "deployerPvtKey": "",
     "maxFeePerGas": "",
     "maxPriorityFeePerGas": "",
-    "multiplierGas": "",
-    "rollups": [
-        {
-            "rollupAddress": "0xeb173087729c88a47568AF87b17C653039377BA6",
-            "newRollupTypeID": $rollupTypeCount,
-            "upgradeData": "0x"
-        }
-    ]
+    "multiplierGas": ""
 }
 EOF
 
-echo "Before updateRollup.ts"
+echo "Before initMigrationToPP.ts"
 cast call 0x2d42E2899662EFf08b13eeb65b154b904C7a1c8a "rollupIDToRollupData(uint32)(address,uint64,address,uint64,bytes32,uint64,uint64,uint64,uint64,uint64,uint64,uint8)" 1 
 
-npx hardhat run ./tools/updateRollup/updateRollup.ts --network localhost
+npx hardhat run ./tools/initMigrationToPP/initMigrationToPP.ts --network localhost
 
-echo "After updateRollup.ts, rollupTypeID: 1"
+echo "After initMigrationToPP.ts, rollupTypeID: 1"
 cast call 0x2d42E2899662EFf08b13eeb65b154b904C7a1c8a "rollupIDToRollupData(uint32)(address,uint64,address,uint64,bytes32,uint64,uint64,uint64,uint64,uint64,uint64,uint8)" 1 
