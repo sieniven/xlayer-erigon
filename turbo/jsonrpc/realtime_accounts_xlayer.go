@@ -25,14 +25,35 @@ func (api *RealtimeAPIImpl) GetBalance(ctx context.Context, address libcommon.Ad
 }
 
 func (api *RealtimeAPIImpl) GetTransactionCount(ctx context.Context, address libcommon.Address) (*hexutil.Uint64, error) {
+	ethNonce, err := api.ethApi.GetTransactionCount(ctx, address, nil)
+	if err != nil {
+		ethNonce = nil
+	}
+
+	var cacheNonce *hexutil.Uint64
 	acc, err := api.stateCache.ReadAccountData(address)
 	if err != nil {
-		return nil, fmt.Errorf("cant get a transaction count for account %x: %w", address.String(), err)
+		cacheNonce = nil
+	} else if acc != nil {
+		nonce := hexutil.Uint64(acc.Nonce)
+		cacheNonce = &nonce
 	}
-	if acc == nil {
-		return nil, nil
+
+	if ethNonce == nil && cacheNonce == nil {
+		return nil, fmt.Errorf("failed to get transaction count for account %x from both sources", address)
 	}
-	return (*hexutil.Uint64)(&acc.Nonce), nil
+
+	if ethNonce == nil {
+		return cacheNonce, nil
+	}
+	if cacheNonce == nil {
+		return ethNonce, nil
+	}
+
+	if *ethNonce > *cacheNonce {
+		return ethNonce, nil
+	}
+	return cacheNonce, nil
 }
 
 func (api *RealtimeAPIImpl) GetStorageAt(ctx context.Context, address libcommon.Address, index string) (string, error) {
