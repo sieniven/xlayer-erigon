@@ -930,3 +930,16 @@ func RealtimeCall(from, to common.Address, gas string, gasPrice string, value st
 
 	return result, nil
 }
+
+// RealtimeDumpStateCache dumps the state cache
+func RealtimeDumpStateCache() error {
+	response, err := client.JSONRPCCall(DefaultL2NetworkURL, "realtime_dumpStateCache")
+	if err != nil {
+		return err
+	}
+	if response.Error != nil {
+		return fmt.Errorf("%d - %s", response.Error.Code, response.Error.Message)
+	}
+
+	return nil
+}

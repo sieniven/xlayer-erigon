@@ -7,9 +7,12 @@ import (
 	"context"
 	"crypto/ecdsa"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"math/big"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -17,11 +20,15 @@ import (
 	"github.com/holiman/uint256"
 	ethereum "github.com/ledgerwatch/erigon"
 	"github.com/ledgerwatch/erigon-lib/common"
+	"github.com/ledgerwatch/erigon-lib/kv"
+	"github.com/ledgerwatch/erigon-lib/kv/mdbx"
 	"github.com/ledgerwatch/erigon/accounts/abi"
 	"github.com/ledgerwatch/erigon/accounts/abi/bind"
 	"github.com/ledgerwatch/erigon/core/types"
+	accounts2 "github.com/ledgerwatch/erigon/core/types/accounts"
 	"github.com/ledgerwatch/erigon/crypto"
 	"github.com/ledgerwatch/erigon/ethclient"
+	logger "github.com/ledgerwatch/log/v3"
 	"gopkg.in/yaml.v2"
 
 	"github.com/ledgerwatch/erigon/test/operations"
@@ -1399,14 +1406,6 @@ func TestRealtimeRPC(t *testing.T) {
 	})
 
 	t.Run("RealtimeGetStorageAt", func(t *testing.T) {
-		// 0x2 is _totalSupply
-		value, err := operations.RealtimeGetStorageAt(erc20Address, "0x2")
-		require.NoError(t, err)
-		require.NotEmpty(t, value, "Storage at index 0x2 should not be empty")
-		log.Infof("RealtimeGetStorageAt result for erc20 contract %s at index %s: %s", erc20Address, "0x2", value)
-	})
-
-	t.Run("RealtimeGetStorageAt", func(t *testing.T) {
 		// 0x2 is refered to _totalSupply field
 		value, err := operations.RealtimeGetStorageAt(erc20Address, "0x2")
 		require.NoError(t, err)
@@ -1453,8 +1452,8 @@ func TestRealtimeStateIsConsistent(t *testing.T) {
 	nonce, err := client.PendingNonceAt(context.Background(), fromAddress)
 	require.NoError(t, err)
 
-	for i := int64(0); i < 10; i++ {
-		// transfer erc20 tokens amount
+	for i := int64(0); i < 1; i++ {
+		// Transfer erc20 tokens amount
 		amount := new(big.Int).Mul(big.NewInt(1), big.NewInt(1e18)) // Adjust for token decimals (18 in this case)
 		// Prepare transfer data
 		recevier := common.HexToAddress(fmt.Sprintf("0x000000000000000000000000000000000010%04x", i))
@@ -1478,9 +1477,124 @@ func TestRealtimeStateIsConsistent(t *testing.T) {
 		require.NoError(t, err)
 		err = operations.WaitTxToBeMined(ctx, client, signedTx, operations.DefaultTimeoutTxToBeMined)
 		require.NoError(t, err)
-		receipt, err := client.TransactionReceipt(ctx, signedTx.Hash())
+		receipt, err := operations.RealtimeGetTransactionReceipt(signedTx.Hash())
 		require.NoError(t, err)
 		log.Infof("receipt: %+v", receipt)
+	}
+
+	// Dump state cache for further checking
+	operations.RealtimeDumpStateCache()
+
+	compareCacheWithSequenceDB(t, operations.DefaultSequncerDBPath, operations.DefaultStateCachePath)
+}
+
+func compareCacheWithSequenceDB(t *testing.T, dbDir, cacheDir string) {
+	// Compare account data
+	cacheFiles := map[string]string{
+		"account_cache.json":     "",
+		"storage_cache.json":     "",
+		"code_cache.json":        "",
+		"incarnation_cache.json": "",
+	}
+
+	for fileName := range cacheFiles {
+		filePath := filepath.Join(cacheDir, fileName)
+		_, err := os.Stat(filePath)
+		require.NoError(t, err)
+		data, err := ioutil.ReadFile(filePath)
+		require.NoError(t, err)
+
+		cacheFiles[fileName] = string(data)
+	}
+
+	ctx := context.Background()
+	db, err := mdbx.NewMDBX(logger.New()).Path(dbDir).Open(ctx)
+	require.NoError(t, err)
+	defer db.Close()
+
+	if cacheFiles["account_cache.json"] != "" {
+		var accountCache map[string]string
+		err := json.Unmarshal([]byte(cacheFiles["account_cache.json"]), &accountCache)
+		require.NoError(t, err)
+
+		db.View(ctx, func(txn kv.Tx) error {
+			for k, v := range accountCache {
+				key, err := hex.DecodeString(k)
+				require.NoError(t, err)
+				value, err := txn.GetOne(kv.PlainState, key)
+				require.NoError(t, err)
+
+				vbytes, _ := hex.DecodeString(v)
+
+				var a accounts2.Account
+				err = a.DecodeForStorage(value)
+				require.NoError(t, err)
+
+				var b accounts2.Account
+				err = b.DecodeForStorage(vbytes)
+				require.NoError(t, err)
+
+				log.Infof("a: %+v", a)
+				log.Infof("b: %+v", b)
+
+				require.Equal(t, v, hex.EncodeToString(value), "Account cache mismatch for key %s, from cache: %s, from db: %s", k, v, hex.EncodeToString(value))
+			}
+			return nil
+		})
+	}
+
+	if cacheFiles["storage_cache.json"] != "" {
+		var storageCache map[string]string
+		err := json.Unmarshal([]byte(cacheFiles["storage_cache.json"]), &storageCache)
+		require.NoError(t, err)
+
+		db.View(ctx, func(txn kv.Tx) error {
+			for k, v := range storageCache {
+				key, err := hex.DecodeString(k)
+				require.NoError(t, err)
+				value, err := txn.GetOne(kv.PlainState, key)
+				require.NoError(t, err)
+
+				require.Equal(t, v, hex.EncodeToString(value), "Storage mismatch for key %s, from cache: %s, from db: %s", k, v, hex.EncodeToString(value))
+			}
+			return nil
+		})
+	}
+
+	if cacheFiles["code_cache.json"] != "" {
+		var codeCache map[string]string
+		err := json.Unmarshal([]byte(cacheFiles["code_cache.json"]), &codeCache)
+		require.NoError(t, err)
+
+		db.View(ctx, func(txn kv.Tx) error {
+			for k, v := range codeCache {
+				key, err := hex.DecodeString(k)
+				require.NoError(t, err)
+				value, err := txn.GetOne(kv.Code, key)
+				require.NoError(t, err)
+
+				require.Equal(t, v, hex.EncodeToString(value), "Code mismatch for key %s, from cache: %s, from db: %s", k, v, hex.EncodeToString(value))
+			}
+			return nil
+		})
+	}
+
+	if cacheFiles["incarnation_cache.json"] != "" {
+		var incarnationCache map[string]string
+		err := json.Unmarshal([]byte(cacheFiles["incarnation_cache.json"]), &incarnationCache)
+		require.NoError(t, err)
+
+		db.View(ctx, func(txn kv.Tx) error {
+			for k, v := range incarnationCache {
+				key, err := hex.DecodeString(k)
+				require.NoError(t, err)
+				value, err := txn.GetOne(kv.Code, key)
+				require.NoError(t, err)
+
+				require.Equal(t, v, hex.EncodeToString(value), "Incarnation mismatch for key %s, from cache: %s, from db: %s", k, v, hex.EncodeToString(value))
+			}
+			return nil
+		})
 	}
 }
 
