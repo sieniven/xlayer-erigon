@@ -35,6 +35,7 @@ type RealtimeAPI interface {
 
 	// Account related (see ./realtime_accounts_xlayer.go)
 	GetBalance(ctx context.Context, address libcommon.Address) (*hexutil.Big, error)
+	GetTransactionCount(ctx context.Context, address libcommon.Address) (*hexutil.Uint64, error)
 	GetCode(ctx context.Context, address libcommon.Address) (hexutility.Bytes, error)
 	GetStorageAt(ctx context.Context, address libcommon.Address, index string) (string, error)
 
