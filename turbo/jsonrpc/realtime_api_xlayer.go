@@ -11,7 +11,7 @@ import (
 	"github.com/ledgerwatch/erigon/core/types"
 	"github.com/ledgerwatch/erigon/rpc"
 	ethapi2 "github.com/ledgerwatch/erigon/turbo/adapter/ethapi"
-	realtime "github.com/ledgerwatch/erigon/zk/realtime"
+	"github.com/ledgerwatch/erigon/zk/realtime"
 	zktypes "github.com/ledgerwatch/erigon/zk/types"
 )
 
