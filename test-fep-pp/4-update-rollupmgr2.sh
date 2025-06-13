@@ -42,11 +42,10 @@ cat upgrade/upgrade-rollupManager-v0.3.1/upgrade_parameters.json.example |
 hardhat_output=$(npx hardhat run ./upgrade/upgrade-rollupManager-v0.3.1/upgrade-rollupManager-v0.3.1.ts --network localhost)
 echo "hardhat_output: $hardhat_output"
 
-schedule_data=$(echo "$hardhat_output" | awk -F"'" '/scheduleData:/ {print $2}')
-execute_data=$(echo "$hardhat_output" | awk -F"'" '/executeData:/ {print $2}')
+schedule_data=$(jq -r '.scheduleData' ./upgrade/upgrade-rollupManager-v0.3.1/upgrade_output.json)
+execute_data=$(jq -r '.executeData' ./upgrade/upgrade-rollupManager-v0.3.1/upgrade_output.json)
 echo "schedule_data: $schedule_data"
 echo "execute_data: $execute_data"
-
 
 cast send --rpc-url "$L1_RPC_URL" --private-key "$DEPLOYER_PRIVATE_KEY" "$TIME_LOCK_ADDRESS" "$schedule_data"
 sleep 70
@@ -54,4 +53,4 @@ sleep 70
 cast send --rpc-url "$L1_RPC_URL" --private-key "$DEPLOYER_PRIVATE_KEY" "$TIME_LOCK_ADDRESS" "$execute_data"
 
 sleep 5
-#cast call --rpc-url "$L1_RPC_URL" $ROLLUP_MGR_ADDRESS 'ROLLUP_MANAGER_VERSION()(string)'
+cast call --rpc-url "$L1_RPC_URL" $ROLLUP_MGR_ADDRESS 'ROLLUP_MANAGER_VERSION()(string)'

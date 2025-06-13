@@ -86,5 +86,5 @@ npx hardhat run ./tools/addRollupType/addRollupType.ts --network localhost
 
 hex=$(cast call 0x2d42E2899662EFf08b13eeb65b154b904C7a1c8a "rollupTypeCount()")
 rollupTypeCount=$((16#${hex#0x}))
-echo "$rollupTypeCount"
+echo "rollupTypeCount: $rollupTypeCount"
 cast call 0x2d42E2899662EFf08b13eeb65b154b904C7a1c8a "rollupTypeMap(uint32)(address,address,uint64,uint8,bool,bytes32)" $rollupTypeCount
