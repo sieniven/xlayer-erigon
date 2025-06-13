@@ -40,6 +40,15 @@ stop-old:
 	docker stop xlayer-da; docker rm xlayer-da
 
 run-new:
+	docker stop xlayer-seq;
+	sleep 3
+	docker stop xlayer-rpc;
+	sleep 3
+	$(DOCKER_COMPOSE) up -d xlayer-seq
+	sleep 3
+	$(DOCKER_COMPOSE) up -d xlayer-rpc
+	sleep 3
+
 	$(DOCKER_COMPOSE) up -d xlayer-agg-db
 	$(DOCKER_COMPOSE) up -d xlayer-agglayer-prover
 	$(DOCKER_COMPOSE) up -d xlayer-agglayer

@@ -62,7 +62,7 @@ HTTPPort = "8080"
 # Default limit for paginated results returned by the server
 DefaultPageLimit = 25
 # Maximum limit for paginated results to prevent excessive data retrieval
-MaxPageLimit = 1000
+MaxPageLimit = 20000
     # Database configuration for the bridge server. Could be the same config as SyncDB but ideally It should be a read replica to distribute the load.
     [BridgeServer.DB]
     # Type of database for the bridge server

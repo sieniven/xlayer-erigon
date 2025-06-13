@@ -34,8 +34,13 @@ echo "Starting xlayer-mock-l1-network..."
 docker-compose up -d xlayer-mock-l1-network
 sleep 5
 
+git checkout docker-compose.yml
+git checkout config/test.erigon.seq.config.yaml
+git checkout config/test.erigon.rpc.config.yaml
+git checkout config/cdk-node-config.toml
+
 echo "Sending funds to deployer..."
-cast send -f $RICH_ADDRESS --private-key $RICH_PRIVATE_KEY --value 3ether --legacy $DEPLOYER_ADDRESS
+cast send -f $RICH_ADDRESS --private-key $RICH_PRIVATE_KEY --value 30ether --legacy $DEPLOYER_ADDRESS
 
 if [ ! -d "./xlayer-contracts" ]; then
   echo "Cloning contract repository..."
