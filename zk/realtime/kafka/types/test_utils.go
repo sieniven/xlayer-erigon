@@ -7,6 +7,7 @@ import (
 	libcommon "github.com/ledgerwatch/erigon-lib/common"
 	types2 "github.com/ledgerwatch/erigon-lib/types"
 	types1 "github.com/ledgerwatch/erigon/core/types"
+	realtimeTypes "github.com/ledgerwatch/erigon/zk/realtime/types"
 	zktypes "github.com/ledgerwatch/erigon/zk/types"
 	"gotest.tools/v3/assert"
 )
@@ -123,7 +124,7 @@ func AssertInnerTxs(t *testing.T, msg TransactionMessage, innerTxs []*zktypes.In
 		assert.Equal(t, msg.InnerTxs[i].Error, innerTxs[i].Error)
 	}
 }
-func AssertChangeseet(t *testing.T, msg TransactionMessage, changeset *zktypes.Changeset) {
+func AssertChangeseet(t *testing.T, msg TransactionMessage, changeset *realtimeTypes.Changeset) {
 	assert.Equal(t, len(msg.Changeset.DeletedAccounts), len(changeset.DeletedAccounts))
 	assert.Equal(t, len(msg.Changeset.BalanceChanges), len(changeset.BalanceChanges))
 	assert.Equal(t, len(msg.Changeset.NonceChanges), len(changeset.NonceChanges))

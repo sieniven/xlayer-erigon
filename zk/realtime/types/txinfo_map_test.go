@@ -8,11 +8,12 @@ import (
 	"github.com/holiman/uint256"
 	"github.com/ledgerwatch/erigon-lib/common"
 	ethTypes "github.com/ledgerwatch/erigon/core/types"
+	zktypes "github.com/ledgerwatch/erigon/zk/types"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestTxInfoMap(t *testing.T) {
-	tm := NewTxInfoMap()
+	tm := NewTxInfoMap(DefaultBlockCacheSize, DefaultTxCacheSize)
 
 	blockNumber := uint64(5)
 	txHash := common.HexToHash("0x123")
@@ -22,7 +23,7 @@ func TestTxInfoMap(t *testing.T) {
 	receipt := &ethTypes.Receipt{
 		Status: 1,
 	}
-	innerTxs := []*InnerTx{
+	innerTxs := []*zktypes.InnerTx{
 		{
 			Dept:          *big.NewInt(1),
 			InternalIndex: *big.NewInt(1),
@@ -95,7 +96,7 @@ func TestTxInfoMap(t *testing.T) {
 
 		for i := 0; i < goroutines; i++ {
 			wg.Add(1)
-			hash := common.HexToHash(string(rune(i + 100)))
+			hash := common.BytesToHash([]byte{byte(i), byte(i >> 8), byte(i >> 16), byte(i >> 24)})
 			go func(i int, hash common.Hash) {
 				defer wg.Done()
 
@@ -103,7 +104,7 @@ func TestTxInfoMap(t *testing.T) {
 				gasPrice := uint256.NewInt(uint64(i))
 				tx := ethTypes.NewTransaction(uint64(i), common.Address{}, value, uint64(i), gasPrice, nil)
 				receipt := &ethTypes.Receipt{Status: uint64(i)}
-				innerTxs := []*InnerTx{
+				innerTxs := []*zktypes.InnerTx{
 					{
 						Dept:          *big.NewInt(int64(i)),
 						InternalIndex: *big.NewInt(int64(i)),
@@ -164,7 +165,7 @@ func TestTxInfoMap(t *testing.T) {
 		wg.Wait()
 
 		for i := 0; i < goroutines; i++ {
-			hash := common.HexToHash(string(rune(i + 100)))
+			hash := common.BytesToHash([]byte{byte(i), byte(i >> 8), byte(i >> 16), byte(i >> 24)})
 			_, _, _, _, exists := tm.GetTx(hash)
 			assert.False(t, exists)
 		}
@@ -172,7 +173,7 @@ func TestTxInfoMap(t *testing.T) {
 		// Check if all hashes are in the block
 		txHashes, ok := tm.GetBlockTxs(blockNumber)
 		assert.True(t, ok)
-		assert.Equal(t, len(txHashes), len(hashes))
+		assert.Equal(t, len(hashes), len(txHashes))
 		for _, hash := range hashes {
 			assert.Contains(t, txHashes, hash)
 		}

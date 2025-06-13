@@ -16,9 +16,9 @@ type BlockInfoMap struct {
 	mu         sync.RWMutex
 }
 
-func NewBlockInfoMap() *BlockInfoMap {
+func NewBlockInfoMap(size int) *BlockInfoMap {
 	return &BlockInfoMap{
-		blockInfos: make(map[uint64]*BlockInfo),
+		blockInfos: make(map[uint64]*BlockInfo, size),
 	}
 }
 
@@ -41,11 +41,12 @@ func (bm *BlockInfoMap) PutHeader(blockNum uint64, header *ethTypes.Header, prev
 	}
 
 	// Update previous block header tx count
-	blockInfo, exists := bm.blockInfos[blockNum-1]
+	prevBlockNum := blockNum - 1
+	blockInfo, exists := bm.blockInfos[prevBlockNum]
 	if exists {
 		blockInfo.TxCount = prevTxCount
 	} else {
-		bm.blockInfos[blockNum] = &BlockInfo{
+		bm.blockInfos[prevBlockNum] = &BlockInfo{
 			TxCount: prevTxCount,
 		}
 	}

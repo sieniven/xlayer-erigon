@@ -7,6 +7,7 @@ import (
 	"github.com/holiman/uint256"
 	libcommon "github.com/ledgerwatch/erigon-lib/common"
 	ethTypes "github.com/ledgerwatch/erigon/core/types"
+	realtimeTypes "github.com/ledgerwatch/erigon/zk/realtime/types"
 	zktypes "github.com/ledgerwatch/erigon/zk/types"
 )
 
@@ -50,10 +51,10 @@ type TransactionMessage struct {
 	InnerTxs []*zktypes.InnerTx `json:"innerTxs"`
 
 	// Changeset
-	Changeset *zktypes.Changeset `json:"changeset"`
+	Changeset *realtimeTypes.Changeset `json:"changeset"`
 }
 
-func ToKafkaTransactionMessage(tx ethTypes.Transaction, receipt *ethTypes.Receipt, innerTxs []*zktypes.InnerTx, changeset *zktypes.Changeset, blockNumber uint64) (txMsg TransactionMessage, err error) {
+func ToKafkaTransactionMessage(tx ethTypes.Transaction, receipt *ethTypes.Receipt, innerTxs []*zktypes.InnerTx, changeset *realtimeTypes.Changeset, blockNumber uint64) (txMsg TransactionMessage, err error) {
 	// Parse tx
 	switch tx.Type() {
 	case ethTypes.LegacyTxType:
@@ -163,7 +164,7 @@ func (msg TransactionMessage) GetInnerTxs() ([]*zktypes.InnerTx, error) {
 	return msg.InnerTxs, nil
 }
 
-func (msg TransactionMessage) GetChangeset() (*zktypes.Changeset, error) {
+func (msg TransactionMessage) GetChangeset() (*realtimeTypes.Changeset, error) {
 	if msg.Changeset == nil {
 		return nil, fmt.Errorf("changeset is nil")
 	}
@@ -190,23 +191,23 @@ func (msg TransactionMessage) Validate() error {
 
 func (msg TransactionMessage) MarshalJSON() ([]byte, error) {
 	type TransactionMessage struct {
-		BlockNumber uint64             `json:"blockNumber"`
-		Type        uint8              `json:"type"`
-		Hash        libcommon.Hash     `json:"hash"`
-		From        libcommon.Address  `json:"from"`
-		ChainID     *uint256.Int       `json:"chainId"`
-		Nonce       uint64             `json:"nonce"`
-		Gas         uint64             `json:"gas"`
-		To          *libcommon.Address `json:"to"`
-		Value       *uint256.Int       `json:"value"`
-		Data        []byte             `json:"data"`
-		V           uint256.Int        `json:"v"`
-		R           uint256.Int        `json:"r"`
-		S           uint256.Int        `json:"s"`
-		GasPrice    string             `json:"gasPrice"`
-		Receipt     *ethTypes.Receipt  `json:"receipt"`
-		InnerTxs    []*zktypes.InnerTx `json:"innerTxs"`
-		Changeset   *zktypes.Changeset `json:"changeset"`
+		BlockNumber uint64                   `json:"blockNumber"`
+		Type        uint8                    `json:"type"`
+		Hash        libcommon.Hash           `json:"hash"`
+		From        libcommon.Address        `json:"from"`
+		ChainID     *uint256.Int             `json:"chainId"`
+		Nonce       uint64                   `json:"nonce"`
+		Gas         uint64                   `json:"gas"`
+		To          *libcommon.Address       `json:"to"`
+		Value       *uint256.Int             `json:"value"`
+		Data        []byte                   `json:"data"`
+		V           uint256.Int              `json:"v"`
+		R           uint256.Int              `json:"r"`
+		S           uint256.Int              `json:"s"`
+		GasPrice    string                   `json:"gasPrice"`
+		Receipt     *ethTypes.Receipt        `json:"receipt"`
+		InnerTxs    []*zktypes.InnerTx       `json:"innerTxs"`
+		Changeset   *realtimeTypes.Changeset `json:"changeset"`
 	}
 
 	var enc TransactionMessage

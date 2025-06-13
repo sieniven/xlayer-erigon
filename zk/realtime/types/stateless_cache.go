@@ -8,6 +8,12 @@ import (
 	libcommon "github.com/ledgerwatch/erigon-lib/common"
 	"github.com/ledgerwatch/erigon-lib/kv"
 	ethTypes "github.com/ledgerwatch/erigon/core/types"
+	zktypes "github.com/ledgerwatch/erigon/zk/types"
+)
+
+const (
+	DefaultBlockCacheSize = 1000
+	DefaultTxCacheSize    = 10000
 )
 
 type StatelessCache struct {
@@ -25,8 +31,8 @@ type StatelessCache struct {
 
 func NewStatelessCache() *StatelessCache {
 	return &StatelessCache{
-		blockInfoMap:           NewBlockInfoMap(),
-		txInfoMap:              NewTxInfoMap(),
+		blockInfoMap:           NewBlockInfoMap(DefaultBlockCacheSize),
+		txInfoMap:              NewTxInfoMap(DefaultBlockCacheSize, DefaultTxCacheSize),
 		highestCompletedHeight: atomic.Uint64{},
 		highestExecutionHeight: atomic.Uint64{},
 		nextTxIndex:            0,
@@ -50,7 +56,7 @@ func (cache *StatelessCache) GetHeader(blockNum uint64) (*ethTypes.Header, int64
 	return cache.blockInfoMap.Get(blockNum)
 }
 
-func (cache *StatelessCache) GetTxInfo(txHash libcommon.Hash) (ethTypes.Transaction, *ethTypes.Receipt, uint64, []*InnerTx, bool) {
+func (cache *StatelessCache) GetTxInfo(txHash libcommon.Hash) (ethTypes.Transaction, *ethTypes.Receipt, uint64, []*zktypes.InnerTx, bool) {
 	return cache.txInfoMap.GetTx(txHash)
 }
 
@@ -75,7 +81,7 @@ func (cache *StatelessCache) PutExecutionHeight(blockNum uint64) {
 	}
 }
 
-func (cache *StatelessCache) PutTxInfo(blockNum uint64, txHash libcommon.Hash, tx ethTypes.Transaction, receipt *ethTypes.Receipt, innerTxs []*InnerTx) {
+func (cache *StatelessCache) PutTxInfo(blockNum uint64, txHash libcommon.Hash, tx ethTypes.Transaction, receipt *ethTypes.Receipt, innerTxs []*zktypes.InnerTx) {
 	cache.txInfoMap.Put(blockNum, txHash, tx, receipt, innerTxs)
 }
 

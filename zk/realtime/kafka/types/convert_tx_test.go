@@ -9,6 +9,7 @@ import (
 	"github.com/ledgerwatch/erigon/common/u256"
 	types1 "github.com/ledgerwatch/erigon/core/types"
 	"github.com/ledgerwatch/erigon/core/vm"
+	realtimeTypes "github.com/ledgerwatch/erigon/zk/realtime/types"
 	zktypes "github.com/ledgerwatch/erigon/zk/types"
 	"gotest.tools/v3/assert"
 )
@@ -88,7 +89,7 @@ func TestLegacyTx(t *testing.T) {
 		},
 	}
 
-	rightvrsTxChangeset := &zktypes.Changeset{
+	rightvrsTxChangeset := &realtimeTypes.Changeset{
 		BalanceChanges: map[libcommon.Address]*uint256.Int{
 			testToAddr: uint256.NewInt(10),
 		},
@@ -158,7 +159,7 @@ func TestAccessListTx(t *testing.T) {
 			CallType: vm.CALL_TYP,
 		},
 	}
-	signedAccessListTxChangeset := &zktypes.Changeset{
+	signedAccessListTxChangeset := &realtimeTypes.Changeset{
 		BalanceChanges: map[libcommon.Address]*uint256.Int{
 			testToAddr: uint256.NewInt(10),
 		},
@@ -210,7 +211,7 @@ func TestDynamicFeeTx(t *testing.T) {
 			CallType: vm.CALL_TYP,
 		},
 	}
-	signedDynFeeTxChangeset := &zktypes.Changeset{
+	signedDynFeeTxChangeset := &realtimeTypes.Changeset{
 		BalanceChanges: map[libcommon.Address]*uint256.Int{
 			testToAddr: uint256.NewInt(10),
 		},
@@ -257,7 +258,7 @@ func TestFromBlobTx(t *testing.T) {
 			CallType: vm.CALL_TYP,
 		},
 	}
-	blobTxChangeset := &zktypes.Changeset{
+	blobTxChangeset := &realtimeTypes.Changeset{
 		BalanceChanges: map[libcommon.Address]*uint256.Int{
 			testToAddr: uint256.NewInt(10),
 		},

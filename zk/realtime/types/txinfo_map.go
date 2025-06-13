@@ -5,13 +5,14 @@ import (
 
 	"github.com/ledgerwatch/erigon-lib/common"
 	ethTypes "github.com/ledgerwatch/erigon/core/types"
+	zktypes "github.com/ledgerwatch/erigon/zk/types"
 )
 
 type TxInfo struct {
 	BlockNumber uint64
 	Tx          ethTypes.Transaction
 	Receipt     *ethTypes.Receipt
-	InnerTxs    []*InnerTx
+	InnerTxs    []*zktypes.InnerTx
 	Changeset   *Changeset
 }
 
@@ -21,14 +22,14 @@ type TxInfoMap struct {
 	mu       sync.RWMutex
 }
 
-func NewTxInfoMap() *TxInfoMap {
+func NewTxInfoMap(blockCacheSize int, txCacheSize int) *TxInfoMap {
 	return &TxInfoMap{
-		txInfos:  make(map[common.Hash]TxInfo),
-		blockTxs: make(map[uint64]map[common.Hash]struct{}),
+		txInfos:  make(map[common.Hash]TxInfo, txCacheSize),
+		blockTxs: make(map[uint64]map[common.Hash]struct{}, blockCacheSize),
 	}
 }
 
-func (rm *TxInfoMap) Put(blockNumber uint64, txHash common.Hash, tx ethTypes.Transaction, receipt *ethTypes.Receipt, innerTxs []*InnerTx) {
+func (rm *TxInfoMap) Put(blockNumber uint64, txHash common.Hash, tx ethTypes.Transaction, receipt *ethTypes.Receipt, innerTxs []*zktypes.InnerTx) {
 	rm.mu.Lock()
 	defer rm.mu.Unlock()
 	txInfo := TxInfo{
@@ -57,7 +58,7 @@ func (rm *TxInfoMap) DeleteTxInfo(txHash common.Hash) {
 	delete(rm.txInfos, txHash)
 }
 
-func (rm *TxInfoMap) GetTx(txHash common.Hash) (ethTypes.Transaction, *ethTypes.Receipt, uint64, []*InnerTx, bool) {
+func (rm *TxInfoMap) GetTx(txHash common.Hash) (ethTypes.Transaction, *ethTypes.Receipt, uint64, []*zktypes.InnerTx, bool) {
 	rm.mu.RLock()
 	defer rm.mu.RUnlock()
 	txInfo, exists := rm.txInfos[txHash]

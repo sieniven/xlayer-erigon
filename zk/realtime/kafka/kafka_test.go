@@ -13,6 +13,7 @@ import (
 	"github.com/ledgerwatch/erigon/core/vm"
 	"github.com/ledgerwatch/erigon/eth/ethconfig"
 	kafkaTypes "github.com/ledgerwatch/erigon/zk/realtime/kafka/types"
+	realtimeTypes "github.com/ledgerwatch/erigon/zk/realtime/types"
 	zktypes "github.com/ledgerwatch/erigon/zk/types"
 	"github.com/ledgerwatch/log/v3"
 	"gotest.tools/v3/assert"
@@ -54,7 +55,7 @@ var (
 		},
 	}
 
-	rightvrsTxChangeset = &zktypes.Changeset{
+	rightvrsTxChangeset = &realtimeTypes.Changeset{
 		BalanceChanges: map[libcommon.Address]*uint256.Int{
 			testToAddr: uint256.NewInt(10),
 		},
