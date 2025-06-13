@@ -327,8 +327,10 @@ func (ch codeChange) dirtied() *libcommon.Address {
 }
 
 func (ch codeChange) collectChangeset(cs *types.Changeset) {
-	cs.CodeChanges[*ch.account] = ch.postcode
 	cs.CodeHashChanges[*ch.account] = ch.posthash
+	if ch.postcode != nil {
+		cs.CodeChanges[*ch.account] = ch.postcode
+	}
 }
 
 func (ch storageChange) revert(s *IntraBlockState) {
