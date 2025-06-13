@@ -127,7 +127,9 @@ type (
 		increase uint256.Int
 	}
 	balanceIncreaseTransfer struct {
-		bi *BalanceIncrease
+		account *libcommon.Address
+		prev    uint256.Int
+		bi      *BalanceIncrease
 	}
 	nonceChange struct {
 		account *libcommon.Address
@@ -291,13 +293,7 @@ func (ch balanceIncrease) dirtied() *libcommon.Address {
 	return ch.account
 }
 
-func (ch balanceIncrease) collectChangeset(cs *types.Changeset) {
-	if _, ok := cs.BalanceChanges[*ch.account]; !ok {
-		cs.BalanceChanges[*ch.account] = &ch.increase
-	} else {
-		cs.BalanceChanges[*ch.account].Add(cs.BalanceChanges[*ch.account], &ch.increase)
-	}
-}
+func (ch balanceIncrease) collectChangeset(cs *types.Changeset) {}
 
 func (ch balanceIncreaseTransfer) dirtied() *libcommon.Address {
 	return nil
@@ -307,7 +303,10 @@ func (ch balanceIncreaseTransfer) revert(s *IntraBlockState) {
 	ch.bi.transferred = false
 }
 
-func (ch balanceIncreaseTransfer) collectChangeset(cs *types.Changeset) {}
+func (ch balanceIncreaseTransfer) collectChangeset(cs *types.Changeset) {
+	cs.BalanceChanges[*ch.account] = uint256.NewInt(0)
+	cs.BalanceChanges[*ch.account].Add(&ch.prev, &ch.bi.increase)
+}
 
 func (ch nonceChange) revert(s *IntraBlockState) {
 	s.getStateObject(*ch.account).setNonce(ch.prev)

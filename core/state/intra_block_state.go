@@ -545,9 +545,13 @@ func (sdb *IntraBlockState) getStateObject(addr libcommon.Address) (stateObject 
 
 func (sdb *IntraBlockState) setStateObject(addr libcommon.Address, object *stateObject) {
 	if bi, ok := sdb.balanceInc[addr]; ok && !bi.transferred {
+		sdb.journal.append(balanceIncreaseTransfer{
+			account: &addr,
+			prev:    object.data.Balance,
+			bi:      bi,
+		})
 		object.data.Balance.Add(&object.data.Balance, &bi.increase)
 		bi.transferred = true
-		sdb.journal.append(balanceIncreaseTransfer{bi: bi})
 	}
 	sdb.stateObjects[addr] = object
 	sdb.seenStateObjects[addr] = struct{}{}

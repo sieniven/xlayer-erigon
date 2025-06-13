@@ -1521,21 +1521,23 @@ func compareCacheWithSequenceDB(t *testing.T, dbDir, cacheDir string) {
 			for k, v := range accountCache {
 				key, err := hex.DecodeString(k)
 				require.NoError(t, err)
+				log.Infof("address: %v", common.Address(key))
+
 				value, err := txn.GetOne(kv.PlainState, key)
 				require.NoError(t, err)
 
 				vbytes, _ := hex.DecodeString(v)
 
-				var a accounts2.Account
-				err = a.DecodeForStorage(value)
+				var dbAccount accounts2.Account
+				err = dbAccount.DecodeForStorage(value)
 				require.NoError(t, err)
 
-				var b accounts2.Account
-				err = b.DecodeForStorage(vbytes)
+				var cacheAccount accounts2.Account
+				err = cacheAccount.DecodeForStorage(vbytes)
 				require.NoError(t, err)
 
-				log.Infof("a: %+v", a)
-				log.Infof("b: %+v", b)
+				log.Infof("dbAccount: %+v", dbAccount)
+				log.Infof("cacheAccount: %+v", cacheAccount)
 
 				require.Equal(t, v, hex.EncodeToString(value), "Account cache mismatch for key %s, from cache: %s, from db: %s", k, v, hex.EncodeToString(value))
 			}
