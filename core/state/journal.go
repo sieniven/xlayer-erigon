@@ -201,7 +201,6 @@ func (ch createObjectChange) collectChangeset(cs *types.Changeset) {
 	cs.BalanceChanges[*ch.account] = uint256.NewInt(0)
 	cs.NonceChanges[*ch.account] = 0
 	cs.CodeHashChanges[*ch.account] = emptyCodeHashH
-	cs.CodeChanges[*ch.account] = nil
 	cs.StorageChanges[*ch.account] = make(map[libcommon.Hash]*uint256.Int)
 }
 
@@ -220,7 +219,6 @@ func (ch resetObjectChange) collectChangeset(cs *types.Changeset) {
 	cs.BalanceChanges[*ch.account] = uint256.NewInt(0)
 	cs.NonceChanges[*ch.account] = 0
 	cs.CodeHashChanges[*ch.account] = emptyCodeHashH
-	cs.CodeChanges[*ch.account] = nil
 	cs.StorageChanges[*ch.account] = make(map[libcommon.Hash]*uint256.Int)
 }
 
@@ -246,7 +244,6 @@ func (ch selfdestructChange) collectChangeset(cs *types.Changeset) {
 	delete(cs.BalanceChanges, *ch.account)
 	delete(cs.NonceChanges, *ch.account)
 	delete(cs.CodeHashChanges, *ch.account)
-	delete(cs.CodeChanges, *ch.account)
 	delete(cs.IncarnationChanges, *ch.account)
 	delete(cs.StorageChanges, *ch.account)
 }
@@ -328,8 +325,8 @@ func (ch codeChange) dirtied() *libcommon.Address {
 
 func (ch codeChange) collectChangeset(cs *types.Changeset) {
 	cs.CodeHashChanges[*ch.account] = ch.posthash
-	if ch.postcode != nil {
-		cs.CodeChanges[*ch.account] = ch.postcode
+	if ch.posthash != emptyCodeHashH {
+		cs.CodeChanges[ch.posthash] = ch.postcode
 	}
 }
 

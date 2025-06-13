@@ -40,6 +40,9 @@ type RealtimeAPI interface {
 
 	// Sending related (see ./realtime_call_xlayer.go)
 	Call(ctx context.Context, args ethapi2.CallArgs, overrides *ethapi2.StateOverrides) (hexutility.Bytes, error)
+
+	// Debug related (see ./realtime_debug.go)
+	DumpStateCache(ctx context.Context) error
 }
 
 // RealtimeAPIImpl is implementation of the RealtimeAPI interface

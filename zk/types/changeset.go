@@ -10,7 +10,7 @@ type Changeset struct {
 	BalanceChanges     map[libcommon.Address]*uint256.Int
 	NonceChanges       map[libcommon.Address]uint64
 	CodeHashChanges    map[libcommon.Address]libcommon.Hash
-	CodeChanges        map[libcommon.Address][]byte
+	CodeChanges        map[libcommon.Hash][]byte
 	IncarnationChanges map[libcommon.Address]uint64
 	StorageChanges     map[libcommon.Address]map[libcommon.Hash]*uint256.Int
 }
@@ -21,7 +21,7 @@ func NewChangeset() *Changeset {
 		BalanceChanges:     make(map[libcommon.Address]*uint256.Int),
 		NonceChanges:       make(map[libcommon.Address]uint64),
 		CodeHashChanges:    make(map[libcommon.Address]libcommon.Hash),
-		CodeChanges:        make(map[libcommon.Address][]byte),
+		CodeChanges:        make(map[libcommon.Hash][]byte),
 		IncarnationChanges: make(map[libcommon.Address]uint64),
 		StorageChanges:     make(map[libcommon.Address]map[libcommon.Hash]*uint256.Int),
 	}

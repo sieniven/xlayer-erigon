@@ -288,6 +288,7 @@ func HandleTxKafkaMessage(
 	deliverTxChan chan kafkaTypes.TransactionMessage,
 	deliverBlockInfoChan chan kafkaTypes.BlockMessage,
 	finishChan chan uint64,
+	stateCache *state.PlainStateCache,
 	statelessCache *zktypes.StatelessCache) {
 	if sequencer.IsSequencer() {
 		logger.Info("HandleTxKafkaMessage is disabled on sequencer, skipping")
@@ -300,7 +301,7 @@ func HandleTxKafkaMessage(
 		return
 	}
 
-	stateCache := state.NewPlainStateCache(tx)
+	stateCache.Reset(tx)
 
 	var (
 		lastFinishHeight = uint64(0)
@@ -319,7 +320,7 @@ func HandleTxKafkaMessage(
 
 			if lastIncomplete <= finishHeight {
 				// Reset state cache
-				stateCache = state.NewPlainStateCache(tx)
+				stateCache.Reset(tx)
 				stateCache.UpdateReady(false)
 				nextTxIndex = 0
 				statelessCache.MarkCompleted(finishHeight)

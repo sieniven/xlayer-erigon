@@ -1297,6 +1297,7 @@ func New(ctx context.Context, stack *node.Node, config *ethconfig.Config, logger
 					return nil, err
 				}
 				backend.txKafkaConsumer = kafkaConsumer
+				backend.stateCache = state.NewPlainStateCache()
 				backend.statelessCache = zktypes.NewStatelessCache()
 				backend.deliverTxChan = make(chan kafkaTypes.TransactionMessage, kafkaBufferSize)
 				backend.deleverBlockInfoChan = make(chan kafkaTypes.BlockMessage, kafkaBufferSize)
@@ -2015,7 +2016,7 @@ func (s *Ethereum) Start() error {
 
 		go stages2.ListenTxKafkaProducer(s.sentryCtx, s.txKafkaProducer, s.config.Zk.XLayer, s.logger, s.blockInfoChan, s.txInfoChan)
 
-		go stages2.HandleTxKafkaMessage(s.sentryCtx, s.chainDB, s.config, s.logger, s.deliverTxChan, s.deleverBlockInfoChan, s.finishChan, s.statelessCache)
+		go stages2.HandleTxKafkaMessage(s.sentryCtx, s.chainDB, s.config, s.logger, s.deliverTxChan, s.deleverBlockInfoChan, s.finishChan, s.stateCache, s.statelessCache)
 	}
 
 	stages := diagnostics.InitStagesFromList(nodeStages)
