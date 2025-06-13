@@ -7,6 +7,7 @@ import (
 	"encoding/binary"
 	"encoding/hex"
 	"encoding/json"
+	"strconv"
 
 	"flag"
 	"fmt"
@@ -399,9 +400,40 @@ func dumpAll(chaindata, output string) error {
 	return db.View(context.Background(), fdumper)
 }
 
+func BytesToPaddedHex(data []byte, length int) string {
+	hexStr := hex.EncodeToString(data)
+
+	currentLen := len(hexStr)
+	zeroCount := length - currentLen
+	zeros := ""
+	if zeroCount > 0 {
+		zeros = fmt.Sprintf("0x%0*s", zeroCount, "")
+	} else {
+		zeros = "0x"
+	}
+	return zeros + hexStr
+}
+
 func migrateGenesis(chaindata, output string) error {
 	db := mdbx.MustOpen(chaindata)
 	defer db.Close()
+
+	var jsonData map[string]interface{}
+	fileData, err := os.ReadFile("genesis-init.json")
+	if err != nil {
+		if !os.IsNotExist(err) {
+			fmt.Println("Error reading file:", err)
+			return err
+		}
+	} else {
+		if err := json.Unmarshal(fileData, &jsonData); err != nil {
+			fmt.Println("Error decoding JSON:", err)
+			return err
+		}
+	}
+
+	jsonData["alloc"] = make(map[string]interface{})
+	current := make(map[string]interface{})
 
 	var count uint64
 	var keys []string
@@ -438,23 +470,43 @@ func migrateGenesis(chaindata, output string) error {
 	}
 	defer cc.Close()
 	for _, acc_hex := range keys {
+		switch node := jsonData["alloc"].(type) {
+		case map[string]interface{}:
+			current = node
+		default:
+			panic("unhandled json type")
+		}
 		acc_addr := libcommon.HexToAddress(acc_hex)
-		fmt.Printf("acc_addr: %s\n", acc_addr)
-
+		log.Debug("acc_addr: %s\n", acc_addr)
+		current[acc_hex] = make(map[string]interface{})
+		switch node := current[acc_hex].(type) {
+		case map[string]interface{}:
+			current = node
+		default:
+			panic("unhandled json type")
+		}
 		a, err := plainStateReader.ReadAccountData(acc_addr)
 		if err != nil {
 			return err
 		} else if a == nil {
 			return fmt.Errorf("acc not found")
 		}
-		fmt.Printf("CodeHash:%x\nIncarnation:%d\nNonce:%d\nblance:%s\n", a.CodeHash, a.Incarnation, a.Nonce, a.Balance.String())
+
+		if a.Nonce != 0 {
+			current["nonce"] = strconv.FormatUint(a.Nonce, 16)
+		}
+		current["balance"] = a.Balance.Hex()
+
+		log.Debug("CodeHash:%x\nIncarnation:%d\nNonce:%d\nblance:%s\n", a.CodeHash, a.Incarnation, a.Nonce, a.Balance.String())
 		if hex.EncodeToString(a.CodeHash.Bytes()) != "c5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470" {
 			code, err := tx.GetOne(kv.Code, a.CodeHash[:])
 			if err != nil {
 				return err
 			}
-			fmt.Printf("acc: %s => %s\n", acc_addr, hexutil.Encode(code))
+			current["code"] = hexutil.Encode(code)
+			log.Debug("acc: %s => %s\n", acc_addr, hexutil.Encode(code))
 			acc_bytes := common.FromHex(acc_hex)
+			first_storage := false
 			for k, v, e := c.Seek(acc_bytes); k != nil; k, v, e = c.Next() {
 				if e != nil {
 					return e
@@ -463,27 +515,36 @@ func migrateGenesis(chaindata, output string) error {
 					break
 				}
 				if len(k) > 28 {
-					fmt.Printf("%x slot => %x\n", k[28:], v)
-				}
-				/// code hash
-				//else {
-				//	fmt.Printf("###################################%x slot => %x\n", k, v)
-				//}
-			}
+					if !first_storage {
+						if _, exists := current["storage"]; !exists {
+							current["storage"] = make(map[string]interface{})
+						}
 
-			//fmt.Printf("code hashes\n")
-			//
-			//for k, v, e := cc.Seek(acc_bytes); k != nil; k, v, e = c.Next() {
-			//	if e != nil {
-			//		return e
-			//	}
-			//	if !bytes.HasPrefix(k, acc_bytes) {
-			//		break
-			//	}
-			//	fmt.Printf("%x => %x\n", k, v)
-			//}
+						switch node := current["storage"].(type) {
+						case map[string]interface{}:
+							current = node
+						default:
+							panic("unhandled json type")
+						}
+						first_storage = true
+					}
+					current[hexutil.Encode(k[28:])] = BytesToPaddedHex(v, 64)
+					log.Debug("%x slot => %x\n", k[28:], v)
+				}
+			}
 		}
 
+	}
+
+	updatedData, err := json.MarshalIndent(jsonData, "", "  ")
+	if err != nil {
+		fmt.Println("Error encoding JSON:", err)
+		return err
+	}
+
+	if err := os.WriteFile("genesis.json", updatedData, 0644); err != nil {
+		fmt.Println("Error writing to file:", err)
+		return err
 	}
 	return nil
 }
