@@ -147,6 +147,7 @@ func ApplyFlagsForZkConfig(ctx *cli.Context, cfg *ethconfig.Config) {
 
 	cfg.Zk = &ethconfig.Zk{
 		L2ChainId:                              ctx.Uint64(utils.L2ChainIdFlag.Name),
+		L2PerformMap:                           ctx.Bool(utils.L2PerformMapFlag.Name),
 		L2RpcUrl:                               ctx.String(utils.L2RpcUrlFlag.Name),
 		L2DataStreamerUrl:                      ctx.String(utils.L2DataStreamerUrlFlag.Name),
 		L2DataStreamerUseTLS:                   ctx.Bool(utils.L2DataStreamerUseTLSFlag.Name),
