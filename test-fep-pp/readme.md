@@ -2,7 +2,7 @@
 ```shell
 ./1-init-fep.sh
 ./2-update-rollupmgr.sh
-./3-update-pp.sh
+./3-migrate-pp.sh
 ./4-restart-service.sh
 ```
 

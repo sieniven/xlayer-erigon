@@ -1,6 +1,6 @@
 #!/bin/bash
 set -e
-set -x
+# set -x
 
 DEPLOYER_ADDRESS="0x8f8E2d6cF621f30e9a11309D6A56A876281Fd534"
 DEPLOYER_PRIVATE_KEY="0x815405dddb0e2a99b12af775fd2929e526704e1d1aea6a0b4e74dc33e2f7fcd2"
@@ -26,20 +26,11 @@ fi
 
 cd "./xlayer-contracts"
 
-git stash
+git add .
+git stash push
 git pull
-git checkout zjg/v11.0.0-rc.0-v1; git pull
-git stash apply "$@" || true
-conflict_files=$(git diff --name-only --diff-filter=U)
-if [ -n "$conflict_files" ]; then
-  echo "Resolving conflicts using current branch version..."
-  for file in $conflict_files; do
-    git checkout --ours "$file"
-    git add "$file"
-    echo "conflict: $file:"
-  done
-fi
-
+git checkout zjg/v10.0.0-rc.6-v2; git pull
+git stash apply
 rm -rf artifacts cache node_modules
 npm i
 
