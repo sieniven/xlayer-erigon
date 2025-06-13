@@ -80,3 +80,15 @@ func (rm *TxInfoMap) GetBlockTxs(blockNumber uint64) ([]common.Hash, bool) {
 
 	return hashes, true
 }
+
+func (rm *TxInfoMap) Clear() {
+	rm.mu.Lock()
+	defer rm.mu.Unlock()
+	for k := range rm.txInfos {
+		delete(rm.txInfos, k)
+	}
+
+	for k := range rm.blockTxs {
+		delete(rm.blockTxs, k)
+	}
+}

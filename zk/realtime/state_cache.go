@@ -1,52 +1,113 @@
-package state
+package realtime
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"sync"
+	"sync/atomic"
 
 	"github.com/holiman/uint256"
 	libcommon "github.com/ledgerwatch/erigon-lib/common"
 	"github.com/ledgerwatch/erigon-lib/kv"
 	"github.com/ledgerwatch/erigon-lib/kv/dbutils"
+	"github.com/ledgerwatch/erigon/core/state"
 	"github.com/ledgerwatch/erigon/core/types/accounts"
+	"github.com/ledgerwatch/erigon/crypto"
+	"github.com/ledgerwatch/erigon/eth/stagedsync/stages"
 	"github.com/ledgerwatch/erigon/turbo/trie"
-	zktypes "github.com/ledgerwatch/erigon/zk/types"
+	realtimeTypes "github.com/ledgerwatch/erigon/zk/realtime/types"
 	"github.com/ledgerwatch/erigon/zkevm/log"
 )
 
-const (
-	DefaultRealtimeCacheSize = 1_000_000
+var (
+	ErrNotReady   = fmt.Errorf("state cache not initialized")
+	emptyCodeHash = crypto.Keccak256(nil)
 )
 
 // PlainStateCache implements the plain state reader with a changeset cache layer.
 // The cache holds a snapshot of the statedb, with a changeset cache layer that
 // stores in-memory the state changes.
 type PlainStateCache struct {
-	snapshotReader *PlainStateReader
+	ctx            context.Context
+	db             kv.RoDB
+	tx             kv.Tx
+	snapshotReader *state.PlainStateReader
+	snapshotHeight atomic.Uint64
 
 	cacheLock        sync.RWMutex
 	accountCache     map[libcommon.Address]*accounts.Account
 	storageCache     map[string]*uint256.Int
 	codeCache        map[libcommon.Hash][]byte
 	incarnationCache map[libcommon.Address]uint64
-	ready            bool
-	txBlockNumber    uint64
 }
 
-func NewPlainStateCache(db kv.Getter) *PlainStateCache {
+func NewPlainStateCache(ctx context.Context, db kv.RoDB, size int) (*PlainStateCache, error) {
 	return &PlainStateCache{
-		snapshotReader:   NewPlainStateReader(db),
-		accountCache:     make(map[libcommon.Address]*accounts.Account, DefaultRealtimeCacheSize),
-		storageCache:     make(map[string]*uint256.Int, DefaultRealtimeCacheSize),
-		codeCache:        make(map[libcommon.Hash][]byte, DefaultRealtimeCacheSize),
-		incarnationCache: make(map[libcommon.Address]uint64, DefaultRealtimeCacheSize),
-		ready:            false,
-		txBlockNumber:    0,
-	}
+		ctx:              ctx,
+		db:               db,
+		tx:               nil,
+		snapshotReader:   nil,
+		snapshotHeight:   atomic.Uint64{},
+		accountCache:     make(map[libcommon.Address]*accounts.Account, size),
+		storageCache:     make(map[string]*uint256.Int, size),
+		codeCache:        make(map[libcommon.Hash][]byte, size),
+		incarnationCache: make(map[libcommon.Address]uint64, size),
+	}, nil
 }
 
-func (cache *PlainStateCache) ApplyChangeset(changeset *zktypes.Changeset, blockNumber uint64, txIndex uint) error {
+func (cache *PlainStateCache) InitSnapshotReader() error {
+	cache.cacheLock.Lock()
+	defer cache.cacheLock.Unlock()
+
+	if cache.snapshotReader != nil || cache.tx != nil {
+		return fmt.Errorf("Snapshot reader already initialized")
+	}
+
+	var err error
+	cache.tx, err = cache.db.BeginRo(cache.ctx)
+	if err != nil {
+		return err
+	}
+	cache.snapshotReader = state.NewPlainStateReader(cache.tx)
+
+	blockNum, err := stages.GetStageProgress(cache.tx, stages.Finish)
+	if err != nil {
+		return err
+	}
+	cache.snapshotHeight.Store(blockNum)
+
+	return nil
+}
+
+func (cache *PlainStateCache) Clear() {
+	cache.cacheLock.Lock()
+	defer cache.cacheLock.Unlock()
+
+	// Clear all caches
+	for k := range cache.accountCache {
+		delete(cache.accountCache, k)
+	}
+	for k := range cache.storageCache {
+		delete(cache.storageCache, k)
+	}
+	for k := range cache.codeCache {
+		delete(cache.codeCache, k)
+	}
+	for k := range cache.incarnationCache {
+		delete(cache.incarnationCache, k)
+	}
+
+	// Rollback ro-tx and clear snapshot reader
+	if cache.tx != nil {
+		cache.tx.Rollback()
+		cache.tx = nil
+		cache.snapshotReader = nil
+	}
+	cache.snapshotHeight.Store(0)
+}
+
+func (cache *PlainStateCache) ApplyChangeset(changeset *realtimeTypes.Changeset, blockNumber uint64, txIndex uint) error {
 	// Handle account data changes
 	addressChanges := make(map[libcommon.Address]*accounts.Account)
 	cache.applyChangesetToAccountData(changeset, addressChanges)
@@ -89,16 +150,12 @@ func (cache *PlainStateCache) ApplyChangeset(changeset *zktypes.Changeset, block
 		log.Info("ApplyChangeset: ", address)
 	}
 
-	if cache.txBlockNumber == 0 {
-		cache.txBlockNumber = blockNumber
-	}
-
 	log.Info(fmt.Sprintf("Apply changeset from tx with height: %d, txIndex: %d\n", blockNumber, txIndex))
 
 	return nil
 }
 
-func (cache *PlainStateCache) applyChangesetToAccountData(changeset *zktypes.Changeset, addressChanges map[libcommon.Address]*accounts.Account) (err error) {
+func (cache *PlainStateCache) applyChangesetToAccountData(changeset *realtimeTypes.Changeset, addressChanges map[libcommon.Address]*accounts.Account) (err error) {
 	// Apply balance changes
 	for address, balance := range changeset.BalanceChanges {
 		if _, ok := changeset.DeletedAccounts[address]; ok {
@@ -158,8 +215,8 @@ func (cache *PlainStateCache) applyChangesetToAccountData(changeset *zktypes.Cha
 }
 
 func (cache *PlainStateCache) ReadAccountData(address libcommon.Address) (*accounts.Account, error) {
-	if !cache.ready {
-		return cache.snapshotReader.ReadAccountData(address)
+	if cache.snapshotReader == nil {
+		return nil, ErrNotReady
 	}
 
 	cache.cacheLock.RLock()
@@ -176,8 +233,8 @@ func (cache *PlainStateCache) ReadAccountData(address libcommon.Address) (*accou
 }
 
 func (cache *PlainStateCache) ReadAccountStorage(address libcommon.Address, incarnation uint64, key *libcommon.Hash) ([]byte, error) {
-	if !cache.ready {
-		return cache.snapshotReader.ReadAccountStorage(address, incarnation, key)
+	if cache.snapshotReader == nil {
+		return nil, ErrNotReady
 	}
 
 	compositeKey := dbutils.PlainGenerateCompositeStorageKey(address.Bytes(), incarnation, key.Bytes())
@@ -200,8 +257,8 @@ func (cache *PlainStateCache) ReadAccountCode(address libcommon.Address, incarna
 		return nil, nil
 	}
 
-	if !cache.ready {
-		return cache.snapshotReader.ReadAccountCode(address, incarnation, codeHash)
+	if cache.snapshotReader == nil {
+		return nil, ErrNotReady
 	}
 
 	cache.cacheLock.RLock()
@@ -223,8 +280,8 @@ func (cache *PlainStateCache) ReadAccountCodeSize(address libcommon.Address, inc
 }
 
 func (cache *PlainStateCache) ReadAccountIncarnation(address libcommon.Address) (uint64, error) {
-	if !cache.ready {
-		return cache.snapshotReader.ReadAccountIncarnation(address)
+	if cache.snapshotReader == nil {
+		return 0, ErrNotReady
 	}
 
 	cache.cacheLock.RLock()
@@ -278,14 +335,6 @@ func (cache *PlainStateCache) createAccount() (*accounts.Account, error) {
 	}, nil
 }
 
-func (cache *PlainStateCache) UpdateReady(current bool) {
-	cache.ready = current
-}
-
-func (cache *PlainStateCache) IsReady() bool {
-	return cache.ready
-}
-
-func (cache *PlainStateCache) TxBlockNumber() uint64 {
-	return cache.txBlockNumber
+func (cache *PlainStateCache) GetSnapshotHeight() uint64 {
+	return cache.snapshotHeight.Load()
 }

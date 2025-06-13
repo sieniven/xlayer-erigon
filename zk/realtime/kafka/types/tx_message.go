@@ -11,10 +11,6 @@ import (
 	zktypes "github.com/ledgerwatch/erigon/zk/types"
 )
 
-const (
-	DefaultTxMsgSliceSize = 100
-)
-
 // TransactionMessage represents the structure of the transaction message to be sent to Kafka
 type TransactionMessage struct {
 	// Sequenced block number
@@ -247,31 +243,4 @@ func (msg TransactionMessage) MarshalJSON() ([]byte, error) {
 	}
 
 	return json.Marshal(&enc)
-}
-
-func NewOrderedListOfTransactionMessage(size int) *libcommon.OrderedList[*TransactionMessage] {
-	return libcommon.NewOrderedList(size, CompareTransactionMessages)
-}
-
-// CompareTransactionMessages defines the sorting criteria.
-// BlockNumber ascending, then Receipt.TransactionIndex ascending
-func CompareTransactionMessages(a, b *TransactionMessage) int {
-	if a.BlockNumber == b.BlockNumber {
-		// Check if Receipt is non-nil to avoid panic
-		if a.Receipt != nil && b.Receipt != nil {
-			return int(a.Receipt.TransactionIndex) - int(b.Receipt.TransactionIndex)
-		}
-		return 0
-	}
-	return int(a.BlockNumber) - int(b.BlockNumber)
-}
-
-type TransactionMessageCache map[uint64]*libcommon.OrderedList[*TransactionMessage]
-
-func (txMsgCache TransactionMessageCache) Add(txMsg *TransactionMessage) {
-	if _, ok := txMsgCache[txMsg.BlockNumber]; !ok {
-		txMsgCache[txMsg.BlockNumber] = libcommon.NewOrderedList(DefaultTxMsgSliceSize, CompareTransactionMessages)
-	}
-	txMsgCache[txMsg.BlockNumber].Add(txMsg)
-	txMsgCache[txMsg.BlockNumber].Sort()
 }

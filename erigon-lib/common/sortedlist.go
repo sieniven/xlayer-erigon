@@ -10,6 +10,14 @@ type OrderedList[T any] struct {
 	compareFunc func(a, b T) int
 }
 
+func NewOrderedList[T any](size int, compareFunc func(a, b T) int) *OrderedList[T] {
+	return &OrderedList[T]{
+		list:        make([]T, 0, size),
+		isOrdered:   false,
+		compareFunc: compareFunc,
+	}
+}
+
 func (l *OrderedList[T]) Add(item T) {
 	l.isOrdered = false
 	l.list = append(l.list, item)

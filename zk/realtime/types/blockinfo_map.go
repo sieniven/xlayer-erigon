@@ -57,3 +57,11 @@ func (bm *BlockInfoMap) Delete(blockNum uint64) {
 	defer bm.mu.Unlock()
 	delete(bm.blockInfos, blockNum)
 }
+
+func (bm *BlockInfoMap) Clear() {
+	bm.mu.Lock()
+	defer bm.mu.Unlock()
+	for k := range bm.blockInfos {
+		delete(bm.blockInfos, k)
+	}
+}

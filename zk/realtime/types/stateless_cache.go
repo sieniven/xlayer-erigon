@@ -11,11 +11,6 @@ import (
 	zktypes "github.com/ledgerwatch/erigon/zk/types"
 )
 
-const (
-	DefaultBlockCacheSize = 1000
-	DefaultTxCacheSize    = 10000
-)
-
 type StatelessCache struct {
 	blockInfoMap *BlockInfoMap
 	txInfoMap    *TxInfoMap
@@ -29,10 +24,10 @@ type StatelessCache struct {
 	nextTxIndex uint64
 }
 
-func NewStatelessCache() *StatelessCache {
+func NewStatelessCache(blockCacheSize int, txCacheSize int) *StatelessCache {
 	return &StatelessCache{
-		blockInfoMap:           NewBlockInfoMap(DefaultBlockCacheSize),
-		txInfoMap:              NewTxInfoMap(DefaultBlockCacheSize, DefaultTxCacheSize),
+		blockInfoMap:           NewBlockInfoMap(blockCacheSize),
+		txInfoMap:              NewTxInfoMap(blockCacheSize, txCacheSize),
 		highestCompletedHeight: atomic.Uint64{},
 		highestExecutionHeight: atomic.Uint64{},
 		nextTxIndex:            0,
@@ -40,7 +35,14 @@ func NewStatelessCache() *StatelessCache {
 }
 
 func (cache *StatelessCache) Clear() {
+	// Clear states
+	cache.highestCompletedHeight.Store(0)
+	cache.highestExecutionHeight.Store(0)
 	cache.nextTxIndex = 0
+
+	// Clear stateless caches
+	cache.blockInfoMap.Clear()
+	cache.txInfoMap.Clear()
 }
 
 // -------------- Read operations --------------
