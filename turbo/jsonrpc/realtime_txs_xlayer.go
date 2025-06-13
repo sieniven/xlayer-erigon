@@ -11,15 +11,15 @@ import (
 // GetTransactionByHash implements realtime_getTransactionByHash.
 // Returns information about a transaction given the transaction's hash.
 func (api *RealtimeAPIImpl) GetTransactionByHash(ctx context.Context, txnHash common.Hash, includeExtraInfo *bool) (interface{}, error) {
-	txn, _, blockNum, _, ok := api.statelessCache.GetTxInfo(txnHash)
+	txn, _, blockNum, _, ok := api.cacheDB.Stateless.GetTxInfo(txnHash)
 	if !ok {
 		return api.ethApi.GetTransactionByHash(ctx, txnHash, includeExtraInfo)
 	}
-	txHashes, ok := api.statelessCache.GetBlockTxs(blockNum)
+	txHashes, ok := api.cacheDB.Stateless.GetBlockTxs(blockNum)
 	if !ok {
 		return api.ethApi.GetTransactionByHash(ctx, txnHash, includeExtraInfo)
 	}
-	header, _, ok := api.statelessCache.GetHeader(blockNum)
+	header, _, ok := api.cacheDB.Stateless.GetHeader(blockNum)
 	if !ok {
 		return api.ethApi.GetTransactionByHash(ctx, txnHash, includeExtraInfo)
 	}
@@ -43,7 +43,7 @@ func (api *RealtimeAPIImpl) GetTransactionByHash(ctx context.Context, txnHash co
 // GetRawTransactionByHash implements realtime_getRawTransactionByHash.
 // Returns the bytes of the transaction for the given hash.
 func (api *RealtimeAPIImpl) GetRawTransactionByHash(ctx context.Context, hash common.Hash) (hexutility.Bytes, error) {
-	txn, _, _, _, ok := api.statelessCache.GetTxInfo(hash)
+	txn, _, _, _, ok := api.cacheDB.Stateless.GetTxInfo(hash)
 	if !ok || txn == nil {
 		return api.ethApi.GetRawTransactionByHash(ctx, hash)
 	}

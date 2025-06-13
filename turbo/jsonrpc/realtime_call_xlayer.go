@@ -36,14 +36,14 @@ func (api *RealtimeAPIImpl) Call(ctx context.Context, args ethapi2.CallArgs, ove
 		return nil, err
 	}
 
-	header, _, ok := api.statelessCache.GetHeader(blockNumber)
+	header, _, ok := api.cacheDB.Stateless.GetHeader(blockNumber)
 	if !ok {
 		return nil, fmt.Errorf("header not found for block number %d", blockNumber)
 	}
 
 	bn := rpc.BlockNumber(blockNumber)
 	rpcBlockNr := rpc.BlockNumberOrHash{BlockNumber: &bn}
-	result, err := transactions.DoCall(ctx, engine, args, tx, rpcBlockNr, header, overrides, api.ethApi.GasCap, chainConfig, api.stateCache, api.statelessCache, api.ethApi.evmCallTimeout)
+	result, err := transactions.DoCall(ctx, engine, args, tx, rpcBlockNr, header, overrides, api.ethApi.GasCap, chainConfig, api.cacheDB.State, api.cacheDB.Stateless, api.ethApi.evmCallTimeout)
 	if err != nil {
 		return nil, err
 	}

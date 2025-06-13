@@ -132,14 +132,15 @@ import (
 	"github.com/ledgerwatch/erigon/zk/datastream/client"
 	"github.com/ledgerwatch/erigon/zk/datastream/server"
 	"github.com/ledgerwatch/erigon/zk/hermez_db"
-	"github.com/ledgerwatch/erigon/zk/kafka"
 	"github.com/ledgerwatch/erigon/zk/l1_cache"
 	"github.com/ledgerwatch/erigon/zk/l1infotree"
+	realtime "github.com/ledgerwatch/erigon/zk/realtime"
+	"github.com/ledgerwatch/erigon/zk/realtime/kafka"
+	realtimeTypes "github.com/ledgerwatch/erigon/zk/realtime/types"
 	zkStages "github.com/ledgerwatch/erigon/zk/stages"
 	"github.com/ledgerwatch/erigon/zk/syncer"
 	txpool2 "github.com/ledgerwatch/erigon/zk/txpool"
 	"github.com/ledgerwatch/erigon/zk/txpool/txpooluitl"
-	zktypes "github.com/ledgerwatch/erigon/zk/types"
 	"github.com/ledgerwatch/erigon/zk/utils"
 	"github.com/ledgerwatch/erigon/zkevm/etherman"
 )
@@ -254,9 +255,8 @@ type Ethereum struct {
 	// For X Layer, kafka
 	txKafkaProducer *kafka.KafkaProducer
 	txKafkaConsumer *kafka.KafkaConsumer
-	stateCache      *state.PlainStateCache
-	statelessCache  *zktypes.StatelessCache
-	blockInfoChan   chan *zktypes.BlockInfo
+	realtimeCache   *realtime.RealtimeCache
+	blockInfoChan   chan *realtimeTypes.BlockInfo
 	txInfoChan      chan *state.TxInfo
 	finishChan      chan uint64
 }
@@ -1236,7 +1236,7 @@ func New(ctx context.Context, stack *node.Node, config *ethconfig.Config, logger
 					return nil, err
 				}
 				backend.txKafkaProducer = kafkaProducer
-				backend.blockInfoChan = make(chan *zktypes.BlockInfo, kafkaBufferSize)
+				backend.blockInfoChan = make(chan *realtimeTypes.BlockInfo, kafkaBufferSize)
 				backend.txInfoChan = make(chan *state.TxInfo, kafkaBufferSize)
 			}
 
@@ -1289,12 +1289,19 @@ func New(ctx context.Context, stack *node.Node, config *ethconfig.Config, logger
 
 			// For X Layer, kafka
 			if cfg.Zk.XLayer.Kafka.Enable {
+				// Init kafka consumer
 				kafkaConsumer, err := kafka.NewKafkaConsumer(cfg.Zk.XLayer.Kafka)
 				if err != nil {
 					return nil, err
 				}
 				backend.txKafkaConsumer = kafkaConsumer
-				backend.statelessCache = zktypes.NewStatelessCache()
+
+				// Init realtime cache
+				backend.realtimeCache, err = realtime.NewRealtimeCache(backend.sentryCtx, backend.chainDB)
+				if err != nil {
+					return nil, err
+				}
+
 				backend.finishChan = make(chan uint64)
 			}
 
@@ -1314,7 +1321,7 @@ func New(ctx context.Context, stack *node.Node, config *ethconfig.Config, logger
 				streamClient,
 				dataStreamServer,
 				l1InfoTreeUpdater,
-				backend.statelessCache,
+				backend.realtimeCache.Stateless,
 				backend.finishChan,
 			)
 
@@ -1436,7 +1443,7 @@ func (s *Ethereum) Init(stack *node.Node, config *ethconfig.Config, chainConfig 
 
 	var gpCache *jsonrpc.GasPriceCache
 	// For X Layer, split db
-	s.apiList, gpCache = jsonrpc.APIList(chainKv, s.smtDB, ethRpcClient, txPoolRpcClient, s.txPool2, miningRpcClient, ff, stateCache, blockReader, s.agg, &httpRpcCfg, s.engine, config, s.l1Syncer, s.logger, dataStreamServer, s.gasTracker, s.stagedSync.GetCache(), s.stateCache, s.statelessCache)
+	s.apiList, gpCache = jsonrpc.APIList(chainKv, s.smtDB, ethRpcClient, txPoolRpcClient, s.txPool2, miningRpcClient, ff, stateCache, blockReader, s.agg, &httpRpcCfg, s.engine, config, s.l1Syncer, s.logger, dataStreamServer, s.gasTracker, s.stagedSync.GetCache(), s.realtimeCache)
 
 	// For X Layer
 	if s.txPool2 != nil && gpCache != nil {

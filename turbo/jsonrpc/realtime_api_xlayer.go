@@ -8,10 +8,10 @@ import (
 	libcommon "github.com/ledgerwatch/erigon-lib/common"
 	"github.com/ledgerwatch/erigon-lib/common/hexutil"
 	"github.com/ledgerwatch/erigon-lib/common/hexutility"
-	"github.com/ledgerwatch/erigon/core/state"
 	"github.com/ledgerwatch/erigon/core/types"
 	"github.com/ledgerwatch/erigon/rpc"
 	ethapi2 "github.com/ledgerwatch/erigon/turbo/adapter/ethapi"
+	realtime "github.com/ledgerwatch/erigon/zk/realtime"
 	zktypes "github.com/ledgerwatch/erigon/zk/types"
 )
 
@@ -44,27 +44,24 @@ type RealtimeAPI interface {
 
 // RealtimeAPIImpl is implementation of the RealtimeAPI interface
 type RealtimeAPIImpl struct {
-	ethApi         *APIImpl
-	stateCache     state.StateReader
-	statelessCache *zktypes.StatelessCache
+	ethApi  *APIImpl
+	cacheDB *realtime.RealtimeCache
 }
 
 // NewRealtimeAPI returns RealtimeAPIImpl instance
 func NewRealtimeAPI(
 	base *APIImpl,
-	stateCache state.StateReader,
-	statelessCache *zktypes.StatelessCache,
+	cacheDB *realtime.RealtimeCache,
 ) *RealtimeAPIImpl {
 
 	return &RealtimeAPIImpl{
-		ethApi:         base,
-		stateCache:     stateCache,
-		statelessCache: statelessCache,
+		ethApi:  base,
+		cacheDB: cacheDB,
 	}
 }
 
 func (api *RealtimeAPIImpl) getBlockNumber(blockNr rpc.BlockNumber) (uint64, bool, error) {
-	currentBlockNumber := api.statelessCache.GetHeight()
+	currentBlockNumber := api.cacheDB.Stateless.GetCompletedHeight()
 	if currentBlockNumber == 0 {
 		return 0, false, fmt.Errorf("no block number found in stateless cache")
 	}
