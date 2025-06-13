@@ -24,16 +24,15 @@ func (api *RealtimeAPIImpl) GetBalance(ctx context.Context, address libcommon.Ad
 	return (*hexutil.Big)(acc.Balance.ToBig()), nil
 }
 
-func (api *RealtimeAPIImpl) GetCode(ctx context.Context, address libcommon.Address) (hexutility.Bytes, error) {
+func (api *RealtimeAPIImpl) GetTransactionCount(ctx context.Context, address libcommon.Address) (*hexutil.Uint64, error) {
 	acc, err := api.stateCache.ReadAccountData(address)
-	if acc == nil || err != nil {
-		return hexutility.Bytes(""), nil
+	if err != nil {
+		return nil, fmt.Errorf("cant get a transaction count for account %x: %w", address.String(), err)
 	}
-	res, _ := api.stateCache.ReadAccountCode(address, acc.Incarnation, acc.CodeHash)
-	if res == nil {
-		return hexutility.Bytes(""), nil
+	if acc == nil {
+		return nil, nil
 	}
-	return res, nil
+	return (*hexutil.Uint64)(&acc.Nonce), nil
 }
 
 func (api *RealtimeAPIImpl) GetStorageAt(ctx context.Context, address libcommon.Address, index string) (string, error) {
@@ -50,4 +49,16 @@ func (api *RealtimeAPIImpl) GetStorageAt(ctx context.Context, address libcommon.
 		res = empty
 	}
 	return hexutility.Encode(common.LeftPadBytes(res, 32)), err
+}
+
+func (api *RealtimeAPIImpl) GetCode(ctx context.Context, address libcommon.Address) (hexutility.Bytes, error) {
+	acc, err := api.stateCache.ReadAccountData(address)
+	if acc == nil || err != nil {
+		return hexutility.Bytes(""), nil
+	}
+	res, _ := api.stateCache.ReadAccountCode(address, acc.Incarnation, acc.CodeHash)
+	if res == nil {
+		return hexutility.Bytes(""), nil
+	}
+	return res, nil
 }
