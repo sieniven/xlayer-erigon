@@ -12,7 +12,7 @@ import (
 	ethTypes "github.com/ledgerwatch/erigon/core/types"
 	"github.com/ledgerwatch/erigon/core/vm"
 	"github.com/ledgerwatch/erigon/eth/ethconfig"
-	kafkaTypes "github.com/ledgerwatch/erigon/zk/kafka/types"
+	kafkaTypes "github.com/ledgerwatch/erigon/zk/realtime/kafka/types"
 	zktypes "github.com/ledgerwatch/erigon/zk/types"
 	"github.com/ledgerwatch/log/v3"
 	"gotest.tools/v3/assert"

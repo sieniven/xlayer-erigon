@@ -3,12 +3,15 @@ package types
 import (
 	"encoding/json"
 	"fmt"
-	"sort"
 
 	"github.com/holiman/uint256"
 	libcommon "github.com/ledgerwatch/erigon-lib/common"
 	ethTypes "github.com/ledgerwatch/erigon/core/types"
 	zktypes "github.com/ledgerwatch/erigon/zk/types"
+)
+
+const (
+	DefaultTxMsgSliceSize = 100
 )
 
 // TransactionMessage represents the structure of the transaction message to be sent to Kafka
@@ -245,32 +248,29 @@ func (msg TransactionMessage) MarshalJSON() ([]byte, error) {
 	return json.Marshal(&enc)
 }
 
-type TransactionMessageSlice []*TransactionMessage
-
-// Len returns the length of the slice
-func (t TransactionMessageSlice) Len() int {
-	return len(t)
+func NewOrderedListOfTransactionMessage(size int) *libcommon.OrderedList[*TransactionMessage] {
+	return libcommon.NewOrderedList(size, CompareTransactionMessages)
 }
 
-// Less defines the sorting criteria: BlockNumber ascending, then Receipt.TransactionIndex ascending
-func (t TransactionMessageSlice) Less(i, j int) bool {
-	if t[i].BlockNumber == t[j].BlockNumber {
+// CompareTransactionMessages defines the sorting criteria.
+// BlockNumber ascending, then Receipt.TransactionIndex ascending
+func CompareTransactionMessages(a, b *TransactionMessage) int {
+	if a.BlockNumber == b.BlockNumber {
 		// Check if Receipt is non-nil to avoid panic
-		if t[i].Receipt != nil && t[j].Receipt != nil {
-			return t[i].Receipt.TransactionIndex < t[j].Receipt.TransactionIndex
+		if a.Receipt != nil && b.Receipt != nil {
+			return int(a.Receipt.TransactionIndex) - int(b.Receipt.TransactionIndex)
 		}
-		// If either Receipt is nil, maintain stable sort by returning false
-		return false
+		return 0
 	}
-	return t[i].BlockNumber < t[j].BlockNumber
+	return int(a.BlockNumber) - int(b.BlockNumber)
 }
 
-// Swap swaps two elements in the slice
-func (t TransactionMessageSlice) Swap(i, j int) {
-	t[i], t[j] = t[j], t[i]
-}
+type TransactionMessageCache map[uint64]*libcommon.OrderedList[*TransactionMessage]
 
-// SortTransactions sorts a slice of TransactionMessage by BlockNumber and Receipt.TransactionIndex
-func SortTransactions(transactions []*TransactionMessage) {
-	sort.Sort(TransactionMessageSlice(transactions))
+func (txMsgCache TransactionMessageCache) Add(txMsg *TransactionMessage) {
+	if _, ok := txMsgCache[txMsg.BlockNumber]; !ok {
+		txMsgCache[txMsg.BlockNumber] = libcommon.NewOrderedList(DefaultTxMsgSliceSize, CompareTransactionMessages)
+	}
+	txMsgCache[txMsg.BlockNumber].Add(txMsg)
+	txMsgCache[txMsg.BlockNumber].Sort()
 }
