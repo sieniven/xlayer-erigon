@@ -57,18 +57,18 @@ func (cache *StatelessCache) PutHeader(blockNum uint64, header *ethTypes.Header)
 	cache.blockInfoMap.PutHeader(blockNum, header)
 }
 
-func (cache *StatelessCache) PutTxInfo(blockNum uint64, txHash libcommon.Hash, tx ethTypes.Transaction, receipt *ethTypes.Receipt, innerTxs []*InnerTx) {
-	if blockNum > cache.highestHeight.Load() {
-		cache.highestHeight.Store(blockNum)
-	}
-	cache.txInfoMap.Put(blockNum, txHash, tx, receipt, innerTxs)
-}
-
 func (cache *StatelessCache) PutTxCount(blockNum uint64, txCount int64) {
 	if blockNum > cache.highestHeight.Load() {
 		cache.highestHeight.Store(blockNum)
 	}
 	cache.blockInfoMap.PutTxCount(blockNum, txCount)
+}
+
+func (cache *StatelessCache) PutTxInfo(blockNum uint64, txHash libcommon.Hash, tx ethTypes.Transaction, receipt *ethTypes.Receipt, innerTxs []*InnerTx) {
+	if blockNum > cache.highestHeight.Load() {
+		cache.highestHeight.Store(blockNum)
+	}
+	cache.txInfoMap.Put(blockNum, txHash, tx, receipt, innerTxs)
 }
 
 func (cache *StatelessCache) DeleteBlock(blockNum uint64, block *ethTypes.Block) {

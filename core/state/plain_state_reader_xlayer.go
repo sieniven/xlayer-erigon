@@ -2,7 +2,11 @@ package state
 
 import (
 	"bytes"
+	"encoding/hex"
+	"encoding/json"
 	"fmt"
+	"os"
+	"path/filepath"
 	"sync"
 
 	"github.com/holiman/uint256"
@@ -25,25 +29,30 @@ const (
 type PlainStateCache struct {
 	snapshotReader *PlainStateReader
 
-	cacheLock        sync.RWMutex
-	accountCache     map[libcommon.Address]*accounts.Account
-	storageCache     map[string]*uint256.Int
-	codeCache        map[libcommon.Hash][]byte
-	incarnationCache map[libcommon.Address]uint64
-	ready            bool
-	txBlockNumber    uint64
+	cacheLock           sync.RWMutex
+	accountCache        map[libcommon.Address]*accounts.Account
+	storageCache        map[string]*uint256.Int
+	codeCache           map[libcommon.Hash][]byte
+	incarnationMapCache map[libcommon.Address]uint64
+	ready               bool
+	txBlockNumber       uint64
 }
 
-func NewPlainStateCache(db kv.Getter) *PlainStateCache {
-	return &PlainStateCache{
-		snapshotReader:   NewPlainStateReader(db),
-		accountCache:     make(map[libcommon.Address]*accounts.Account, DefaultRealtimeCacheSize),
-		storageCache:     make(map[string]*uint256.Int, DefaultRealtimeCacheSize),
-		codeCache:        make(map[libcommon.Hash][]byte, DefaultRealtimeCacheSize),
-		incarnationCache: make(map[libcommon.Address]uint64, DefaultRealtimeCacheSize),
-		ready:            false,
-		txBlockNumber:    0,
-	}
+func NewPlainStateCache() *PlainStateCache {
+	return &PlainStateCache{}
+}
+
+func (cache *PlainStateCache) Reset(db kv.Getter) {
+	cache.cacheLock.Lock()
+	defer cache.cacheLock.Unlock()
+
+	cache.snapshotReader = NewPlainStateReader(db)
+	cache.accountCache = make(map[libcommon.Address]*accounts.Account, DefaultRealtimeCacheSize)
+	cache.storageCache = make(map[string]*uint256.Int, DefaultRealtimeCacheSize)
+	cache.codeCache = make(map[libcommon.Hash][]byte, DefaultRealtimeCacheSize)
+	cache.incarnationMapCache = make(map[libcommon.Address]uint64, DefaultRealtimeCacheSize)
+	cache.ready = false
+	cache.txBlockNumber = 0
 }
 
 func (cache *PlainStateCache) ApplyChangeset(changeset *zktypes.Changeset, blockNumber uint64, txIndex uint) error {
@@ -55,12 +64,8 @@ func (cache *PlainStateCache) ApplyChangeset(changeset *zktypes.Changeset, block
 	defer cache.cacheLock.Unlock()
 
 	// Apply code changes
-	for address, code := range changeset.CodeChanges {
-		account, ok := addressChanges[address]
-		if !ok {
-			return fmt.Errorf("apply code changes failed: no codehash received")
-		}
-		cache.codeCache[account.CodeHash] = code
+	for codeHash, code := range changeset.CodeChanges {
+		cache.codeCache[codeHash] = code
 	}
 
 	// Apply storage changes
@@ -74,6 +79,11 @@ func (cache *PlainStateCache) ApplyChangeset(changeset *zktypes.Changeset, block
 			compositeKey := dbutils.PlainGenerateCompositeStorageKey(address.Bytes(), account.Incarnation, key.Bytes())
 			cache.storageCache[string(compositeKey)] = value
 		}
+	}
+
+	// Apply incarnation map changes
+	for address, incarnation := range changeset.IncarnationMapChanges {
+		cache.incarnationMapCache[address] = incarnation
 	}
 
 	// Apply deleted accounts changes
@@ -140,8 +150,6 @@ func (cache *PlainStateCache) applyChangesetToAccountData(changeset *zktypes.Cha
 
 	// Apply incarnation changes
 	for address, incarnation := range changeset.IncarnationChanges {
-		cache.incarnationCache[address] = incarnation
-
 		if _, ok := changeset.DeletedAccounts[address]; ok {
 			continue
 		}
@@ -150,7 +158,6 @@ func (cache *PlainStateCache) applyChangesetToAccountData(changeset *zktypes.Cha
 		if err != nil {
 			return fmt.Errorf("apply incarnation changes failed: %v", err)
 		}
-		account.PrevIncarnation = incarnation - 1
 		account.Incarnation = incarnation
 	}
 
@@ -228,7 +235,7 @@ func (cache *PlainStateCache) ReadAccountIncarnation(address libcommon.Address) 
 	}
 
 	cache.cacheLock.RLock()
-	incarnation, ok := cache.incarnationCache[address]
+	incarnation, ok := cache.incarnationMapCache[address]
 	cache.cacheLock.RUnlock()
 	if ok {
 		return incarnation, nil
@@ -288,4 +295,59 @@ func (cache *PlainStateCache) IsReady() bool {
 
 func (cache *PlainStateCache) TxBlockNumber() uint64 {
 	return cache.txBlockNumber
+}
+
+func (cache *PlainStateCache) Dump() error {
+	cache.cacheLock.RLock()
+	defer cache.cacheLock.RUnlock()
+
+	accountData := make(map[string]string)
+	for addr, acc := range cache.accountCache {
+		value := make([]byte, acc.EncodingLengthForStorage())
+		acc.EncodeForStorage(value)
+		accountData[hex.EncodeToString(addr[:])] = hex.EncodeToString(value)
+	}
+	if err := writeToJSON("/home/erigon/data/cache/account_cache.json", accountData); err != nil {
+		return fmt.Errorf("failed to dump account cache: %v", err)
+	}
+
+	storageData := make(map[string]string)
+	for key, value := range cache.storageCache {
+		storageData[hex.EncodeToString([]byte(key))] = hex.EncodeToString(value.Bytes())
+	}
+	if err := writeToJSON("/home/erigon/data/cache/storage_cache.json", storageData); err != nil {
+		return fmt.Errorf("failed to dump storage cache: %v", err)
+	}
+
+	codeData := make(map[string]string)
+	for hash, code := range cache.codeCache {
+		codeData[hex.EncodeToString(hash[:])] = hex.EncodeToString(code)
+	}
+	if err := writeToJSON("/home/erigon/data/cache/code_cache.json", codeData); err != nil {
+		return fmt.Errorf("failed to dump code cache: %v", err)
+	}
+
+	incarnationData := make(map[string]uint64)
+	for addr, incarnation := range cache.incarnationMapCache {
+		incarnationData[hex.EncodeToString(addr[:])] = incarnation
+	}
+	if err := writeToJSON("/home/erigon/data/cache/incarnation_cache.json", incarnationData); err != nil {
+		return fmt.Errorf("failed to dump incarnation cache: %v", err)
+	}
+
+	return nil
+}
+
+func writeToJSON(filename string, data interface{}) error {
+	dir := filepath.Dir(filename)
+
+	if err := os.MkdirAll(dir, 0755); err != nil {
+		return fmt.Errorf("failed to create directory %s: %v", dir, err)
+	}
+
+	jsonData, err := json.MarshalIndent(data, "", "  ")
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(filename, jsonData, 0644)
 }

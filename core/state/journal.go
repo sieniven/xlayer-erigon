@@ -127,7 +127,9 @@ type (
 		increase uint256.Int
 	}
 	balanceIncreaseTransfer struct {
-		bi *BalanceIncrease
+		account *libcommon.Address
+		prev    uint256.Int
+		bi      *BalanceIncrease
 	}
 	nonceChange struct {
 		account *libcommon.Address
@@ -183,6 +185,11 @@ type (
 		account *libcommon.Address
 		post    uint64
 	}
+
+	incarnationMapChange struct {
+		account  *libcommon.Address
+		original uint64
+	}
 )
 
 func (ch createObjectChange) revert(s *IntraBlockState) {
@@ -201,7 +208,6 @@ func (ch createObjectChange) collectChangeset(cs *types.Changeset) {
 	cs.BalanceChanges[*ch.account] = uint256.NewInt(0)
 	cs.NonceChanges[*ch.account] = 0
 	cs.CodeHashChanges[*ch.account] = emptyCodeHashH
-	cs.CodeChanges[*ch.account] = nil
 	cs.StorageChanges[*ch.account] = make(map[libcommon.Hash]*uint256.Int)
 }
 
@@ -220,7 +226,6 @@ func (ch resetObjectChange) collectChangeset(cs *types.Changeset) {
 	cs.BalanceChanges[*ch.account] = uint256.NewInt(0)
 	cs.NonceChanges[*ch.account] = 0
 	cs.CodeHashChanges[*ch.account] = emptyCodeHashH
-	cs.CodeChanges[*ch.account] = nil
 	cs.StorageChanges[*ch.account] = make(map[libcommon.Hash]*uint256.Int)
 }
 
@@ -246,8 +251,8 @@ func (ch selfdestructChange) collectChangeset(cs *types.Changeset) {
 	delete(cs.BalanceChanges, *ch.account)
 	delete(cs.NonceChanges, *ch.account)
 	delete(cs.CodeHashChanges, *ch.account)
-	delete(cs.CodeChanges, *ch.account)
 	delete(cs.IncarnationChanges, *ch.account)
+	delete(cs.IncarnationMapChanges, *ch.account)
 	delete(cs.StorageChanges, *ch.account)
 }
 
@@ -288,13 +293,7 @@ func (ch balanceIncrease) dirtied() *libcommon.Address {
 	return ch.account
 }
 
-func (ch balanceIncrease) collectChangeset(cs *types.Changeset) {
-	if _, ok := cs.BalanceChanges[*ch.account]; !ok {
-		cs.BalanceChanges[*ch.account] = &ch.increase
-	} else {
-		cs.BalanceChanges[*ch.account].Add(cs.BalanceChanges[*ch.account], &ch.increase)
-	}
-}
+func (ch balanceIncrease) collectChangeset(cs *types.Changeset) {}
 
 func (ch balanceIncreaseTransfer) dirtied() *libcommon.Address {
 	return nil
@@ -304,7 +303,10 @@ func (ch balanceIncreaseTransfer) revert(s *IntraBlockState) {
 	ch.bi.transferred = false
 }
 
-func (ch balanceIncreaseTransfer) collectChangeset(cs *types.Changeset) {}
+func (ch balanceIncreaseTransfer) collectChangeset(cs *types.Changeset) {
+	cs.BalanceChanges[*ch.account] = uint256.NewInt(0)
+	cs.BalanceChanges[*ch.account].Add(&ch.prev, &ch.bi.increase)
+}
 
 func (ch nonceChange) revert(s *IntraBlockState) {
 	s.getStateObject(*ch.account).setNonce(ch.prev)
@@ -327,8 +329,10 @@ func (ch codeChange) dirtied() *libcommon.Address {
 }
 
 func (ch codeChange) collectChangeset(cs *types.Changeset) {
-	cs.CodeChanges[*ch.account] = ch.postcode
 	cs.CodeHashChanges[*ch.account] = ch.posthash
+	if ch.posthash != emptyCodeHashH {
+		cs.CodeChanges[ch.posthash] = ch.postcode
+	}
 }
 
 func (ch storageChange) revert(s *IntraBlockState) {
@@ -429,4 +433,14 @@ func (ch incarnationChange) dirtied() *libcommon.Address {
 
 func (ch incarnationChange) collectChangeset(cs *types.Changeset) {
 	cs.IncarnationChanges[*ch.account] = ch.post
+}
+
+func (ch incarnationMapChange) revert(s *IntraBlockState) {}
+
+func (ch incarnationMapChange) dirtied() *libcommon.Address {
+	return nil
+}
+
+func (ch incarnationMapChange) collectChangeset(cs *types.Changeset) {
+	cs.IncarnationMapChanges[*ch.account] = ch.original
 }
