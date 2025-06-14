@@ -32,6 +32,16 @@ func (msg BlockMessage) GetBlockInfo() (*ethTypes.Header, int64, error) {
 	return msg.Header, msg.PrevBlockTxCount, nil
 }
 
+func (msg BlockMessage) Validate() error {
+	if msg.Header == nil {
+		return fmt.Errorf("header is nil")
+	}
+	if msg.Header.Number.Uint64() == 0 {
+		return fmt.Errorf("block number is 0")
+	}
+	return nil
+}
+
 func (msg BlockMessage) MarshalJSON() ([]byte, error) {
 	type BlockMessage struct {
 		Header           *ethTypes.Header `json:"header"`

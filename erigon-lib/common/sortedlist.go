@@ -69,3 +69,13 @@ func (l *OrderedList[T]) Size() int {
 func (l *OrderedList[T]) Items() []T {
 	return l.list
 }
+
+func (l *OrderedList[T]) Clear() {
+	l.isOrdered = false
+	clear(l.list)
+}
+
+func (l *OrderedList[T]) SetItems(items []T) {
+	l.list = items
+	l.isOrdered = false
+}

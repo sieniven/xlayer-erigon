@@ -60,7 +60,7 @@ func (cache *PlainStateCache) InitSnapshotReader() error {
 	cache.cacheLock.Lock()
 	defer cache.cacheLock.Unlock()
 
-	if cache.snapshotReader != nil || cache.tx != nil {
+	if cache.snapshotReader != nil && cache.tx != nil && cache.snapshotHeight.Load() != 0 {
 		return fmt.Errorf("Snapshot reader already initialized")
 	}
 
@@ -215,7 +215,7 @@ func (cache *PlainStateCache) applyChangesetToAccountData(changeset *realtimeTyp
 }
 
 func (cache *PlainStateCache) ReadAccountData(address libcommon.Address) (*accounts.Account, error) {
-	if cache.snapshotReader == nil {
+	if cache.snapshotReader == nil || cache.tx == nil || cache.snapshotHeight.Load() == 0 {
 		return nil, ErrNotReady
 	}
 
@@ -233,7 +233,7 @@ func (cache *PlainStateCache) ReadAccountData(address libcommon.Address) (*accou
 }
 
 func (cache *PlainStateCache) ReadAccountStorage(address libcommon.Address, incarnation uint64, key *libcommon.Hash) ([]byte, error) {
-	if cache.snapshotReader == nil {
+	if cache.snapshotReader == nil || cache.tx == nil || cache.snapshotHeight.Load() == 0 {
 		return nil, ErrNotReady
 	}
 
@@ -257,7 +257,7 @@ func (cache *PlainStateCache) ReadAccountCode(address libcommon.Address, incarna
 		return nil, nil
 	}
 
-	if cache.snapshotReader == nil {
+	if cache.snapshotReader == nil || cache.tx == nil || cache.snapshotHeight.Load() == 0 {
 		return nil, ErrNotReady
 	}
 
@@ -280,7 +280,7 @@ func (cache *PlainStateCache) ReadAccountCodeSize(address libcommon.Address, inc
 }
 
 func (cache *PlainStateCache) ReadAccountIncarnation(address libcommon.Address) (uint64, error) {
-	if cache.snapshotReader == nil {
+	if cache.snapshotReader == nil || cache.tx == nil || cache.snapshotHeight.Load() == 0 {
 		return 0, ErrNotReady
 	}
 

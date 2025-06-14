@@ -3,7 +3,6 @@ package types
 import (
 	"context"
 	"fmt"
-	"sync/atomic"
 
 	libcommon "github.com/ledgerwatch/erigon-lib/common"
 	"github.com/ledgerwatch/erigon-lib/kv"
@@ -14,46 +13,21 @@ import (
 type StatelessCache struct {
 	blockInfoMap *BlockInfoMap
 	txInfoMap    *TxInfoMap
-
-	// highestCompletedHeight is the highest confirmed height from kafka
-	highestCompletedHeight atomic.Uint64
-	// highestExecutionHeight is the highest executed height on the RPC node
-	highestExecutionHeight atomic.Uint64
-
-	// nextTxIndex is the next tx index to be processed in the current pending block
-	nextTxIndex uint64
 }
 
 func NewStatelessCache(blockCacheSize int, txCacheSize int) *StatelessCache {
 	return &StatelessCache{
-		blockInfoMap:           NewBlockInfoMap(blockCacheSize),
-		txInfoMap:              NewTxInfoMap(blockCacheSize, txCacheSize),
-		highestCompletedHeight: atomic.Uint64{},
-		highestExecutionHeight: atomic.Uint64{},
-		nextTxIndex:            0,
+		blockInfoMap: NewBlockInfoMap(blockCacheSize),
+		txInfoMap:    NewTxInfoMap(blockCacheSize, txCacheSize),
 	}
 }
 
 func (cache *StatelessCache) Clear() {
-	// Clear states
-	cache.highestCompletedHeight.Store(0)
-	cache.highestExecutionHeight.Store(0)
-	cache.nextTxIndex = 0
-
-	// Clear stateless caches
 	cache.blockInfoMap.Clear()
 	cache.txInfoMap.Clear()
 }
 
 // -------------- Read operations --------------
-func (cache *StatelessCache) GetCompletedHeight() uint64 {
-	return cache.highestCompletedHeight.Load()
-}
-
-func (cache *StatelessCache) GetExecutionHeight() uint64 {
-	return cache.highestExecutionHeight.Load()
-}
-
 func (cache *StatelessCache) GetHeader(blockNum uint64) (*ethTypes.Header, int64, bool) {
 	return cache.blockInfoMap.Get(blockNum)
 }
@@ -69,18 +43,6 @@ func (cache *StatelessCache) GetBlockTxs(blockNum uint64) ([]libcommon.Hash, boo
 // -------------- Write operations --------------
 func (cache *StatelessCache) PutHeader(blockNum uint64, header *ethTypes.Header, prevTxCount int64) {
 	cache.blockInfoMap.PutHeader(blockNum, header, prevTxCount)
-}
-
-func (cache *StatelessCache) PutCompletedHeight(blockNum uint64) {
-	if blockNum > cache.highestCompletedHeight.Load() {
-		cache.highestCompletedHeight.Store(blockNum)
-	}
-}
-
-func (cache *StatelessCache) PutExecutionHeight(blockNum uint64) {
-	if blockNum > cache.highestExecutionHeight.Load() {
-		cache.highestExecutionHeight.Store(blockNum)
-	}
 }
 
 func (cache *StatelessCache) PutTxInfo(blockNum uint64, txHash libcommon.Hash, tx ethTypes.Transaction, receipt *ethTypes.Receipt, innerTxs []*zktypes.InnerTx) {

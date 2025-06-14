@@ -2014,7 +2014,7 @@ func (s *Ethereum) Start() error {
 		go stages2.StageLoop(s.sentryCtx, s.chainDB, s.stagedSync, s.sentriesClient.Hd, s.waitForStageLoopStop, s.config.Sync.LoopThrottle, s.logger, s.blockReader, hook, s.config.ForcePartialCommit)
 
 		// For X Layer, Kafka
-		go realtime.ListenTxKafkaConsumer(s.sentryCtx, s.chainDB, s.txKafkaConsumer, s.config.Zk.XLayer, s.logger, s.realtimeCache, s.finishChan)
+		go realtime.ListenTxKafkaConsumer(s.sentryCtx, s.txKafkaConsumer, s.config.Zk.XLayer, s.logger, s.realtimeCache, s.finishChan)
 		go realtime.ListenTxKafkaProducer(s.sentryCtx, s.txKafkaProducer, s.config.Zk.XLayer, s.logger, s.blockInfoChan, s.txInfoChan)
 	}
 
