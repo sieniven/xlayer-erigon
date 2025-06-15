@@ -12,6 +12,7 @@ import (
 	"io/ioutil"
 	"math/big"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -25,7 +26,6 @@ import (
 	"github.com/ledgerwatch/erigon/accounts/abi"
 	"github.com/ledgerwatch/erigon/accounts/abi/bind"
 	"github.com/ledgerwatch/erigon/core/types"
-	accounts2 "github.com/ledgerwatch/erigon/core/types/accounts"
 	"github.com/ledgerwatch/erigon/crypto"
 	"github.com/ledgerwatch/erigon/ethclient"
 	logger "github.com/ledgerwatch/log/v3"
@@ -1507,8 +1507,17 @@ func compareCacheWithSequenceDB(t *testing.T, dbDir, cacheDir string) {
 		cacheFiles[fileName] = string(data)
 	}
 
+	tempDbDir, err := ioutil.TempDir("", "mdbx_copy")
+	require.NoError(t, err, "Failed to create temp db dir")
+	defer os.RemoveAll(tempDbDir)
+
+	cmd := exec.Command("cp", "-r", dbDir, tempDbDir)
+	output, err := cmd.CombinedOutput()
+	require.NoError(t, err, "Failed to copy db dir with cp -r: %s, output: %s", dbDir, string(output))
+	copiedDbDir := filepath.Join(tempDbDir, filepath.Base(dbDir))
+
 	ctx := context.Background()
-	db, err := mdbx.NewMDBX(logger.New()).Path(dbDir).Open(ctx)
+	db, err := mdbx.NewMDBX(logger.New()).Path(copiedDbDir).Open(ctx)
 	require.NoError(t, err)
 	defer db.Close()
 
@@ -1521,23 +1530,8 @@ func compareCacheWithSequenceDB(t *testing.T, dbDir, cacheDir string) {
 			for k, v := range accountCache {
 				key, err := hex.DecodeString(k)
 				require.NoError(t, err)
-				log.Infof("address: %v", common.Address(key))
-
 				value, err := txn.GetOne(kv.PlainState, key)
 				require.NoError(t, err)
-
-				vbytes, _ := hex.DecodeString(v)
-
-				var dbAccount accounts2.Account
-				err = dbAccount.DecodeForStorage(value)
-				require.NoError(t, err)
-
-				var cacheAccount accounts2.Account
-				err = cacheAccount.DecodeForStorage(vbytes)
-				require.NoError(t, err)
-
-				log.Infof("dbAccount: %+v", dbAccount)
-				log.Infof("cacheAccount: %+v", cacheAccount)
 
 				require.Equal(t, v, hex.EncodeToString(value), "Account cache mismatch for key %s, from cache: %s, from db: %s", k, v, hex.EncodeToString(value))
 			}
