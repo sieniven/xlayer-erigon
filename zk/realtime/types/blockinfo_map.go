@@ -45,10 +45,6 @@ func (bm *BlockInfoMap) PutHeader(blockNum uint64, header *ethTypes.Header, prev
 	blockInfo, exists := bm.blockInfos[prevBlockNum]
 	if exists {
 		blockInfo.TxCount = prevTxCount
-	} else {
-		bm.blockInfos[prevBlockNum] = &BlockInfo{
-			TxCount: prevTxCount,
-		}
 	}
 }
 
