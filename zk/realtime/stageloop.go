@@ -15,11 +15,12 @@ import (
 )
 
 var (
-	readyFlag        = atomic.Bool{}
-	errorFlag        = atomic.Bool{}
-	resetFlag        = atomic.Bool{}
-	kafkaCache       = NewKafkaCache()
-	MaxKafkaChanSize = 10_000
+	readyFlag         = atomic.Bool{}
+	errorFlag         = atomic.Bool{}
+	resetFlag         = atomic.Bool{}
+	kafkaCache        = NewKafkaCache(1_000)
+	MaxKafkaChanSize  = 10_000
+	MaxKafkaCacheSize = 1_000
 )
 
 func ListenTxKafkaProducer(
@@ -106,9 +107,14 @@ func ListenTxKafkaConsumer(
 			realtimeCache.PutExecutionHeight(finishHeight)
 			logger.Info("Received finish signal from execution", "finishHeight", finishHeight)
 		case blockMsg := <-blockMsgsChan:
-			err := blockMsg.Validate()
+			header, _, err := blockMsg.GetBlockInfo()
 			if err != nil {
 				logger.Error("Failed to consume block message from kafka", "error", err)
+				continue
+			}
+			if header.Number.Uint64() <= realtimeCache.GetHighestConfirmHeight() {
+				// Ignore block msgs from previous blocks
+				logger.Info("Ignoring block message from previous block", "blockMsg", blockMsg)
 				continue
 			}
 			kafkaCache.BlockMsgCache.Add(&blockMsg)
@@ -116,6 +122,11 @@ func ListenTxKafkaConsumer(
 		case txMsg := <-txMsgsChan:
 			if err := txMsg.Validate(); err != nil {
 				logger.Error("Failed to consume transaction message from kafka", "error", err)
+				continue
+			}
+			if txMsg.BlockNumber <= realtimeCache.GetHighestConfirmHeight() {
+				// Ignore txs from previous blocks
+				logger.Info("Ignoring transaction message from previous block", "txMsg", txMsg)
 				continue
 			}
 			kafkaCache.TxMsgCache.Add(&txMsg)
@@ -161,11 +172,12 @@ func RealtimeLoop(ctx context.Context, logger log.Logger, realtimeCache *Realtim
 		}
 
 		// Check for corrupted cache
-		lastConfirmHeight := realtimeCache.GetConfirmHeight()
+		lastConfirmHeight := realtimeCache.GetHighestConfirmHeight()
 		lastExecutionHeight := realtimeCache.GetExecutionHeight()
 		if lastConfirmHeight != 0 && lastConfirmHeight < lastExecutionHeight {
 			// Execution is ahead of cache. This should not happen
-			resetRealtimeCache(realtimeCache)
+			resetFlag.Store(true)
+			logger.Error("Execution height is ahead of cache confirm height", "lastConfirmHeight", lastConfirmHeight, "lastExecutionHeight", lastExecutionHeight)
 			continue
 		}
 
@@ -182,40 +194,30 @@ func RealtimeLoop(ctx context.Context, logger log.Logger, realtimeCache *Realtim
 
 			// Get next block msg and tx msgs
 			blockMsg, ok := kafkaCache.BlockMsgCache.Pop(nextHeight)
-			if !ok {
-				// Next block height message not found. Reset cache
-				resetFlag.Store(true)
-				logger.Error("Next block height message not found. Polluted cache", "nextHeight", nextHeight, "lowestKafkaHeight", lowestKafkaHeight)
-			}
-			txMsgs := kafkaCache.TxMsgCache.Pop(nextHeight)
+			if ok {
+				// Try close the previous block
+				realtimeCache.TryCloseBlockFromBlockMsg(pendingHeight, blockMsg)
 
-			// Try close the previous block
-			realtimeCache.TryCloseBlockFromBlockMsg(pendingHeight, blockMsg)
+				// Process block msg
+				err := realtimeCache.TryApplyBlockMsg(nextHeight, blockMsg)
+				if err != nil {
+					// Apply state error. Reset cache
+					resetFlag.Store(true)
+					logger.Error("Failed to apply block msg and tx msgs", "error", err, "nextHeight", nextHeight)
+				}
+				realtimeCache.PutHighestPendingHeight(nextHeight)
 
-			// Process block msg and tx msgs
-			err := realtimeCache.TryApplyBlockMsgAndTxMsgs(nextHeight, blockMsg, txMsgs)
-			if err != nil {
-				// Apply state error. Reset cache
-				resetFlag.Store(true)
-				logger.Error("Failed to apply block msg and tx msgs", "error", err, "nextHeight", nextHeight)
+				// Flush block msg cache
+				kafkaCache.BlockMsgCache.Flush(nextHeight)
 			}
-			realtimeCache.PutHighestPendingHeight(nextHeight)
+		}
 
-			// Handle pending blocks
-			err = realtimeCache.HandlePendingBlocks(kafkaCache)
-			if err != nil {
-				// Handle pending blocks error. Reset cache
-				resetFlag.Store(true)
-				logger.Error("Handle pending blocks failed", "error", err)
-			}
-		} else {
-			// Empty block msg cache. We are at tip, handle pending blocks and processing incoming txs
-			err := realtimeCache.HandlePendingBlocks(kafkaCache)
-			if err != nil {
-				// Handle pending blocks error. Reset cache
-				resetFlag.Store(true)
-				logger.Error("Handle pending blocks failed", "error", err)
-			}
+		// Handle pending blocks
+		err := realtimeCache.HandlePendingBlocks(kafkaCache)
+		if err != nil {
+			// Handle pending blocks error. Reset cache
+			resetFlag.Store(true)
+			logger.Error("Handle pending blocks failed", "error", err)
 		}
 	}
 }

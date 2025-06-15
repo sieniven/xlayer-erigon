@@ -10,7 +10,7 @@ import (
 // BlockNumber implements realtime_blockNumber.
 // Returns the block number of the most recent pre-confirmed block.
 func (api *RealtimeAPIImpl) BlockNumber(ctx context.Context) (hexutil.Uint64, error) {
-	highestHeight := api.cacheDB.GetConfirmHeight()
+	highestHeight := api.cacheDB.GetHighestConfirmHeight()
 	if highestHeight == 0 {
 		return api.ethApi.BlockNumber(ctx)
 	}

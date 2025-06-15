@@ -67,6 +67,7 @@ func NewRealtimeCache(ctx context.Context, db kv.RoDB) (*RealtimeCache, error) {
 		Stateless:              realtimeTypes.NewStatelessCache(DefaultStatelessBlockCacheSize, DefaultStatelessTxCacheSize),
 		highestConfirmHeight:   atomic.Uint64{},
 		highestExecutionHeight: atomic.Uint64{},
+		highestPendingHeight:   atomic.Uint64{},
 		pendingBlocks:          make(map[uint64]*PendingBlockContext),
 	}, nil
 }
@@ -77,10 +78,11 @@ func (cache *RealtimeCache) Clear() {
 	cache.State.Clear()
 
 	cache.highestConfirmHeight.Store(0)
+	cache.highestPendingHeight.Store(0)
 	cache.pendingBlocks = make(map[uint64]*PendingBlockContext)
 }
 
-func (cache *RealtimeCache) GetConfirmHeight() uint64 {
+func (cache *RealtimeCache) GetHighestConfirmHeight() uint64 {
 	return cache.highestConfirmHeight.Load()
 }
 
@@ -104,6 +106,16 @@ func (cache *RealtimeCache) PutHighestPendingHeight(blockNum uint64) {
 	}
 }
 
+func (cache *RealtimeCache) TryApplyBlockMsg(blockNum uint64, blockMsg *kafkaTypes.BlockMessage) error {
+	_, err := cache.tryCreateNewPendingBlockContext(blockNum)
+	if err != nil {
+		return err
+	}
+
+	cache.Stateless.PutHeader(blockNum, blockMsg.Header, blockMsg.PrevBlockTxCount)
+	return nil
+}
+
 func (cache *RealtimeCache) TryCloseBlockFromBlockMsg(prevblockNum uint64, blockMsg *kafkaTypes.BlockMessage) error {
 	if prevblockNum == 0 {
 		// Cache init
@@ -122,20 +134,10 @@ func (cache *RealtimeCache) TryCloseBlockFromBlockMsg(prevblockNum uint64, block
 	return nil
 }
 
-func (cache *RealtimeCache) TryApplyBlockMsgAndTxMsgs(blockNum uint64, blockMsg *kafkaTypes.BlockMessage, sortedTxMsgs []*kafkaTypes.TransactionMessage) error {
-	_, err := cache.tryCreateNewPendingBlockContext(blockNum)
-	if err != nil {
-		return err
-	}
-
-	cache.Stateless.PutHeader(blockNum, blockMsg.Header, blockMsg.PrevBlockTxCount)
-	return cache.tryApplyBlockTxMsgs(blockNum, sortedTxMsgs)
-}
-
 func (cache *RealtimeCache) HandlePendingBlocks(kafkaCache *KafkaCache) error {
 	for blockNum := range cache.pendingBlocks {
 		// Check if pending block is pending for too long
-		confirmHeight := cache.GetConfirmHeight()
+		confirmHeight := cache.GetHighestConfirmHeight()
 		if confirmHeight > blockNum && confirmHeight-blockNum > PendingBlocksSyncThreshold {
 			// Propagate error to reset cache
 			return fmt.Errorf("block is pending for too long. Confirm height: %d, pending block num: %d", confirmHeight, blockNum)
