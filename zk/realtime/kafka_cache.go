@@ -4,6 +4,7 @@ import (
 	"sync"
 
 	libcommon "github.com/ledgerwatch/erigon-lib/common"
+	"github.com/ledgerwatch/erigon/cl/phase1/core/state/lru"
 	kafkaTypes "github.com/ledgerwatch/erigon/zk/realtime/kafka/types"
 )
 
@@ -13,11 +14,19 @@ type KafkaCache struct {
 	TxMsgCache    *TransactionMessageCache
 }
 
-func NewKafkaCache() *KafkaCache {
-	return &KafkaCache{
-		BlockMsgCache: NewBlockMessageCache(),
-		TxMsgCache:    NewTransactionMessageCache(),
+func NewKafkaCache(maxCacheSize int) (*KafkaCache, error) {
+	blockCache, err := NewBlockMessageCache(maxCacheSize)
+	if err != nil {
+		return nil, err
 	}
+	txCache, err := NewTransactionMessageCache(maxCacheSize)
+	if err != nil {
+		return nil, err
+	}
+	return &KafkaCache{
+		BlockMsgCache: blockCache,
+		TxMsgCache:    txCache,
+	}, nil
 }
 
 func (cache *KafkaCache) Clear() {
@@ -38,43 +47,42 @@ func (cache *KafkaCache) GetLowestBlockHeight() uint64 {
 	return cache.BlockMsgCache.GetLowestBlockHeight()
 }
 
-func (cache *KafkaCache) GetHighestBlockHeight() uint64 {
-	return cache.BlockMsgCache.GetHighestBlockHeight()
-}
-
 // -------------- Block Message Cache --------------
 type BlockMessageCache struct {
 	mu    sync.RWMutex
-	cache map[uint64]*kafkaTypes.BlockMessage
+	cache *lru.Cache[uint64, *kafkaTypes.BlockMessage]
 }
 
-func NewBlockMessageCache() *BlockMessageCache {
-	return &BlockMessageCache{
-		cache: make(map[uint64]*kafkaTypes.BlockMessage),
+func NewBlockMessageCache(maxCacheSize int) (*BlockMessageCache, error) {
+	cache, err := lru.New[uint64, *kafkaTypes.BlockMessage]("block_message_cache", maxCacheSize)
+	if err != nil {
+		return nil, err
 	}
+
+	return &BlockMessageCache{
+		cache: cache,
+	}, nil
 }
 
 func (cache *BlockMessageCache) Add(blockMsg *kafkaTypes.BlockMessage) {
 	cache.mu.Lock()
 	defer cache.mu.Unlock()
 
-	cache.cache[blockMsg.Header.Number.Uint64()] = blockMsg
+	cache.cache.Add(blockMsg.Header.Number.Uint64(), blockMsg)
 }
 
 func (cache *BlockMessageCache) Clear() {
 	cache.mu.Lock()
 	defer cache.mu.Unlock()
 
-	for k := range cache.cache {
-		delete(cache.cache, k)
-	}
+	cache.cache.Purge()
 }
 
 func (cache *BlockMessageCache) Size() int {
 	cache.mu.RLock()
 	defer cache.mu.RUnlock()
 
-	return len(cache.cache)
+	return cache.cache.Len()
 }
 
 // GetAndFlush pops the block message for the given block number
@@ -82,8 +90,10 @@ func (cache *BlockMessageCache) Pop(blockNumber uint64) (*kafkaTypes.BlockMessag
 	cache.mu.Lock()
 	defer cache.mu.Unlock()
 
-	blockMsg, ok := cache.cache[blockNumber]
-	delete(cache.cache, blockNumber)
+	blockMsg, ok := cache.cache.Get(blockNumber)
+	if ok {
+		cache.cache.Remove(blockNumber)
+	}
 	return blockMsg, ok
 }
 
@@ -91,9 +101,10 @@ func (cache *BlockMessageCache) Flush(blockNumber uint64) {
 	cache.mu.Lock()
 	defer cache.mu.Unlock()
 
-	for k := range cache.cache {
+	// Get all keys and remove those <= blockNumber
+	for _, k := range cache.cache.Keys() {
 		if k <= blockNumber {
-			delete(cache.cache, k)
+			cache.cache.Remove(k)
 		}
 	}
 }
@@ -103,7 +114,7 @@ func (cache *BlockMessageCache) GetLowestBlockHeight() uint64 {
 	defer cache.mu.RUnlock()
 
 	lowestBlockHeight := uint64(0)
-	for k := range cache.cache {
+	for _, k := range cache.cache.Keys() {
 		if lowestBlockHeight == 0 || k < lowestBlockHeight {
 			lowestBlockHeight = k
 		}
@@ -111,64 +122,55 @@ func (cache *BlockMessageCache) GetLowestBlockHeight() uint64 {
 	return lowestBlockHeight
 }
 
-func (cache *BlockMessageCache) GetHighestBlockHeight() uint64 {
-	cache.mu.RLock()
-	defer cache.mu.RUnlock()
-
-	highestBlockHeight := uint64(0)
-	for k := range cache.cache {
-		if highestBlockHeight == 0 || k > highestBlockHeight {
-			highestBlockHeight = k
-		}
-	}
-	return highestBlockHeight
-}
-
 // -------------- Tx Message Cache --------------
 type TransactionMessageCache struct {
 	mu    sync.RWMutex
-	cache map[uint64]*libcommon.OrderedList[*kafkaTypes.TransactionMessage]
+	cache *lru.Cache[uint64, *libcommon.OrderedList[*kafkaTypes.TransactionMessage]]
 }
 
-func NewTransactionMessageCache() *TransactionMessageCache {
-	return &TransactionMessageCache{
-		cache: make(map[uint64]*libcommon.OrderedList[*kafkaTypes.TransactionMessage]),
+func NewTransactionMessageCache(maxCacheSize int) (*TransactionMessageCache, error) {
+	cache, err := lru.New[uint64, *libcommon.OrderedList[*kafkaTypes.TransactionMessage]]("tx_message_cache", maxCacheSize)
+	if err != nil {
+		return nil, err
 	}
+	return &TransactionMessageCache{
+		cache: cache,
+	}, nil
 }
 
 func (cache *TransactionMessageCache) Add(txMsg *kafkaTypes.TransactionMessage) {
 	cache.mu.Lock()
 	defer cache.mu.Unlock()
 
-	if _, ok := cache.cache[txMsg.BlockNumber]; !ok {
-		cache.cache[txMsg.BlockNumber] = libcommon.NewOrderedList(DefaultTxMsgSliceSize, CompareTransactionMessages)
+	txMsgsList, ok := cache.cache.Get(txMsg.BlockNumber)
+	if !ok {
+		txMsgsList = libcommon.NewOrderedList(DefaultTxMsgSliceSize, CompareTransactionMessages)
+		cache.cache.Add(txMsg.BlockNumber, txMsgsList)
 	}
-	cache.cache[txMsg.BlockNumber].Add(txMsg)
-	cache.cache[txMsg.BlockNumber].Sort()
+	txMsgsList.Add(txMsg)
+	txMsgsList.Sort()
 }
 
 func (cache *TransactionMessageCache) Clear() {
 	cache.mu.Lock()
 	defer cache.mu.Unlock()
 
-	for k := range cache.cache {
-		delete(cache.cache, k)
-	}
+	cache.cache.Purge()
 }
 
 func (cache *TransactionMessageCache) Pop(blockNumber uint64) []*kafkaTypes.TransactionMessage {
 	cache.mu.Lock()
 	defer cache.mu.Unlock()
 
-	txMsg, ok := cache.cache[blockNumber]
+	txMsgsList, ok := cache.cache.Get(blockNumber)
 	if !ok {
 		return nil
 	}
 
 	// Retrieve all tx messages and clear the cache
-	txs := make([]*kafkaTypes.TransactionMessage, txMsg.Size())
-	copy(txs, txMsg.Items())
-	txMsg.Clear()
+	txs := make([]*kafkaTypes.TransactionMessage, txMsgsList.Size())
+	copy(txs, txMsgsList.Items())
+	txMsgsList.Clear()
 
 	return txs
 }
@@ -177,9 +179,9 @@ func (cache *TransactionMessageCache) Flush(blockNumber uint64) {
 	cache.mu.Lock()
 	defer cache.mu.Unlock()
 
-	for k := range cache.cache {
+	for _, k := range cache.cache.Keys() {
 		if k <= blockNumber {
-			delete(cache.cache, k)
+			cache.cache.Remove(k)
 		}
 	}
 }
