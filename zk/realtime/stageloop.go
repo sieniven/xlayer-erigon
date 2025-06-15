@@ -15,12 +15,13 @@ import (
 )
 
 var (
-	readyFlag         = atomic.Bool{}
-	errorFlag         = atomic.Bool{}
-	resetFlag         = atomic.Bool{}
-	kafkaCache        = NewKafkaCache(1_000)
 	MaxKafkaChanSize  = 10_000
 	MaxKafkaCacheSize = 1_000
+
+	readyFlag  = atomic.Bool{}
+	errorFlag  = atomic.Bool{}
+	resetFlag  = atomic.Bool{}
+	kafkaCache *KafkaCache
 )
 
 func ListenTxKafkaProducer(
@@ -87,6 +88,13 @@ func ListenTxKafkaConsumer(
 		return
 	}
 
+	// Initialize kafka cache
+	kafkaCache, err := NewKafkaCache(MaxKafkaCacheSize)
+	if err != nil {
+		logger.Error("Failed to initialize kafka cache", "error", err)
+		return
+	}
+
 	errorFlag.Store(false)
 	blockMsgsChan := make(chan kafkaTypes.BlockMessage, MaxKafkaChanSize)
 	txMsgsChan := make(chan kafkaTypes.TransactionMessage, MaxKafkaChanSize)
@@ -143,7 +151,7 @@ func ListenTxKafkaConsumer(
 	}
 }
 
-func RealtimeLoop(ctx context.Context, logger log.Logger, realtimeCache *RealtimeCache) {
+func realtimeLoop(ctx context.Context, logger log.Logger, realtimeCache *RealtimeCache) {
 	for {
 		select {
 		case <-ctx.Done():
