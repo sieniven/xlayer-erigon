@@ -105,7 +105,7 @@ func ListenTxKafkaConsumer(
 	go txKafkaConsumer.ConsumeKafka(ctx, blockMsgsChan, txMsgsChan, errorMsgsChan, errorChan, logger)
 
 	// Start realtime loop
-	go RealtimeLoop(ctx, logger, realtimeCache)
+	go realtimeLoop(ctx, logger, realtimeCache)
 
 	for {
 		select {
