@@ -184,17 +184,16 @@ func realtimeLoop(ctx context.Context, logger log.Logger, realtimeCache *Realtim
 		}
 
 		// Check for corrupted cache
-		lastConfirmHeight := realtimeCache.GetHighestConfirmHeight()
+		pendingHeight := realtimeCache.GetHighestPendingHeight()
 		lastExecutionHeight := realtimeCache.GetExecutionHeight()
-		if lastConfirmHeight != 0 && lastConfirmHeight < lastExecutionHeight {
-			// Execution is ahead of cache. This should not happen
+		if pendingHeight != 0 && pendingHeight < lastExecutionHeight {
+			// Execution is ahead of pending cache. This should not happen
 			resetFlag.Store(true)
-			logger.Error("[Realtime] Execution height is ahead of cache confirm height", "lastConfirmHeight", lastConfirmHeight, "lastExecutionHeight", lastExecutionHeight)
+			logger.Error("[Realtime] Execution height is ahead of cache confirm height", "pendingHeight", pendingHeight, "lastExecutionHeight", lastExecutionHeight)
 			continue
 		}
 
 		// Sync state cache with kafka data
-		pendingHeight := realtimeCache.GetHighestPendingHeight()
 		lowestKafkaHeight := kafkaCache.GetLowestBlockHeight()
 		if lowestKafkaHeight != 0 {
 			// New block msg to process. Enforce that header msgs are processed in order
@@ -211,6 +210,7 @@ func realtimeLoop(ctx context.Context, logger log.Logger, realtimeCache *Realtim
 				realtimeCache.TryCloseBlockFromBlockMsg(pendingHeight, blockMsg)
 
 				// Process block msg
+				logger.Info("[Realtime] XXX here block msg info", "blockNum", blockMsg.Header.Number, "txCount", blockMsg.PrevBlockTxCount)
 				err := realtimeCache.TryApplyBlockMsg(nextHeight, blockMsg)
 				if err != nil {
 					// Apply state error. Reset cache
