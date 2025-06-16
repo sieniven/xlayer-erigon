@@ -210,7 +210,6 @@ func realtimeLoop(ctx context.Context, logger log.Logger, realtimeCache *Realtim
 				realtimeCache.TryCloseBlockFromBlockMsg(pendingHeight, blockMsg)
 
 				// Process block msg
-				logger.Info("[Realtime] XXX here block msg info", "blockNum", blockMsg.Header.Number, "txCount", blockMsg.PrevBlockTxCount)
 				err := realtimeCache.TryApplyBlockMsg(nextHeight, blockMsg)
 				if err != nil {
 					// Apply state error. Reset cache
