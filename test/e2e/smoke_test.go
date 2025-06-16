@@ -31,6 +31,7 @@ import (
 	logger "github.com/ledgerwatch/log/v3"
 	"gopkg.in/yaml.v2"
 
+	accounts2 "github.com/ledgerwatch/erigon/core/types/accounts"
 	"github.com/ledgerwatch/erigon/test/operations"
 	"github.com/ledgerwatch/erigon/zkevm/encoding"
 	"github.com/ledgerwatch/erigon/zkevm/etherman/smartcontracts/polygonzkevmbridge"
@@ -1452,7 +1453,7 @@ func TestRealtimeStateIsConsistent(t *testing.T) {
 	nonce, err := client.PendingNonceAt(context.Background(), fromAddress)
 	require.NoError(t, err)
 
-	for i := int64(0); i < 1; i++ {
+	for i := int64(0); i < 10; i++ {
 		// Transfer erc20 tokens amount
 		amount := new(big.Int).Mul(big.NewInt(1), big.NewInt(1e18)) // Adjust for token decimals (18 in this case)
 		// Prepare transfer data
@@ -1489,7 +1490,7 @@ func TestRealtimeStateIsConsistent(t *testing.T) {
 }
 
 func compareCacheWithSequenceDB(t *testing.T, dbDir, cacheDir string) {
-	// Compare account data
+	// Cache Files list
 	cacheFiles := map[string]string{
 		"account_cache.json":     "",
 		"storage_cache.json":     "",
@@ -1521,6 +1522,7 @@ func compareCacheWithSequenceDB(t *testing.T, dbDir, cacheDir string) {
 	require.NoError(t, err)
 	defer db.Close()
 
+	// Compare account data
 	if cacheFiles["account_cache.json"] != "" {
 		var accountCache map[string]string
 		err := json.Unmarshal([]byte(cacheFiles["account_cache.json"]), &accountCache)
@@ -1533,12 +1535,28 @@ func compareCacheWithSequenceDB(t *testing.T, dbDir, cacheDir string) {
 				value, err := txn.GetOne(kv.PlainState, key)
 				require.NoError(t, err)
 
-				require.Equal(t, v, hex.EncodeToString(value), "Account cache mismatch for key %s, from cache: %s, from db: %s", k, v, hex.EncodeToString(value))
+				vBytes, _ := hex.DecodeString(v)
+				var dbAccount accounts2.Account
+				err = dbAccount.DecodeForStorage(value)
+				require.NoError(t, err)
+
+				var cacheAccount accounts2.Account
+				err = cacheAccount.DecodeForStorage(vBytes)
+				require.NoError(t, err)
+
+				require.Equal(t, cacheAccount.Initialised, dbAccount.Initialised, "Initialised mismatch for account %s, from cache: %t, from db: %t", k, cacheAccount.Initialised, dbAccount.Initialised)
+				require.Equal(t, cacheAccount.Nonce, dbAccount.Nonce, "Nonce mismatch for account %s, from cache: %d, from db: %d", k, cacheAccount.Nonce, dbAccount.Nonce)
+				require.Equal(t, cacheAccount.Balance, dbAccount.Balance, "Balance mismatch for account %s, from cache: %s, from db: %s", k, cacheAccount.Balance.String(), dbAccount.Balance.String())
+				require.Equal(t, cacheAccount.Root, dbAccount.Root, "Root mismatch for account %s, from cache: %s, from db: %s", k, cacheAccount.Root.Hex(), dbAccount.Root.Hex())
+				require.Equal(t, cacheAccount.CodeHash, dbAccount.CodeHash, "CodeHash mismatch for account %s, from cache: %s, from db: %s", k, cacheAccount.CodeHash.Hex(), dbAccount.CodeHash.Hex())
+				require.Equal(t, cacheAccount.Incarnation, dbAccount.Incarnation, "Incarnation mismatch for account %s, from cache: %d, from db: %d", k, cacheAccount.Incarnation, dbAccount.Incarnation)
+				require.Equal(t, cacheAccount.PrevIncarnation, dbAccount.PrevIncarnation, "PrevIncarnation mismatch for account %s, from cache: %d, from db: %d", k, cacheAccount.PrevIncarnation, dbAccount.PrevIncarnation)
 			}
 			return nil
 		})
 	}
 
+	// Compare storage data
 	if cacheFiles["storage_cache.json"] != "" {
 		var storageCache map[string]string
 		err := json.Unmarshal([]byte(cacheFiles["storage_cache.json"]), &storageCache)
@@ -1557,6 +1575,7 @@ func compareCacheWithSequenceDB(t *testing.T, dbDir, cacheDir string) {
 		})
 	}
 
+	// Compare code data
 	if cacheFiles["code_cache.json"] != "" {
 		var codeCache map[string]string
 		err := json.Unmarshal([]byte(cacheFiles["code_cache.json"]), &codeCache)
@@ -1575,6 +1594,7 @@ func compareCacheWithSequenceDB(t *testing.T, dbDir, cacheDir string) {
 		})
 	}
 
+	// Compare incarnation data
 	if cacheFiles["incarnation_cache.json"] != "" {
 		var incarnationCache map[string]string
 		err := json.Unmarshal([]byte(cacheFiles["incarnation_cache.json"]), &incarnationCache)
