@@ -37,9 +37,14 @@ func (bm *BlockInfoMap) Get(blockNum uint64) (*ethTypes.Header, int64, bool) {
 func (bm *BlockInfoMap) PutHeader(blockNum uint64, header *ethTypes.Header) {
 	bm.mu.Lock()
 	defer bm.mu.Unlock()
-	bm.blockInfos[blockNum] = &BlockInfo{
-		Header:  header,
-		TxCount: -1,
+	blockInfo, exists := bm.blockInfos[blockNum]
+	if exists {
+		blockInfo.Header = header
+	} else {
+		bm.blockInfos[blockNum] = &BlockInfo{
+			Header:  header,
+			TxCount: -1,
+		}
 	}
 }
 
@@ -48,12 +53,10 @@ func (bm *BlockInfoMap) PutTxCount(blockNum uint64, txCount int64) {
 	defer bm.mu.Unlock()
 	blockInfo, exists := bm.blockInfos[blockNum]
 	if exists {
-		bm.blockInfos[blockNum] = &BlockInfo{
-			Header:  blockInfo.Header,
-			TxCount: txCount,
-		}
+		blockInfo.TxCount = txCount
 	} else {
 		bm.blockInfos[blockNum] = &BlockInfo{
+			Header:  nil,
 			TxCount: txCount,
 		}
 	}
