@@ -124,11 +124,11 @@ func ListenTxKafkaConsumer(
 			}
 			if header.Number.Uint64() <= realtimeCache.GetExecutionHeight() {
 				// Ignore block msgs from previous blocks
-				logger.Info("[Realtime] Ignoring block message from previous block", "blockMsg", blockMsg)
+				logger.Info("[Realtime] Ignoring block message from previous block", "blockNum", header.Number)
 				continue
 			}
 			kafkaCache.BlockMsgCache.Add(&blockMsg)
-			logger.Info("[Realtime] Received block message", "blockMsg", blockMsg)
+			logger.Info("[Realtime] Received block message", "blockNum", header.Number)
 		case txMsg := <-txMsgsChan:
 			if err := txMsg.Validate(); err != nil {
 				logger.Error("[Realtime] Failed to consume transaction message from kafka", "error", err)
@@ -136,11 +136,11 @@ func ListenTxKafkaConsumer(
 			}
 			if txMsg.BlockNumber <= realtimeCache.GetExecutionHeight() {
 				// Ignore txs from previous blocks
-				logger.Info("[Realtime] Ignoring transaction message from previous block", "txMsg", txMsg)
+				logger.Info("[Realtime] Ignoring transaction message from previous block", "blockNum", txMsg.BlockNumber)
 				continue
 			}
 			kafkaCache.TxMsgCache.Add(&txMsg)
-			logger.Info("[Realtime] Received transaction message", "txMsg", txMsg)
+			logger.Info("[Realtime] Received transaction message", "blockNum", txMsg.BlockNumber)
 		case errorTriggerMsg := <-errorMsgsChan:
 			resetFlag.Store(true)
 			triggerHeight := errorTriggerMsg.BlockNumber
