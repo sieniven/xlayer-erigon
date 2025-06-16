@@ -95,6 +95,12 @@ func (cache *RealtimeCache) GetHighestConfirmHeight() uint64 {
 	return cache.highestConfirmHeight.Load()
 }
 
+func (cache *RealtimeCache) PutHighestConfirmHeight(blockNum uint64) {
+	if blockNum > cache.highestConfirmHeight.Load() {
+		cache.highestConfirmHeight.Store(blockNum)
+	}
+}
+
 func (cache *RealtimeCache) GetExecutionHeight() uint64 {
 	return cache.highestExecutionHeight.Load()
 }
@@ -251,5 +257,5 @@ func (cache *RealtimeCache) tryCloseBlock(pendingBlockContext *PendingBlockConte
 			break
 		}
 	}
-	cache.highestConfirmHeight.Store(pendingBlockContext.blockNum)
+	cache.PutHighestConfirmHeight(pendingBlockContext.blockNum)
 }

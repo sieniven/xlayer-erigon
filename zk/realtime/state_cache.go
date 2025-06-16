@@ -65,7 +65,7 @@ func (cache *PlainStateCache) InitSnapshotReader() error {
 	defer cache.cacheLock.Unlock()
 
 	if cache.snapshotReader != nil && cache.tx != nil && cache.snapshotHeight.Load() != 0 {
-		return fmt.Errorf("Snapshot reader already initialized")
+		return fmt.Errorf("snapshot reader already initialized")
 	}
 
 	var err error
@@ -152,10 +152,10 @@ func (cache *PlainStateCache) ApplyChangeset(changeset *realtimeTypes.Changeset,
 	for address, account := range addressChanges {
 		delete(cache.accountCache, address)
 		cache.accountCache[address] = account
-		log.Info("ApplyChangeset: ", address)
+		log.Info("[Realtime] ApplyChangeset: ", address)
 	}
 
-	log.Info(fmt.Sprintf("Apply changeset from tx with height: %d, txIndex: %d\n", blockNumber, txIndex))
+	log.Info(fmt.Sprintf("[Realtime] Apply changeset from tx with height: %d, txIndex: %d\n", blockNumber, txIndex))
 
 	return nil
 }

@@ -257,6 +257,7 @@ func tryInitRealtimeCache(realtimeCache *RealtimeCache, logger log.Logger) bool 
 
 	snapshotHeight := realtimeCache.State.GetSnapshotHeight()
 	if lowestKafkaHeight <= snapshotHeight {
+		realtimeCache.PutHighestConfirmHeight(snapshotHeight)
 		readyFlag.Store(true)
 		logger.Info("[Realtime] Realtime cache initialized")
 
