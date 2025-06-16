@@ -72,7 +72,7 @@ func (l *OrderedList[T]) Items() []T {
 
 func (l *OrderedList[T]) Clear() {
 	l.isOrdered = false
-	clear(l.list)
+	l.list = l.list[:0]
 }
 
 func (l *OrderedList[T]) SetItems(items []T) {
