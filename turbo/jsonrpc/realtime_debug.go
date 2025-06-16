@@ -17,8 +17,8 @@ func (api *RealtimeAPIImpl) DumpStateCache(ctx context.Context) error {
 		return fmt.Errorf("stateCache is nil")
 	}
 
-	log.Info("StateCache type", "type", reflect.TypeOf(api.cacheDB.State).String())
-	log.Info("StateCache value", "value", fmt.Sprintf("%+v", api.cacheDB.State))
+	log.Info("[Realtime] StateCache type", "type", reflect.TypeOf(api.cacheDB.State).String())
+	log.Info("[Realtime] StateCache value", "value", fmt.Sprintf("%+v", api.cacheDB.State))
 
 	rv := reflect.ValueOf(api.cacheDB.State)
 	if rv.Kind() == reflect.Ptr && rv.IsNil() {
@@ -26,7 +26,7 @@ func (api *RealtimeAPIImpl) DumpStateCache(ctx context.Context) error {
 	}
 
 	if err := api.cacheDB.State.Dump(); err != nil {
-		log.Error("Failed to dump state cache", "error", err)
+		log.Error("[Realtime] Failed to dump state cache", "error", err)
 		return fmt.Errorf("failed to dump state cache: %v", err)
 	}
 
