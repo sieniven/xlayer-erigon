@@ -197,7 +197,7 @@ func realtimeLoop(ctx context.Context, logger log.Logger, realtimeCache *Realtim
 		pendingHeight := realtimeCache.GetHighestPendingHeight()
 		lowestKafkaHeight := kafkaCache.GetLowestBlockHeight()
 		if lowestKafkaHeight != 0 {
-			// New block msg to process. Enforce that header msgs are received in order
+			// New block msg to process. Enforce that header msgs are processed in order
 			nextHeight := pendingHeight + 1
 			if pendingHeight == 0 {
 				// First block msg after cache init

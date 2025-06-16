@@ -109,10 +109,6 @@ func (cache *RealtimeCache) GetHighestPendingHeight() uint64 {
 	return cache.highestPendingHeight.Load()
 }
 
-func (cache *RealtimeCache) PutHighestPendingHeight(blockNum uint64) {
-
-}
-
 func (cache *RealtimeCache) TryApplyBlockMsg(blockNum uint64, blockMsg *kafkaTypes.BlockMessage) error {
 	if err := cache.tryCreateNewPendingBlockContext(blockNum); err != nil {
 		return err
@@ -210,11 +206,6 @@ func (cache *RealtimeCache) tryApplyBlockTxMsgs(blockContext *PendingBlockContex
 func (cache *RealtimeCache) tryCreateNewPendingBlockContext(blockNum uint64) error {
 	if cache.pendingBlocks.Size() > PendingBlocksCacheSizeThreshold {
 		return fmt.Errorf("too many pending blocks, failed to process block msg and tx msgs. Pending blocks: %d", cache.pendingBlocks.Size())
-	}
-
-	// Ensure ordering in pending queue
-	if cache.pendingBlocks.Size() > 0 && cache.pendingBlocks.Items()[cache.pendingBlocks.Size()-1].blockNum >= blockNum {
-		return fmt.Errorf("error creating new pending block context, block num %d is not in order", blockNum)
 	}
 
 	// Create new pending block context
