@@ -1,7 +1,6 @@
 package jsonrpc
 
 import (
-	"github.com/ledgerwatch/erigon/core/state"
 	"github.com/ledgerwatch/erigon/zk/smt"
 	"github.com/ledgerwatch/log/v3"
 
@@ -20,10 +19,10 @@ import (
 	"github.com/ledgerwatch/erigon/turbo/rpchelper"
 	"github.com/ledgerwatch/erigon/turbo/services"
 	"github.com/ledgerwatch/erigon/zk/datastream/server"
+	"github.com/ledgerwatch/erigon/zk/realtime"
 	"github.com/ledgerwatch/erigon/zk/sequencer"
 	"github.com/ledgerwatch/erigon/zk/syncer"
 	txpool2 "github.com/ledgerwatch/erigon/zk/txpool"
-	zktypes "github.com/ledgerwatch/erigon/zk/types"
 )
 
 // APIList describes the list of available RPC apis
@@ -34,8 +33,7 @@ func APIList(db kv.RoDB, dbsmt kv.RoDB, eth rpchelper.ApiBackend, txPool txpool.
 	gasTracker *RecurringL1GasPriceTracker,
 	// For X Layer
 	cache *smt.SmtCache,
-	kStateCache state.StateReader,
-	kStatelessCache *zktypes.StatelessCache,
+	realtimeCache *realtime.RealtimeCache,
 ) (list []rpc.API, gpCache *GasPriceCache) {
 	// non-sequencer nodes should forward on requests to the sequencer
 	rpcUrl := ""
@@ -80,7 +78,7 @@ func APIList(db kv.RoDB, dbsmt kv.RoDB, eth rpchelper.ApiBackend, txPool txpool.
 	// For X Layer, split db and ac
 	zkEvmImpl := NewZkEvmAPI(ethImpl, db, dbsmt, cfg.ReturnDataLimit, ethCfg, l1Syncer, rpcUrl, dataStreamServer, cache)
 	// For X Layer, realtime response
-	realtimeImpl := NewRealtimeAPI(ethImpl, kStateCache, kStatelessCache)
+	realtimeImpl := NewRealtimeAPI(ethImpl, realtimeCache)
 
 	if cfg.GraphQLEnabled {
 		list = append(list, rpc.API{

@@ -3,37 +3,36 @@ package types
 import (
 	"context"
 	"fmt"
-	"sync/atomic"
 
 	libcommon "github.com/ledgerwatch/erigon-lib/common"
 	"github.com/ledgerwatch/erigon-lib/kv"
 	ethTypes "github.com/ledgerwatch/erigon/core/types"
+	zktypes "github.com/ledgerwatch/erigon/zk/types"
 )
 
 type StatelessCache struct {
-	highestHeight atomic.Uint64
-	blockInfoMap  *BlockInfoMap
-	txInfoMap     *TxInfoMap
+	blockInfoMap *BlockInfoMap
+	txInfoMap    *TxInfoMap
 }
 
-func NewStatelessCache() *StatelessCache {
+func NewStatelessCache(blockCacheSize int, txCacheSize int) *StatelessCache {
 	return &StatelessCache{
-		highestHeight: atomic.Uint64{},
-		blockInfoMap:  NewBlockInfoMap(),
-		txInfoMap:     NewTxInfoMap(),
+		blockInfoMap: NewBlockInfoMap(blockCacheSize),
+		txInfoMap:    NewTxInfoMap(blockCacheSize, txCacheSize),
 	}
 }
 
-// -------------- Read operations --------------
-func (cache *StatelessCache) GetHeight() uint64 {
-	return cache.highestHeight.Load()
+func (cache *StatelessCache) Clear() {
+	cache.blockInfoMap.Clear()
+	cache.txInfoMap.Clear()
 }
 
+// -------------- Read operations --------------
 func (cache *StatelessCache) GetHeader(blockNum uint64) (*ethTypes.Header, int64, bool) {
 	return cache.blockInfoMap.Get(blockNum)
 }
 
-func (cache *StatelessCache) GetTxInfo(txHash libcommon.Hash) (ethTypes.Transaction, *ethTypes.Receipt, uint64, []*InnerTx, bool) {
+func (cache *StatelessCache) GetTxInfo(txHash libcommon.Hash) (ethTypes.Transaction, *ethTypes.Receipt, uint64, []*zktypes.InnerTx, bool) {
 	return cache.txInfoMap.GetTx(txHash)
 }
 
@@ -41,33 +40,12 @@ func (cache *StatelessCache) GetBlockTxs(blockNum uint64) ([]libcommon.Hash, boo
 	return cache.txInfoMap.GetBlockTxs(blockNum)
 }
 
-func (cache *StatelessCache) GetLastCompleted() uint64 {
-	return cache.blockInfoMap.GetLastCompleted()
-}
-
-func (cache *StatelessCache) GetLastIncomplete() uint64 {
-	return cache.blockInfoMap.GetLastIncomplete()
-}
-
 // -------------- Write operations --------------
-func (cache *StatelessCache) PutHeader(blockNum uint64, header *ethTypes.Header) {
-	if blockNum > cache.highestHeight.Load() {
-		cache.highestHeight.Store(blockNum)
-	}
-	cache.blockInfoMap.PutHeader(blockNum, header)
+func (cache *StatelessCache) PutHeader(blockNum uint64, header *ethTypes.Header, prevTxCount int64) {
+	cache.blockInfoMap.PutHeader(blockNum, header, prevTxCount)
 }
 
-func (cache *StatelessCache) PutTxCount(blockNum uint64, txCount int64) {
-	if blockNum > cache.highestHeight.Load() {
-		cache.highestHeight.Store(blockNum)
-	}
-	cache.blockInfoMap.PutTxCount(blockNum, txCount)
-}
-
-func (cache *StatelessCache) PutTxInfo(blockNum uint64, txHash libcommon.Hash, tx ethTypes.Transaction, receipt *ethTypes.Receipt, innerTxs []*InnerTx) {
-	if blockNum > cache.highestHeight.Load() {
-		cache.highestHeight.Store(blockNum)
-	}
+func (cache *StatelessCache) PutTxInfo(blockNum uint64, txHash libcommon.Hash, tx ethTypes.Transaction, receipt *ethTypes.Receipt, innerTxs []*zktypes.InnerTx) {
 	cache.txInfoMap.Put(blockNum, txHash, tx, receipt, innerTxs)
 }
 
@@ -78,10 +56,6 @@ func (cache *StatelessCache) DeleteBlock(blockNum uint64, block *ethTypes.Block)
 	for _, tx := range block.Transactions() {
 		cache.txInfoMap.DeleteTxInfo(tx.Hash())
 	}
-}
-
-func (cache *StatelessCache) MarkCompleted(blockNum uint64) {
-	cache.blockInfoMap.MarkCompleted(blockNum)
 }
 
 // -------------- For HeaderReader --------------

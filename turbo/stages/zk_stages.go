@@ -18,10 +18,10 @@ import (
 	"github.com/ledgerwatch/erigon/turbo/snapshotsync/freezeblocks"
 	"github.com/ledgerwatch/erigon/zk/datastream/server"
 	"github.com/ledgerwatch/erigon/zk/l1infotree"
+	realtimeTypes "github.com/ledgerwatch/erigon/zk/realtime/types"
 	zkStages "github.com/ledgerwatch/erigon/zk/stages"
 	"github.com/ledgerwatch/erigon/zk/syncer"
 	"github.com/ledgerwatch/erigon/zk/txpool"
-	zktypes "github.com/ledgerwatch/erigon/zk/types"
 )
 
 // NewDefaultZkStages creates stages for zk syncer (RPC mode)
@@ -41,7 +41,7 @@ func NewDefaultZkStages(ctx context.Context,
 	dataStreamServer server.DataStreamServer,
 	infoTreeUpdater *l1infotree.Updater,
 	// For X Layer. RPC latency optimization
-	statelessCache *zktypes.StatelessCache,
+	statelessCache *realtimeTypes.StatelessCache,
 	finishChan chan uint64,
 ) []*stagedsync.Stage {
 	dirs := cfg.Dirs
@@ -116,7 +116,7 @@ func NewSequencerZkStages(ctx context.Context,
 	txPoolDb kv.RwDB,
 	infoTreeUpdater *l1infotree.Updater,
 	hook *Hook,
-	kafkaBlockInfoChan chan *zktypes.BlockInfo,
+	kafkaBlockInfoChan chan *realtimeTypes.BlockInfo,
 	kafkaTxInfoChan chan *state2.TxInfo,
 ) []*stagedsync.Stage {
 	dirs := cfg.Dirs

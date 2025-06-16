@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"reflect"
 
-	"github.com/ledgerwatch/erigon/core/state"
 	"github.com/ledgerwatch/erigon/zkevm/log"
 )
 
@@ -14,33 +13,20 @@ func (api *RealtimeAPIImpl) DumpStateCache(ctx context.Context) error {
 		return fmt.Errorf("api is nil")
 	}
 
-	if api.stateCache == nil {
+	if api.cacheDB.State == nil {
 		return fmt.Errorf("stateCache is nil")
 	}
 
-	log.Info("StateCache type", "type", reflect.TypeOf(api.stateCache).String())
-	log.Info("StateCache value", "value", fmt.Sprintf("%+v", api.stateCache))
+	log.Info("[Realtime] StateCache type", "type", reflect.TypeOf(api.cacheDB.State).String())
+	log.Info("[Realtime] StateCache value", "value", fmt.Sprintf("%+v", api.cacheDB.State))
 
-	rv := reflect.ValueOf(api.stateCache)
+	rv := reflect.ValueOf(api.cacheDB.State)
 	if rv.Kind() == reflect.Ptr && rv.IsNil() {
 		return fmt.Errorf("stateCache is a nil pointer")
 	}
 
-	cache, ok := api.stateCache.(*state.PlainStateCache)
-	if !ok {
-		return fmt.Errorf("stateCache is not of type *state.PlainStateCache, actual type: %v", reflect.TypeOf(api.stateCache))
-	}
-
-	if cache == nil {
-		return fmt.Errorf("cache is nil after type assertion")
-	}
-
-	if !cache.IsReady() {
-		return fmt.Errorf("cache is not ready")
-	}
-
-	if err := cache.Dump(); err != nil {
-		log.Error("Failed to dump state cache", "error", err)
+	if err := api.cacheDB.State.Dump(); err != nil {
+		log.Error("[Realtime] Failed to dump state cache", "error", err)
 		return fmt.Errorf("failed to dump state cache: %v", err)
 	}
 

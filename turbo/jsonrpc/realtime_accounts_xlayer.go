@@ -12,7 +12,7 @@ import (
 )
 
 func (api *RealtimeAPIImpl) GetBalance(ctx context.Context, address libcommon.Address) (*hexutil.Big, error) {
-	acc, err := api.stateCache.ReadAccountData(address)
+	acc, err := api.cacheDB.State.ReadAccountData(address)
 	if err != nil {
 		return nil, fmt.Errorf("cant get a balance for account %x: %w", address.String(), err)
 	}
@@ -31,7 +31,7 @@ func (api *RealtimeAPIImpl) GetTransactionCount(ctx context.Context, address lib
 	}
 
 	var cacheNonce *hexutil.Uint64
-	acc, err := api.stateCache.ReadAccountData(address)
+	acc, err := api.cacheDB.State.ReadAccountData(address)
 	if err != nil {
 		cacheNonce = nil
 	} else if acc != nil {
@@ -56,30 +56,30 @@ func (api *RealtimeAPIImpl) GetTransactionCount(ctx context.Context, address lib
 	return cacheNonce, nil
 }
 
+func (api *RealtimeAPIImpl) GetCode(ctx context.Context, address libcommon.Address) (hexutility.Bytes, error) {
+	acc, err := api.cacheDB.State.ReadAccountData(address)
+	if acc == nil || err != nil {
+		return hexutility.Bytes(""), nil
+	}
+	res, _ := api.cacheDB.State.ReadAccountCode(address, acc.Incarnation, acc.CodeHash)
+	if res == nil {
+		return hexutility.Bytes(""), nil
+	}
+	return res, nil
+}
+
 func (api *RealtimeAPIImpl) GetStorageAt(ctx context.Context, address libcommon.Address, index string) (string, error) {
 	var empty []byte
 
-	acc, err := api.stateCache.ReadAccountData(address)
+	acc, err := api.cacheDB.State.ReadAccountData(address)
 	if acc == nil || err != nil {
 		return hexutility.Encode(common.LeftPadBytes(empty, 32)), err
 	}
 
 	location := libcommon.HexToHash(index)
-	res, err := api.stateCache.ReadAccountStorage(address, acc.Incarnation, &location)
+	res, err := api.cacheDB.State.ReadAccountStorage(address, acc.Incarnation, &location)
 	if err != nil {
 		res = empty
 	}
 	return hexutility.Encode(common.LeftPadBytes(res, 32)), err
-}
-
-func (api *RealtimeAPIImpl) GetCode(ctx context.Context, address libcommon.Address) (hexutility.Bytes, error) {
-	acc, err := api.stateCache.ReadAccountData(address)
-	if acc == nil || err != nil {
-		return hexutility.Bytes(""), nil
-	}
-	res, _ := api.stateCache.ReadAccountCode(address, acc.Incarnation, acc.CodeHash)
-	if res == nil {
-		return hexutility.Bytes(""), nil
-	}
-	return res, nil
 }

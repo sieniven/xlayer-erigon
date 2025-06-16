@@ -3,11 +3,11 @@ package types
 import (
 	"encoding/json"
 	"fmt"
-	"sort"
 
 	"github.com/holiman/uint256"
 	libcommon "github.com/ledgerwatch/erigon-lib/common"
 	ethTypes "github.com/ledgerwatch/erigon/core/types"
+	realtimeTypes "github.com/ledgerwatch/erigon/zk/realtime/types"
 	zktypes "github.com/ledgerwatch/erigon/zk/types"
 )
 
@@ -47,10 +47,10 @@ type TransactionMessage struct {
 	InnerTxs []*zktypes.InnerTx `json:"innerTxs"`
 
 	// Changeset
-	Changeset *zktypes.Changeset `json:"changeset"`
+	Changeset *realtimeTypes.Changeset `json:"changeset"`
 }
 
-func ToKafkaTransactionMessage(tx ethTypes.Transaction, receipt *ethTypes.Receipt, innerTxs []*zktypes.InnerTx, changeset *zktypes.Changeset, blockNumber uint64) (txMsg TransactionMessage, err error) {
+func ToKafkaTransactionMessage(tx ethTypes.Transaction, receipt *ethTypes.Receipt, innerTxs []*zktypes.InnerTx, changeset *realtimeTypes.Changeset, blockNumber uint64) (txMsg TransactionMessage, err error) {
 	// Parse tx
 	switch tx.Type() {
 	case ethTypes.LegacyTxType:
@@ -160,7 +160,7 @@ func (msg TransactionMessage) GetInnerTxs() ([]*zktypes.InnerTx, error) {
 	return msg.InnerTxs, nil
 }
 
-func (msg TransactionMessage) GetChangeset() (*zktypes.Changeset, error) {
+func (msg TransactionMessage) GetChangeset() (*realtimeTypes.Changeset, error) {
 	if msg.Changeset == nil {
 		return nil, fmt.Errorf("changeset is nil")
 	}
@@ -168,25 +168,42 @@ func (msg TransactionMessage) GetChangeset() (*zktypes.Changeset, error) {
 	return msg.Changeset, nil
 }
 
+func (msg TransactionMessage) Validate() error {
+	if _, _, err := msg.GetTransaction(); err != nil {
+		return err
+	}
+	if _, err := msg.GetReceipt(); err != nil {
+		return err
+	}
+	if _, err := msg.GetInnerTxs(); err != nil {
+		return err
+	}
+	if _, err := msg.GetChangeset(); err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (msg TransactionMessage) MarshalJSON() ([]byte, error) {
 	type TransactionMessage struct {
-		BlockNumber uint64             `json:"blockNumber"`
-		Type        uint8              `json:"type"`
-		Hash        libcommon.Hash     `json:"hash"`
-		From        libcommon.Address  `json:"from"`
-		ChainID     *uint256.Int       `json:"chainId"`
-		Nonce       uint64             `json:"nonce"`
-		Gas         uint64             `json:"gas"`
-		To          *libcommon.Address `json:"to"`
-		Value       *uint256.Int       `json:"value"`
-		Data        []byte             `json:"data"`
-		V           uint256.Int        `json:"v"`
-		R           uint256.Int        `json:"r"`
-		S           uint256.Int        `json:"s"`
-		GasPrice    string             `json:"gasPrice"`
-		Receipt     *ethTypes.Receipt  `json:"receipt"`
-		InnerTxs    []*zktypes.InnerTx `json:"innerTxs"`
-		Changeset   *zktypes.Changeset `json:"changeset"`
+		BlockNumber uint64                   `json:"blockNumber"`
+		Type        uint8                    `json:"type"`
+		Hash        libcommon.Hash           `json:"hash"`
+		From        libcommon.Address        `json:"from"`
+		ChainID     *uint256.Int             `json:"chainId"`
+		Nonce       uint64                   `json:"nonce"`
+		Gas         uint64                   `json:"gas"`
+		To          *libcommon.Address       `json:"to"`
+		Value       *uint256.Int             `json:"value"`
+		Data        []byte                   `json:"data"`
+		V           uint256.Int              `json:"v"`
+		R           uint256.Int              `json:"r"`
+		S           uint256.Int              `json:"s"`
+		GasPrice    string                   `json:"gasPrice"`
+		Receipt     *ethTypes.Receipt        `json:"receipt"`
+		InnerTxs    []*zktypes.InnerTx       `json:"innerTxs"`
+		Changeset   *realtimeTypes.Changeset `json:"changeset"`
 	}
 
 	var enc TransactionMessage
@@ -226,34 +243,4 @@ func (msg TransactionMessage) MarshalJSON() ([]byte, error) {
 	}
 
 	return json.Marshal(&enc)
-}
-
-type TransactionMessageSlice []*TransactionMessage
-
-// Len returns the length of the slice
-func (t TransactionMessageSlice) Len() int {
-	return len(t)
-}
-
-// Less defines the sorting criteria: BlockNumber ascending, then Receipt.TransactionIndex ascending
-func (t TransactionMessageSlice) Less(i, j int) bool {
-	if t[i].BlockNumber == t[j].BlockNumber {
-		// Check if Receipt is non-nil to avoid panic
-		if t[i].Receipt != nil && t[j].Receipt != nil {
-			return t[i].Receipt.TransactionIndex < t[j].Receipt.TransactionIndex
-		}
-		// If either Receipt is nil, maintain stable sort by returning false
-		return false
-	}
-	return t[i].BlockNumber < t[j].BlockNumber
-}
-
-// Swap swaps two elements in the slice
-func (t TransactionMessageSlice) Swap(i, j int) {
-	t[i], t[j] = t[j], t[i]
-}
-
-// SortTransactions sorts a slice of TransactionMessage by BlockNumber and Receipt.TransactionIndex
-func SortTransactions(transactions []*TransactionMessage) {
-	sort.Sort(TransactionMessageSlice(transactions))
 }
