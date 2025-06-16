@@ -217,7 +217,6 @@ func realtimeLoop(ctx context.Context, logger log.Logger, realtimeCache *Realtim
 					resetFlag.Store(true)
 					logger.Error("Failed to apply block msg and tx msgs", "error", err, "nextHeight", nextHeight)
 				}
-				realtimeCache.PutHighestPendingHeight(nextHeight)
 
 				// Flush block msg cache
 				kafkaCache.BlockMsgCache.Flush(nextHeight)

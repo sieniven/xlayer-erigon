@@ -110,9 +110,7 @@ func (cache *RealtimeCache) GetHighestPendingHeight() uint64 {
 }
 
 func (cache *RealtimeCache) PutHighestPendingHeight(blockNum uint64) {
-	if blockNum > cache.highestPendingHeight.Load() {
-		cache.highestPendingHeight.Store(blockNum)
-	}
+
 }
 
 func (cache *RealtimeCache) TryApplyBlockMsg(blockNum uint64, blockMsg *kafkaTypes.BlockMessage) error {
@@ -137,6 +135,7 @@ func (cache *RealtimeCache) TryCloseBlockFromBlockMsg(prevblockNum uint64, block
 			break
 		}
 		if context.blockNum > prevblockNum {
+			// Next block header must be received first before previous block can be closed
 			return fmt.Errorf("prev block %d is not in pending blocks", prevblockNum)
 		}
 	}
@@ -208,6 +207,33 @@ func (cache *RealtimeCache) tryApplyBlockTxMsgs(blockContext *PendingBlockContex
 	return nil
 }
 
+func (cache *RealtimeCache) tryCreateNewPendingBlockContext(blockNum uint64) error {
+	if cache.pendingBlocks.Size() > PendingBlocksCacheSizeThreshold {
+		return fmt.Errorf("too many pending blocks, failed to process block msg and tx msgs. Pending blocks: %d", cache.pendingBlocks.Size())
+	}
+
+	// Ensure ordering in pending queue
+	if cache.pendingBlocks.Size() > 0 && cache.pendingBlocks.Items()[cache.pendingBlocks.Size()-1].blockNum >= blockNum {
+		return fmt.Errorf("error creating new pending block context, block num %d is not in order", blockNum)
+	}
+
+	// Create new pending block context
+	newPendingBlockContext := &PendingBlockContext{
+		blockNum:    blockNum,
+		nextTxIndex: 0,
+		pendingTxs:  libcommon.NewOrderedList(DefaultTxMsgSliceSize, CompareTransactionMessages),
+		txCount:     -1,
+	}
+	cache.pendingBlocks.Add(newPendingBlockContext)
+	cache.pendingBlocks.Sort()
+
+	if blockNum > cache.highestPendingHeight.Load() {
+		cache.highestPendingHeight.Store(blockNum)
+	}
+
+	return nil
+}
+
 func (cache *RealtimeCache) tryCloseBlock(pendingBlockContext *PendingBlockContext) {
 	if pendingBlockContext.txCount < 0 {
 		// Header not received yet. Skip close
@@ -235,27 +261,4 @@ func (cache *RealtimeCache) tryCloseBlock(pendingBlockContext *PendingBlockConte
 		}
 	}
 	cache.highestConfirmHeight.Store(pendingBlockContext.blockNum)
-}
-
-func (cache *RealtimeCache) tryCreateNewPendingBlockContext(blockNum uint64) error {
-	if cache.pendingBlocks.Size() > PendingBlocksCacheSizeThreshold {
-		return fmt.Errorf("too many pending blocks, failed to process block msg and tx msgs. Pending blocks: %d", cache.pendingBlocks.Size())
-	}
-
-	// Ensure ordering in pending queue
-	if cache.pendingBlocks.Size() > 0 && cache.pendingBlocks.Items()[cache.pendingBlocks.Size()-1].blockNum >= blockNum {
-		return fmt.Errorf("error creating new pending block context, block num %d is not in order", blockNum)
-	}
-
-	// Create new pending block context
-	newPendingBlockContext := &PendingBlockContext{
-		blockNum:    blockNum,
-		nextTxIndex: 0,
-		pendingTxs:  libcommon.NewOrderedList(DefaultTxMsgSliceSize, CompareTransactionMessages),
-		txCount:     -1,
-	}
-	cache.pendingBlocks.Add(newPendingBlockContext)
-	cache.pendingBlocks.Sort()
-
-	return nil
 }
