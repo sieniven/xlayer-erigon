@@ -115,6 +115,12 @@ func (cache *RealtimeCache) GetHighestPendingHeight() uint64 {
 	return cache.highestPendingHeight.Load()
 }
 
+func (cache *RealtimeCache) PutHighestPendingHeight(blockNum uint64) {
+	if blockNum > cache.highestPendingHeight.Load() {
+		cache.highestPendingHeight.Store(blockNum)
+	}
+}
+
 func (cache *RealtimeCache) TryApplyBlockMsg(blockNum uint64, blockMsg *kafkaTypes.BlockMessage) error {
 	if err := cache.tryCreateNewPendingBlockContext(blockNum); err != nil {
 		return err
@@ -223,10 +229,7 @@ func (cache *RealtimeCache) tryCreateNewPendingBlockContext(blockNum uint64) err
 	}
 	cache.pendingBlocks.Add(newPendingBlockContext)
 	cache.pendingBlocks.Sort()
-
-	if blockNum > cache.highestPendingHeight.Load() {
-		cache.highestPendingHeight.Store(blockNum)
-	}
+	cache.PutHighestPendingHeight(blockNum)
 
 	return nil
 }

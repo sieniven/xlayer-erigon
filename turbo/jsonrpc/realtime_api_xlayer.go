@@ -65,7 +65,7 @@ func NewRealtimeAPI(
 }
 
 func (api *RealtimeAPIImpl) getBlockNumber(blockNr rpc.BlockNumber) (uint64, bool, error) {
-	currentBlockNumber := api.cacheDB.GetHighestConfirmHeight()
+	currentBlockNumber := api.cacheDB.GetHighestPendingHeight()
 	if currentBlockNumber == 0 {
 		return 0, false, fmt.Errorf("no block number found in stateless cache")
 	}
