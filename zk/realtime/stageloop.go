@@ -15,8 +15,9 @@ import (
 )
 
 var (
-	MaxKafkaChanSize  = 10_000
-	MaxKafkaCacheSize = 1_000
+	MaxKafkaChanSize        = 10_000
+	MaxKafkaCacheSize       = 1_000
+	MinRealtimeLoopWaitTime = 10 * time.Millisecond
 
 	readyFlag  = atomic.Bool{}
 	errorFlag  = atomic.Bool{}
@@ -160,6 +161,8 @@ func realtimeLoop(ctx context.Context, logger log.Logger, realtimeCache *Realtim
 		default:
 		}
 
+		startTime := time.Now()
+
 		// Check for kafka error
 		if errorFlag.Load() {
 			logger.Error("Kafka error, stopping realtime loop")
@@ -227,6 +230,11 @@ func realtimeLoop(ctx context.Context, logger log.Logger, realtimeCache *Realtim
 			// Handle pending blocks error. Reset cache
 			resetFlag.Store(true)
 			logger.Error("Handle pending blocks failed", "error", err)
+		}
+
+		duration := time.Since(startTime)
+		if duration < MinRealtimeLoopWaitTime {
+			time.Sleep(MinRealtimeLoopWaitTime - duration)
 		}
 	}
 }
