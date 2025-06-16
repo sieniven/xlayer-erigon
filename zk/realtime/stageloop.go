@@ -89,7 +89,8 @@ func ListenTxKafkaConsumer(
 	}
 
 	// Initialize kafka cache
-	kafkaCache, err := NewKafkaCache(MaxKafkaCacheSize)
+	var err error
+	kafkaCache, err = NewKafkaCache(MaxKafkaCacheSize)
 	if err != nil {
 		logger.Error("Failed to initialize kafka cache", "error", err)
 		return
