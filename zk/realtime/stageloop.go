@@ -120,7 +120,7 @@ func ListenTxKafkaConsumer(
 				logger.Error("Failed to consume block message from kafka", "error", err)
 				continue
 			}
-			if header.Number.Uint64() <= realtimeCache.GetHighestConfirmHeight() {
+			if header.Number.Uint64() <= realtimeCache.GetExecutionHeight() {
 				// Ignore block msgs from previous blocks
 				logger.Info("Ignoring block message from previous block", "blockMsg", blockMsg)
 				continue
@@ -132,7 +132,7 @@ func ListenTxKafkaConsumer(
 				logger.Error("Failed to consume transaction message from kafka", "error", err)
 				continue
 			}
-			if txMsg.BlockNumber <= realtimeCache.GetHighestConfirmHeight() {
+			if txMsg.BlockNumber <= realtimeCache.GetExecutionHeight() {
 				// Ignore txs from previous blocks
 				logger.Info("Ignoring transaction message from previous block", "txMsg", txMsg)
 				continue
