@@ -76,6 +76,7 @@ var (
 	bucket     = flag.String("bucket", "", "bucket in the database")
 	hash       = flag.String("hash", "0x00", "image for preimage or state root for testBlockHashes action")
 	output     = flag.String("output", "", "output path")
+	input      = flag.String("input", "", "input path")
 
 	// For X Layer, split db
 	pathSmtDb       = flag.String("smt-db-path", "smt", "path to the standalone SMT database file")
@@ -414,12 +415,16 @@ func BytesToPaddedHex(data []byte, length int) string {
 	return zeros + hexStr
 }
 
-func migrateGenesis(chaindata, output string) error {
+func migrateGenesis(chaindata, input, output string) error {
 	db := mdbx.MustOpen(chaindata)
 	defer db.Close()
 
 	var jsonData map[string]interface{}
-	fileData, err := os.ReadFile("genesis-init.json")
+	if input == "" {
+		input = "genesis.json"
+	}
+	fmt.Printf("input: %s\n", input)
+	fileData, err := os.ReadFile(input)
 	if err != nil {
 		if !os.IsNotExist(err) {
 			fmt.Println("Error reading file:", err)
@@ -432,7 +437,6 @@ func migrateGenesis(chaindata, output string) error {
 		}
 	}
 
-	jsonData["alloc"] = make(map[string]interface{})
 	current := make(map[string]interface{})
 
 	var count uint64
@@ -442,7 +446,7 @@ func migrateGenesis(chaindata, output string) error {
 		return tx.ForEach(kv.PlainState, nil, func(k, v []byte) error {
 			if len(k) == 20 {
 				count++
-				keys = append(keys, common.Bytes2Hex(k))
+				keys = append(keys, "0x"+common.Bytes2Hex(k))
 			}
 			return nil
 		})
@@ -470,16 +474,10 @@ func migrateGenesis(chaindata, output string) error {
 	}
 	defer cc.Close()
 	for _, acc_hex := range keys {
-		switch node := jsonData["alloc"].(type) {
-		case map[string]interface{}:
-			current = node
-		default:
-			panic("unhandled json type")
-		}
 		acc_addr := libcommon.HexToAddress(acc_hex)
 		log.Debug("acc_addr: %s\n", acc_addr)
-		current[acc_hex] = make(map[string]interface{})
-		switch node := current[acc_hex].(type) {
+		jsonData[acc_hex] = make(map[string]interface{})
+		switch node := jsonData[acc_hex].(type) {
 		case map[string]interface{}:
 			current = node
 		default:
@@ -492,9 +490,7 @@ func migrateGenesis(chaindata, output string) error {
 			return fmt.Errorf("acc not found")
 		}
 
-		if a.Nonce != 0 {
-			current["nonce"] = strconv.FormatUint(a.Nonce, 16)
-		}
+		current["nonce"] = "0x" + strconv.FormatUint(a.Nonce, 16)
 		current["balance"] = a.Balance.Hex()
 
 		log.Debug("CodeHash:%x\nIncarnation:%d\nNonce:%d\nblance:%s\n", a.CodeHash, a.Incarnation, a.Nonce, a.Balance.String())
@@ -532,6 +528,12 @@ func migrateGenesis(chaindata, output string) error {
 					log.Debug("%x slot => %x\n", k[28:], v)
 				}
 			}
+			if first_storage == false {
+				current["storage"] = make(map[string]interface{})
+			}
+		} else {
+			current["code"] = "0x"
+			current["storage"] = make(map[string]interface{})
 		}
 
 	}
@@ -542,7 +544,10 @@ func migrateGenesis(chaindata, output string) error {
 		return err
 	}
 
-	if err := os.WriteFile("genesis.json", updatedData, 0644); err != nil {
+	if output == "" {
+		output = "state_dump.json"
+	}
+	if err := os.WriteFile(output, updatedData, 0644); err != nil {
 		fmt.Println("Error writing to file:", err)
 		return err
 	}
@@ -1736,7 +1741,7 @@ func main() {
 	case "dumpAll":
 		err = dumpAll(*chaindata, *output)
 	case "migrateGenesis":
-		err = migrateGenesis(*chaindata, *output)
+		err = migrateGenesis(*chaindata, *input, *output)
 	}
 
 	if err != nil {
