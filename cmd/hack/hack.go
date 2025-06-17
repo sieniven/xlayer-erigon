@@ -476,6 +476,11 @@ func migrateGenesis(chaindata, input, output string) error {
 	for _, acc_hex := range keys {
 		acc_addr := libcommon.HexToAddress(acc_hex)
 		log.Debug("acc_addr: %s\n", acc_addr)
+		if _, exists := jsonData[acc_hex]; exists {
+			// Fixme: if xlayer account conflict with target node(such as op-geth), use which as new regenesis account?
+			fmt.Println("Adding exist account:", acc_hex)
+			continue
+		}
 		jsonData[acc_hex] = make(map[string]interface{})
 		switch node := jsonData[acc_hex].(type) {
 		case map[string]interface{}:
