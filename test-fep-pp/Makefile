@@ -61,4 +61,4 @@ stop: ## Stops all services
 
 .PHONY: build-docker
 build-docker: ## Build cdk-erigoin for sequencer and rpc
-	docker build -t cdk-erigon -f ../Dockerfile.local ../
+	docker build -t cdk-erigon-remap -f ../Dockerfile.local ../
