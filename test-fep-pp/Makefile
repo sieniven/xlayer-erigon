@@ -1,7 +1,7 @@
 
 DOCKER_COMPOSE := docker compose -f docker-compose.yml
 
-STOP := $(DOCKER_COMPOSE) down --remove-orphans; sleep 3; rm -rf data
+STOP := $(DOCKER_COMPOSE) down --remove-orphans; sleep 3; rm -rf data; rm -rf logs
 
 INIT_BRIDGE_ACCOUNT := cast send -f 0x8f8E2d6cF621f30e9a11309D6A56A876281Fd534  --private-key 0x815405dddb0e2a99b12af775fd2929e526704e1d1aea6a0b4e74dc33e2f7fcd2 --value 0.01ether 0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266 --legacy --rpc-url http://127.0.0.1:8123
 

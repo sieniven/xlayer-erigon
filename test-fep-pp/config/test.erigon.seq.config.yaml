@@ -1,4 +1,5 @@
 datadir: /home/erigon/data/
+log.dir.path: /home/erigon/logs/
 chain: dynamic-mynetwork
 http: true
 private.api.addr: localhost:9091
@@ -16,7 +17,7 @@ zkevm.address-rollup: "0x2d42E2899662EFf08b13eeb65b154b904C7a1c8a"
 zkevm.address-ger-manager: "0xB8cedD4B9eF683f0887C44a6E4312dC7A6e2fcdB"
 
 zkevm.l1-rollup-id: 1
-zkevm.l1-first-block: 257
+zkevm.l1-first-block: 177
 zkevm.l1-block-range: 10
 zkevm.l1-query-delay: 6000
 zkevm.rpc-ratelimit: 0

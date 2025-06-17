@@ -129,6 +129,7 @@ func sequencingBatchStep(
 	startSequenceTime := time.Now()
 	logPrefix := s.LogPrefix()
 	log.Info(fmt.Sprintf("[%s] Starting sequencing stage", logPrefix))
+	log.Info(fmt.Sprintf("sequencingBatchStep, cfg.zk.L2PerformMap: %t \n", cfg.zk.L2PerformMap))
 	defer func() {
 		metrics.GetLogStatistics().CumulativeTiming(metrics.SequencingBatchTiming, time.Since(startSequenceTime))
 		log.Info(fmt.Sprintf("[%s] Finished sequencing stage", logPrefix))

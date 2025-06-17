@@ -20,8 +20,14 @@ var (
 	BLOCK_INFO_ROOT_STORAGE_POS  = libcommon.HexToHash("0x3")
 	ADDRESS_SCALABLE_L2          = libcommon.HexToAddress("0x000000000000000000000000000000005ca1ab1e")
 	GER_MANAGER_ADDRESS          = libcommon.HexToAddress("0xa40D5f56745a118D0906a34E69aeC8C0Db1cB8fA")
+	BRIDGE_ADDRESS               = libcommon.HexToAddress("0x3a277Fa4E78cc1266F32E26c467F99A8eAEfF7c3")
 	GLOBAL_EXIT_ROOT_STORAGE_POS = libcommon.HexToHash("0x0")
 	GLOBAL_EXIT_ROOT_POS_1       = libcommon.HexToHash("0x1")
+
+	BRIDGE_TOKEN_INFO_TO_WRAPPED_TOKEN_POS = libcommon.HexToHash("0x6A")
+	BRIDGE_WRAPPED_TOKEN_TO_TOKEN_INFO_POS = libcommon.HexToHash("0x6B")
+
+	ERC20_BALANCE_STORAGE_POS = libcommon.HexToHash("0x0")
 )
 
 type ReadOnlyHermezDb interface {
@@ -233,6 +239,64 @@ func (sdb *IntraBlockState) ReadGerManagerL1BlockHash(ger libcommon.Hash) libcom
 		return libcommon.Hash{}
 	}
 	return libcommon.BytesToHash(key.Bytes())
+}
+
+// read WETH_L2
+func (sdb *IntraBlockState) ReadTokenBalance(tokenAddress libcommon.Address, acct libcommon.Address) *uint256.Int {
+	d1 := common.LeftPadBytes(acct.Bytes(), 32)
+	d2 := common.LeftPadBytes(ERC20_BALANCE_STORAGE_POS.Bytes(), 32)
+	mapKey := keccak256.Hash(d1, d2)
+	mkh := libcommon.BytesToHash(mapKey)
+	val := uint256.NewInt(0)
+
+	sdb.GetState(tokenAddress, &mkh, val)
+	return val
+}
+
+func (sdb *IntraBlockState) ReadWOKBBalance(tokenAddress libcommon.Address, acct libcommon.Address) *uint256.Int {
+	d1 := common.LeftPadBytes(acct.Bytes(), 32)
+	d2 := common.LeftPadBytes(libcommon.HexToHash("0x3").Bytes(), 32)
+	mapKey := keccak256.Hash(d1, d2)
+	mkh := libcommon.BytesToHash(mapKey)
+	val := uint256.NewInt(0)
+
+	sdb.GetState(tokenAddress, &mkh, val)
+	return val
+}
+
+func (sdb *IntraBlockState) SetWOKBBalance(tokenAddress libcommon.Address, acct libcommon.Address, val uint256.Int) {
+	d1 := common.LeftPadBytes(acct.Bytes(), 32)
+	d2 := common.LeftPadBytes(libcommon.HexToHash("0x3").Bytes(), 32)
+	mapKey := keccak256.Hash(d1, d2)
+	mkh := libcommon.BytesToHash(mapKey)
+
+	sdb.SetState(tokenAddress, &mkh, val)
+}
+
+func (sdb *IntraBlockState) WriteBridgeWrappedTokenToTokenInfo(wrappedTokenAddress libcommon.Address, originNetwork uint32, originTokenAddress libcommon.Address) {
+	d1 := common.LeftPadBytes(wrappedTokenAddress.Bytes(), 32)
+	d2 := common.LeftPadBytes(BRIDGE_WRAPPED_TOKEN_TO_TOKEN_INFO_POS.Bytes(), 32)
+	mapKey := keccak256.Hash(d1, d2)
+	mkh := libcommon.BytesToHash(mapKey)
+
+	// Pack originNetwork (4 bytes) and originTokenAddress (20 bytes) into a single slot
+	// First 4 bytes are originNetwork, last 20 bytes are originTokenAddress
+	val := uint256.NewInt(0)
+	val.SetBytes(append(common.LeftPadBytes(originTokenAddress.Bytes(), 20), common.LeftPadBytes(uint256.NewInt(uint64(originNetwork)).Bytes(), 4)...))
+
+	sdb.SetState(BRIDGE_ADDRESS, &mkh, *val)
+}
+
+func (sdb *IntraBlockState) WriteBridgeTokenInfoToWrapped(tokenInfoBytes []byte, wrappedTokenAddress libcommon.Address) {
+	d1 := common.LeftPadBytes(tokenInfoBytes, 32)
+	d2 := common.LeftPadBytes(BRIDGE_TOKEN_INFO_TO_WRAPPED_TOKEN_POS.Bytes(), 32)
+	mapKey := keccak256.Hash(d1, d2)
+	mkh := libcommon.BytesToHash(mapKey)
+
+	val := uint256.NewInt(0)
+	val.SetBytes(common.LeftPadBytes(wrappedTokenAddress.Bytes(), 20))
+
+	sdb.SetState(BRIDGE_ADDRESS, &mkh, *val)
 }
 
 func (sdb *IntraBlockState) WriteGerManagerL1BlockHash(ger, l1BlockHash libcommon.Hash) {

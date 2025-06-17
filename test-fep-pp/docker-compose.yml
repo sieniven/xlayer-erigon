@@ -16,7 +16,7 @@ services:
 
   xlayer-seq:
     container_name: xlayer-seq
-    image: cdk-erigon
+    image: cdk-erigon-remap
     environment:
       - CDK_ERIGON_SEQUENCER=1
       - WRITE_MAP=true
@@ -27,6 +27,7 @@ services:
       - 9092:9095
     volumes:
       - ./data/seq/:/home/erigon/data/
+      - ./logs/seq/:/home/erigon/logs/
       - ./config/test.erigon.seq.config.yaml:/usr/src/app/config.yaml
       - ./config/dynamic-mynetwork-allocs.json:/usr/src/app/dynamic-mynetwork-allocs.json
       - ./config/dynamic-mynetwork-chainspec.json:/usr/src/app/dynamic-mynetwork-chainspec.json
@@ -83,7 +84,7 @@ services:
 
   xlayer-bridge-service:
     container_name: xlayer-bridge-service
-    image: hermeznetwork/zkevm-bridge-service:v0.6.0
+    image: xlayer-bridge-service
     ports:
       - 8080:8080
       - 9090:9090

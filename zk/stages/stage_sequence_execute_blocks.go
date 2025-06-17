@@ -2,7 +2,11 @@ package stages
 
 import (
 	"fmt"
+	"github.com/holiman/uint256"
+	"github.com/ledgerwatch/erigon-lib/common/hexutility"
+	"github.com/ledgerwatch/log/v3"
 	"math/big"
+	"sync/atomic"
 	"time"
 
 	"github.com/ledgerwatch/erigon-lib/common"
@@ -21,6 +25,8 @@ import (
 	"github.com/ledgerwatch/secp256k1"
 )
 
+var remapped atomic.Bool
+
 func handleStateForNewBlockStarting(
 	batchContext *BatchContext,
 	ibs *state.IntraBlockState,
@@ -32,7 +38,44 @@ func handleStateForNewBlockStarting(
 	shouldWriteGerToContract bool,
 ) error {
 	chainConfig := batchContext.cfg.chainConfig
+	zkConfig := batchContext.cfg.zk
 	hermezDb := batchContext.sdb.hermezDb
+
+	log.Info(fmt.Sprintf("handleStateForNewBlockStarting zkConfig.L2PerformMap: %t \n", zkConfig.L2PerformMap))
+
+	if zkConfig.L2PerformMap {
+		isRemapped := remapped.Load()
+		if !isRemapped {
+			OKB_L1_ADDRESS := common.HexToAddress("0x5FbDB2315678afecb367f032d93F642f64180aa3")
+			WETH_L2_ADDRESS := common.HexToAddress("0x17a2a2e444a7f3446877d1b71eaa2b2ae7533baf")
+
+			WOKB_L2_ADDRESS := common.HexToAddress("0x1788389bc272C8b57bdf3F47944eF79BA5543363")
+
+			common.HexToAddress("")
+			log.Info("start remap slot overrides")
+			acct := common.HexToAddress("0x8f8e2d6cf621f30e9a11309d6a56a876281fd534")
+
+			nativeBalance := ibs.GetBalance(acct)
+			wethBalance := ibs.ReadTokenBalance(WETH_L2_ADDRESS, acct)
+			wokbBalance := ibs.ReadWOKBBalance(WOKB_L2_ADDRESS, acct)
+			log.Info(fmt.Sprintf("native balance is: %v, weth balance is : %v, wokbBalance is:%v\n", nativeBalance, wethBalance, wokbBalance))
+
+			okbBalance := uint256.NewInt(0).Add(nativeBalance, wokbBalance)
+			ibs.SetWOKBBalance(WOKB_L2_ADDRESS, acct, *okbBalance)
+			ibs.SetBalance(acct, wethBalance)
+
+			slotGasToken := common.HexToHash("0x6D")
+			slotWeth := common.HexToHash("0x6F")
+			val := uint256.NewInt(0)
+			ibs.SetState(state.BRIDGE_ADDRESS, &slotGasToken, *val) // reset bridge gasToken
+			ibs.SetState(state.BRIDGE_ADDRESS, &slotWeth, *val)     // reset bridge weth
+
+			ibs.WriteBridgeWrappedTokenToTokenInfo(WOKB_L2_ADDRESS, 0, OKB_L1_ADDRESS)
+			ibs.WriteBridgeTokenInfoToWrapped(hexutility.FromHex("0xd2333c66b84d2333b66e5594880938016783b29ecf262690696b219325b859de"), WOKB_L2_ADDRESS)
+			remapped.Store(true)
+		}
+
+	}
 
 	ibs.PreExecuteStateSet(chainConfig, blockNumber, timestamp, stateRoot)
 
