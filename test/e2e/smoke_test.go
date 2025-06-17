@@ -1328,14 +1328,8 @@ func TestRealtimeRPC(t *testing.T) {
 
 	blockNumber := setupRealtimeTestEnvironment(t)
 
-	// Default test address for tests that require an address
-	testAddress := common.HexToAddress("0x1234567890123456789012345678901234567890")
-
 	l2Client, err := ethclient.Dial(operations.DefaultL2NetworkURL)
 	require.NoError(t, err)
-
-	// Transfer native token
-	txHash := transToken(t, context.Background(), l2Client, uint256.NewInt(encoding.Gwei), testAddress.String())
 
 	// Preapre to deploy a ERC20 contract
 	ctx := context.Background()
@@ -1353,14 +1347,20 @@ func TestRealtimeRPC(t *testing.T) {
 	erc20ABI, err := abi.JSON(strings.NewReader(erc20ABIJson))
 	require.NoError(t, err)
 
+	// Default test address for tests that require an address
+	testAddress := common.HexToAddress("0x1234567890123456789012345678901234567890")
+
+	// Used to check whether the result returned by the interface call is correct
+	originNonce, err := operations.EthGetTransactionCount(fromAddress, "latest")
+	require.NoError(t, err)
+	originBalance, err := operations.EthGetBalance(testAddress, "latest")
+	require.NoError(t, err)
+
+	// Transfer native token
+	txHash := transToken(t, context.Background(), l2Client, uint256.NewInt(encoding.Gwei), testAddress.String())
+
 	// Deploy the contract
 	erc20Address := deployERC20Contract(t, ctx, privateKey, client, erc20ABI)
-
-	t.Run("RealtimeGetBlockTransactionCountByNumber", func(t *testing.T) {
-		transactionCount, err := operations.RealtimeGetBlockTransactionCountByNumber(blockNumber)
-		require.NoError(t, err)
-		log.Infof("RealtimeGetBlockTransactionCountByNumber result: %d", transactionCount)
-	})
 
 	t.Run("RealtimeGetBlockTransactionCountByNumber", func(t *testing.T) {
 		transactionCount, err := operations.RealtimeGetBlockTransactionCountByNumber(blockNumber)
@@ -1396,7 +1396,15 @@ func TestRealtimeRPC(t *testing.T) {
 	t.Run("RealtimeGetBalance", func(t *testing.T) {
 		balance, err := operations.RealtimeGetBalance(testAddress)
 		require.NoError(t, err)
+		require.Equal(t, originBalance.Add(originBalance, big.NewInt(encoding.Gwei)).String(), balance.String(), "Balance should increase by 1 Gwei")
 		log.Infof("RealtimeGetBalance result for test address: %s", balance.String())
+	})
+
+	t.Run("RealtimeGetTransactionCount", func(t *testing.T) {
+		nonce, err := operations.RealtimeGetTransactionCount(fromAddress)
+		require.NoError(t, err)
+		require.Equal(t, originNonce+1, nonce, "Nonce should be equal to origin nonce + 1")
+		log.Infof("RealtimeGetTransactionCount result for sender address: %d", nonce)
 	})
 
 	t.Run("RealtimeGetCode", func(t *testing.T) {

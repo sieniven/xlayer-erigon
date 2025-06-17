@@ -884,6 +884,19 @@ func RealtimeGetCode(address common.Address) (string, error) {
 	return code, nil
 }
 
+// RealtimeGetTransactionCount returns the number of transactions sent from an address in real-time
+func RealtimeGetTransactionCount(address common.Address) (uint64, error) {
+	response, err := client.JSONRPCCall(DefaultL2NetworkURL, "realtime_getTransactionCount", address)
+	if err != nil {
+		return 0, err
+	}
+	if response.Error != nil {
+		return 0, fmt.Errorf("%d - %s", response.Error.Code, response.Error.Message)
+	}
+
+	return transHexToUint64(response.Result)
+}
+
 // RealtimeGetStorageAt returns the value from a storage position at a given address in real-time
 func RealtimeGetStorageAt(address common.Address, position string) (string, error) {
 	response, err := client.JSONRPCCall(DefaultL2NetworkURL, "realtime_getStorageAt", address, position)
