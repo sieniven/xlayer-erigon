@@ -18,6 +18,7 @@ import (
 	"github.com/ledgerwatch/erigon/turbo/snapshotsync/freezeblocks"
 	"github.com/ledgerwatch/erigon/zk/datastream/server"
 	"github.com/ledgerwatch/erigon/zk/l1infotree"
+	realtimeCache "github.com/ledgerwatch/erigon/zk/realtime/cache"
 	realtimeTypes "github.com/ledgerwatch/erigon/zk/realtime/types"
 	zkStages "github.com/ledgerwatch/erigon/zk/stages"
 	"github.com/ledgerwatch/erigon/zk/syncer"
@@ -41,7 +42,7 @@ func NewDefaultZkStages(ctx context.Context,
 	dataStreamServer server.DataStreamServer,
 	infoTreeUpdater *l1infotree.Updater,
 	// For X Layer. RPC latency optimization
-	statelessCache *realtimeTypes.StatelessCache,
+	statelessCache *realtimeCache.StatelessCache,
 	finishChan chan uint64,
 ) []*stagedsync.Stage {
 	dirs := cfg.Dirs

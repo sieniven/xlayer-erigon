@@ -19,7 +19,7 @@ import (
 	"github.com/ledgerwatch/erigon/turbo/rpchelper"
 	"github.com/ledgerwatch/erigon/turbo/services"
 	"github.com/ledgerwatch/erigon/zk/datastream/server"
-	"github.com/ledgerwatch/erigon/zk/realtime"
+	realtimeCache "github.com/ledgerwatch/erigon/zk/realtime/cache"
 	"github.com/ledgerwatch/erigon/zk/sequencer"
 	"github.com/ledgerwatch/erigon/zk/syncer"
 	txpool2 "github.com/ledgerwatch/erigon/zk/txpool"
@@ -33,7 +33,7 @@ func APIList(db kv.RoDB, dbsmt kv.RoDB, eth rpchelper.ApiBackend, txPool txpool.
 	gasTracker *RecurringL1GasPriceTracker,
 	// For X Layer
 	cache *smt.SmtCache,
-	realtimeCache *realtime.RealtimeCache,
+	realtimeCache *realtimeCache.RealtimeCache,
 ) (list []rpc.API, gpCache *GasPriceCache) {
 	// non-sequencer nodes should forward on requests to the sequencer
 	rpcUrl := ""
