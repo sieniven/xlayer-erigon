@@ -1,6 +1,6 @@
 [Log]
 # Set the logging level (e.g., debug, info, warn, error) to control verbosity
-Level = "info"
+Level = "debug"
 # Specify the environment in which the application is running (e.g., production, development)
 Environment = "production"
 # Define where to output logs; options include stderr (standard error) or stdout
@@ -32,7 +32,7 @@ Database = "postgres"
 # URL for Layer 1 RPC endpoint to interact with the main blockchain
 L1URL = "http://xlayer-mock-l1-network:8545"
 # URLs for Layer 2 RPC endpoints
-L2URLs = ["http://xlayer-rpc:8545"]
+L2URLs = ["http://xlayer-seq:8123"]
 
 # Synchronization Settings
 # This section defines the parameters for synchronizing data, including
