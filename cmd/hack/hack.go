@@ -535,7 +535,7 @@ func migrateGenesis(chaindata, input, output string) error {
 						first_storage = true
 					}
 					current[hexutil.Encode(k[28:])] = BytesToPaddedHex(v, 64)
-					fmt.Printf("%x slot => %x\n", k[:], v)
+					log.Debug("%x slot => %x\n", k[28:], v)
 				}
 			}
 			if first_storage == false {
@@ -557,6 +557,8 @@ func migrateGenesis(chaindata, input, output string) error {
 	if output == "" {
 		output = "state_dump.json"
 	}
+	fmt.Printf("output: %s\n", output)
+
 	if err := os.WriteFile(output, updatedData, 0644); err != nil {
 		fmt.Println("Error writing to file:", err)
 		return err
@@ -1773,7 +1775,9 @@ func getSmtroot(chaindata string) error {
 		panic(err)
 	}
 	fmt.Printf("smt root:%x\n", root)
-	s.RoSMT.PrintDb()
+	if *debugPrint {
+		s.RoSMT.PrintDb()
+	}
 	tx.Rollback()
 	return nil
 }
