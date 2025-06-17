@@ -1,4 +1,4 @@
-package types
+package cache
 
 import (
 	"context"
@@ -7,18 +7,19 @@ import (
 	libcommon "github.com/ledgerwatch/erigon-lib/common"
 	"github.com/ledgerwatch/erigon-lib/kv"
 	ethTypes "github.com/ledgerwatch/erigon/core/types"
+	realtimeTypes "github.com/ledgerwatch/erigon/zk/realtime/types"
 	zktypes "github.com/ledgerwatch/erigon/zk/types"
 )
 
 type StatelessCache struct {
-	blockInfoMap *BlockInfoMap
-	txInfoMap    *TxInfoMap
+	blockInfoMap *realtimeTypes.BlockInfoMap
+	txInfoMap    *realtimeTypes.TxInfoMap
 }
 
 func NewStatelessCache(blockCacheSize int, txCacheSize int) *StatelessCache {
 	return &StatelessCache{
-		blockInfoMap: NewBlockInfoMap(blockCacheSize),
-		txInfoMap:    NewTxInfoMap(blockCacheSize, txCacheSize),
+		blockInfoMap: realtimeTypes.NewBlockInfoMap(blockCacheSize),
+		txInfoMap:    realtimeTypes.NewTxInfoMap(blockCacheSize, txCacheSize),
 	}
 }
 

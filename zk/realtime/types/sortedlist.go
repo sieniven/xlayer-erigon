@@ -1,6 +1,4 @@
-// For X Layer
-
-package common
+package types
 
 import "slices"
 
@@ -8,6 +6,14 @@ type OrderedList[T any] struct {
 	list        []T
 	isOrdered   bool
 	compareFunc func(a, b T) int
+}
+
+func NewOrderedList[T any](size int, compareFunc func(a, b T) int) *OrderedList[T] {
+	return &OrderedList[T]{
+		list:        make([]T, 0, size),
+		isOrdered:   false,
+		compareFunc: compareFunc,
+	}
 }
 
 func (l *OrderedList[T]) Add(item T) {
@@ -60,4 +66,14 @@ func (l *OrderedList[T]) Size() int {
 
 func (l *OrderedList[T]) Items() []T {
 	return l.list
+}
+
+func (l *OrderedList[T]) Clear() {
+	l.isOrdered = false
+	l.list = l.list[:0]
+}
+
+func (l *OrderedList[T]) SetItems(items []T) {
+	l.list = items
+	l.isOrdered = false
 }

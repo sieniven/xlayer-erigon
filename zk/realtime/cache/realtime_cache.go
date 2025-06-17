@@ -1,11 +1,10 @@
-package realtime
+package cache
 
 import (
 	"context"
 	"fmt"
 	"sync/atomic"
 
-	libcommon "github.com/ledgerwatch/erigon-lib/common"
 	"github.com/ledgerwatch/erigon-lib/kv"
 	kafkaTypes "github.com/ledgerwatch/erigon/zk/realtime/kafka/types"
 	realtimeTypes "github.com/ledgerwatch/erigon/zk/realtime/types"
@@ -36,11 +35,11 @@ type PendingBlockContext struct {
 	// txCount is the total tx count to close the current pending block. Set txCount to -1 to indicate the next block header has not been received yet.
 	txCount int64
 	// pendingTxs is the queue of pending txs to be processed in the current pending block
-	pendingTxs *libcommon.OrderedList[*kafkaTypes.TransactionMessage]
+	pendingTxs *realtimeTypes.OrderedList[*kafkaTypes.TransactionMessage]
 }
 
-func NewPendingBlockContextList(size int) *libcommon.OrderedList[*PendingBlockContext] {
-	return libcommon.NewOrderedList(size, ComparePendingBlockContext)
+func NewPendingBlockContextList(size int) *realtimeTypes.OrderedList[*PendingBlockContext] {
+	return realtimeTypes.NewOrderedList(size, ComparePendingBlockContext)
 }
 
 func ComparePendingBlockContext(a, b *PendingBlockContext) int {
@@ -50,7 +49,7 @@ func ComparePendingBlockContext(a, b *PendingBlockContext) int {
 type RealtimeCache struct {
 	// Caches
 	State     *PlainStateCache
-	Stateless *realtimeTypes.StatelessCache
+	Stateless *StatelessCache
 
 	// highestConfirmHeight is the highest confirmed block height closed from kafka
 	highestConfirmHeight atomic.Uint64
@@ -62,7 +61,7 @@ type RealtimeCache struct {
 	highestPendingHeight atomic.Uint64
 
 	// Pending blocks list
-	pendingBlocks *libcommon.OrderedList[*PendingBlockContext]
+	pendingBlocks *realtimeTypes.OrderedList[*PendingBlockContext]
 }
 
 func NewRealtimeCache(ctx context.Context, db kv.RoDB) (*RealtimeCache, error) {
@@ -73,7 +72,7 @@ func NewRealtimeCache(ctx context.Context, db kv.RoDB) (*RealtimeCache, error) {
 
 	return &RealtimeCache{
 		State:                  stateCache,
-		Stateless:              realtimeTypes.NewStatelessCache(DefaultStatelessBlockCacheSize, DefaultStatelessTxCacheSize),
+		Stateless:              NewStatelessCache(DefaultStatelessBlockCacheSize, DefaultStatelessTxCacheSize),
 		highestConfirmHeight:   atomic.Uint64{},
 		highestExecutionHeight: atomic.Uint64{},
 		highestPendingHeight:   atomic.Uint64{},
@@ -224,7 +223,7 @@ func (cache *RealtimeCache) tryCreateNewPendingBlockContext(blockNum uint64) err
 	newPendingBlockContext := &PendingBlockContext{
 		blockNum:    blockNum,
 		nextTxIndex: 0,
-		pendingTxs:  libcommon.NewOrderedList(DefaultTxMsgSliceSize, CompareTransactionMessages),
+		pendingTxs:  realtimeTypes.NewOrderedList(DefaultTxMsgSliceSize, CompareTransactionMessages),
 		txCount:     -1,
 	}
 	cache.pendingBlocks.Add(newPendingBlockContext)

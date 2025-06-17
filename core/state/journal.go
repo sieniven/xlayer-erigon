@@ -19,7 +19,6 @@ package state
 import (
 	"github.com/holiman/uint256"
 	libcommon "github.com/ledgerwatch/erigon-lib/common"
-	"github.com/ledgerwatch/erigon/zk/realtime/types"
 	realtimeTypes "github.com/ledgerwatch/erigon/zk/realtime/types"
 	"github.com/ledgerwatch/erigon/zkevm/log"
 )
@@ -221,7 +220,7 @@ func (ch resetObjectChange) dirtied() *libcommon.Address {
 	return nil
 }
 
-func (ch resetObjectChange) collectChangeset(cs *types.Changeset) {
+func (ch resetObjectChange) collectChangeset(cs *realtimeTypes.Changeset) {
 	// cleared because it's not dirty
 }
 
@@ -301,7 +300,7 @@ func (ch balanceIncreaseTransfer) revert(s *IntraBlockState) {
 	ch.bi.transferred = false
 }
 
-func (ch balanceIncreaseTransfer) collectChangeset(cs *types.Changeset) {
+func (ch balanceIncreaseTransfer) collectChangeset(cs *realtimeTypes.Changeset) {
 	if ch.bi.increase.IsZero() {
 		return
 	}
@@ -446,6 +445,6 @@ func (ch incarnationMapChange) dirtied() *libcommon.Address {
 	return nil
 }
 
-func (ch incarnationMapChange) collectChangeset(cs *types.Changeset) {
+func (ch incarnationMapChange) collectChangeset(cs *realtimeTypes.Changeset) {
 	cs.IncarnationMapChanges[*ch.account] = ch.original
 }

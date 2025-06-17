@@ -7,6 +7,7 @@ import (
 
 	"github.com/ledgerwatch/erigon/core/state"
 	"github.com/ledgerwatch/erigon/eth/ethconfig"
+	"github.com/ledgerwatch/erigon/zk/realtime/cache"
 	"github.com/ledgerwatch/erigon/zk/realtime/kafka"
 	kafkaTypes "github.com/ledgerwatch/erigon/zk/realtime/kafka/types"
 	realtimeTypes "github.com/ledgerwatch/erigon/zk/realtime/types"
@@ -22,7 +23,7 @@ var (
 	readyFlag  = atomic.Bool{}
 	errorFlag  = atomic.Bool{}
 	resetFlag  = atomic.Bool{}
-	kafkaCache *KafkaCache
+	kafkaCache *cache.KafkaCache
 )
 
 func ListenTxKafkaProducer(
@@ -77,7 +78,7 @@ func ListenTxKafkaConsumer(
 	txKafkaConsumer *kafka.KafkaConsumer,
 	config ethconfig.XLayerConfig,
 	logger log.Logger,
-	realtimeCache *RealtimeCache,
+	realtimeCache *cache.RealtimeCache,
 	finishChan chan uint64) {
 	if sequencer.IsSequencer() {
 		logger.Info("[Realtime] TxKafkaConsumer is disabled on sequencer, skipping")
@@ -91,7 +92,7 @@ func ListenTxKafkaConsumer(
 
 	// Initialize kafka cache
 	var err error
-	kafkaCache, err = NewKafkaCache(MaxKafkaCacheSize)
+	kafkaCache, err = cache.NewKafkaCache(MaxKafkaCacheSize)
 	if err != nil {
 		logger.Error("[Realtime] Failed to initialize kafka cache", "error", err)
 		return
@@ -153,7 +154,7 @@ func ListenTxKafkaConsumer(
 	}
 }
 
-func realtimeLoop(ctx context.Context, logger log.Logger, realtimeCache *RealtimeCache) {
+func realtimeLoop(ctx context.Context, logger log.Logger, realtimeCache *cache.RealtimeCache) {
 	for {
 		select {
 		case <-ctx.Done():
@@ -239,7 +240,7 @@ func realtimeLoop(ctx context.Context, logger log.Logger, realtimeCache *Realtim
 
 // tryInitRealtimeCache checks if the realtime cache can be initialized by comparing
 // the current execution height with the lowest kafka cache height.
-func tryInitRealtimeCache(realtimeCache *RealtimeCache, logger log.Logger) bool {
+func tryInitRealtimeCache(realtimeCache *cache.RealtimeCache, logger log.Logger) bool {
 	executionHeight := realtimeCache.GetExecutionHeight()
 	lowestKafkaHeight := kafkaCache.GetLowestBlockHeight()
 	if executionHeight == 0 || lowestKafkaHeight == 0 {
@@ -273,7 +274,7 @@ func tryInitRealtimeCache(realtimeCache *RealtimeCache, logger log.Logger) bool 
 }
 
 // resetRealtimeCache clears the realtime cache and resets the state flags
-func resetRealtimeCache(realtimeCache *RealtimeCache) {
+func resetRealtimeCache(realtimeCache *cache.RealtimeCache) {
 	realtimeCache.Clear()
 	resetFlag.Store(false)
 	readyFlag.Store(false)

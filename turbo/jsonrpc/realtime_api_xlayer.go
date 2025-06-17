@@ -11,7 +11,7 @@ import (
 	"github.com/ledgerwatch/erigon/core/types"
 	"github.com/ledgerwatch/erigon/rpc"
 	ethapi2 "github.com/ledgerwatch/erigon/turbo/adapter/ethapi"
-	"github.com/ledgerwatch/erigon/zk/realtime"
+	realtimeCache "github.com/ledgerwatch/erigon/zk/realtime/cache"
 	zktypes "github.com/ledgerwatch/erigon/zk/types"
 )
 
@@ -49,13 +49,13 @@ type RealtimeAPI interface {
 // RealtimeAPIImpl is implementation of the RealtimeAPI interface
 type RealtimeAPIImpl struct {
 	ethApi  *APIImpl
-	cacheDB *realtime.RealtimeCache
+	cacheDB *realtimeCache.RealtimeCache
 }
 
 // NewRealtimeAPI returns RealtimeAPIImpl instance
 func NewRealtimeAPI(
 	base *APIImpl,
-	cacheDB *realtime.RealtimeCache,
+	cacheDB *realtimeCache.RealtimeCache,
 ) *RealtimeAPIImpl {
 
 	return &RealtimeAPIImpl{

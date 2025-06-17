@@ -13,7 +13,7 @@ import (
 )
 
 func TestTxInfoMap(t *testing.T) {
-	tm := NewTxInfoMap(DefaultBlockCacheSize, DefaultTxCacheSize)
+	tm := NewTxInfoMap(100, 1000)
 
 	blockNumber := uint64(5)
 	txHash := common.HexToHash("0x123")
