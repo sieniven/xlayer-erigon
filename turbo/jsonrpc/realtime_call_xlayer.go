@@ -31,7 +31,7 @@ func (api *RealtimeAPIImpl) Call(ctx context.Context, args ethapi2.CallArgs, ove
 		args.Gas = (*hexutil.Uint64)(&api.ethApi.GasCap)
 	}
 
-	blockNumber, _, err := api.getBlockNumber(rpc.LatestBlockNumber)
+	blockNumber, _, err := api.getBlockNumber(rpc.PendingBlockNumber)
 	if err != nil {
 		return nil, err
 	}

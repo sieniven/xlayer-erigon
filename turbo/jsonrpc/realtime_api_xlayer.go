@@ -65,30 +65,35 @@ func NewRealtimeAPI(
 }
 
 func (api *RealtimeAPIImpl) getBlockNumber(blockNr rpc.BlockNumber) (uint64, bool, error) {
-	currentBlockNumber := api.cacheDB.GetHighestPendingHeight()
-	if currentBlockNumber == 0 {
+	confirmHeight := api.cacheDB.GetHighestConfirmHeight()
+	if confirmHeight == 0 {
 		return 0, false, fmt.Errorf("no block number found in stateless cache")
 	}
 
 	switch blockNr {
 	case rpc.LatestBlockNumber:
-		return currentBlockNumber, true, nil
+		return confirmHeight, true, nil
 	case rpc.EarliestBlockNumber:
-		return 0, false, nil
+		// Unsupported
+		return 0, false, fmt.Errorf("earliest block number is not supported")
 	case rpc.FinalizedBlockNumber:
-		return currentBlockNumber, true, nil
+		return confirmHeight, true, nil
 	case rpc.SafeBlockNumber:
-		return currentBlockNumber, true, nil
+		return confirmHeight, true, nil
 	case rpc.PendingBlockNumber:
-		return currentBlockNumber, true, nil
+		pendingHeight := api.cacheDB.GetHighestPendingHeight()
+		if pendingHeight == 0 {
+			return 0, false, fmt.Errorf("no block number found in stateless cache")
+		}
+		return pendingHeight, true, nil
 	case rpc.LatestExecutedBlockNumber:
-		return currentBlockNumber, true, nil
+		return confirmHeight, true, nil
 	default:
 		blockNumber := uint64(blockNr.Int64())
-		if blockNumber > currentBlockNumber {
+		if blockNumber > confirmHeight {
 			return 0, false, fmt.Errorf("block with number %d not found", blockNumber)
 		}
-		return blockNumber, blockNumber == currentBlockNumber, nil
+		return blockNumber, blockNumber == confirmHeight, nil
 	}
 }
 
