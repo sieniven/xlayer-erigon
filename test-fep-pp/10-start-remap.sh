@@ -17,7 +17,7 @@ DOCK_CONFIG_FILE="./config/test.erigon.seq.config.yaml"
 #sed_inplace "s|zkevm.executor-strict: false| |g" "$DOCK_CONFIG_FILE"
 #sed_inplace "s|zkevm.witness-full: false| |g" "$DOCK_CONFIG_FILE"
 #sed_inplace "s|zkevm.executor-mock: true| |g" "$DOCK_CONFIG_FILE"
-echo "\nzkevm.l2-perform-map: true" >> "$DOCK_CONFIG_FILE"
+echo -e "\nzkevm.l2-perform-map: true" >> "$DOCK_CONFIG_FILE"
 
 docker compose -f docker-compose.yml up -d xlayer-seq
 sleep 30
