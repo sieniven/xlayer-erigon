@@ -49,7 +49,7 @@ fi
 
 cd ./xlayer-contracts
 echo "Cleaning and resting contract repository..."
-rm -rf *; git reset --hard; git checkout upstream/v8.1.0-rc.1-fork.13
+rm -rf *; git reset --hard; git pull;  git checkout upstream/v8.1.0-rc.1-fork.13
 
 echo "Creating .env file..."
 cat > .env << EOF
@@ -203,3 +203,5 @@ echo "Initialization script completed!"
 cd "$PWD_DIR"
 
 make run-old
+sleep 3
+./6-bridge.sh 
