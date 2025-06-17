@@ -26,7 +26,7 @@ func (api *RealtimeAPIImpl) GetBalance(ctx context.Context, address libcommon.Ad
 
 func (api *RealtimeAPIImpl) GetTransactionCount(ctx context.Context, address libcommon.Address) (*hexutil.Uint64, error) {
 	acc, err := api.cacheDB.State.ReadAccountData(address)
-	if err != nil || acc != nil {
+	if err != nil || acc == nil {
 		return api.ethApi.GetTransactionCount(ctx, address, nil)
 	}
 	nonce := hexutil.Uint64(acc.Nonce)
