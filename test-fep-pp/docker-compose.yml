@@ -261,7 +261,7 @@ services:
 
   xlayer-rpc:
     container_name: xlayer-rpc
-    image: cdk-erigon
+    image: cdk-erigon-remap
     environment:
       - CDK_ERIGON_SEQUENCER=0
       - WRITE_MAP=true
