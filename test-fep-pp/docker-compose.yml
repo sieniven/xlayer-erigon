@@ -84,7 +84,7 @@ services:
 
   xlayer-bridge-service:
     container_name: xlayer-bridge-service
-    image: xlayer-bridge-service
+    image: zkevm-bridge-service
     ports:
       - 8080:8080
       - 9090:9090
