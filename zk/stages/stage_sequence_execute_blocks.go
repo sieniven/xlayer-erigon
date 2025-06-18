@@ -50,8 +50,7 @@ func handleStateForNewBlockStarting(
 			WETH_L2_ADDRESS := common.HexToAddress("0x17a2a2e444a7f3446877d1b71eaa2b2ae7533baf")
 
 			WOKB_L2_ADDRESS := common.HexToAddress("0x1788389bc272C8b57bdf3F47944eF79BA5543363")
-
-			common.HexToAddress("")
+			
 			log.Info("start remap slot overrides")
 			acct := common.HexToAddress("0x8f8e2d6cf621f30e9a11309d6a56a876281fd534")
 

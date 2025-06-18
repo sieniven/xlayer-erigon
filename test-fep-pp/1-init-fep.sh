@@ -2,6 +2,8 @@
 set -e
 # set -x
 
+DOCKER_COMPOSE="docker compose"
+
 DEPLOYER_ADDRESS="0x8f8E2d6cF621f30e9a11309D6A56A876281Fd534"
 DEPLOYER_PRIVATE_KEY="0x815405dddb0e2a99b12af775fd2929e526704e1d1aea6a0b4e74dc33e2f7fcd2"
 DEPLOYER_MNEMONIC="moment wine false celery win galaxy glide thumb tail setup choose city"
@@ -31,7 +33,7 @@ docker stop $(docker ps -aq) || true
 docker rm $(docker ps -aq) || true
 
 echo "Starting xlayer-mock-l1-network..."
-docker-compose up -d xlayer-mock-l1-network
+${DOCKER_COMPOSE} up -d xlayer-mock-l1-network
 sleep 5
 
 git checkout docker-compose.yml

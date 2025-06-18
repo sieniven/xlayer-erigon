@@ -161,7 +161,7 @@ services:
 
   xlayer-cdk-node:
     container_name: xlayer-cdk-node
-    image: zjg555543/cdk:v0.5.4-rc1
+    image: cdk
     restart: on-failure
     volumes:
       - ./data/cdk-node:/tmp
