@@ -189,7 +189,9 @@ func transTokenWithFrom(t *testing.T, ctx context.Context, client *ethclient.Cli
 	chainID, err := client.ChainID(ctx)
 	require.NoError(t, err)
 	auth, err := operations.GetAuth(fromPrivateKey, chainID.Uint64())
+	require.NoError(t, err)
 	nonce, err := client.PendingNonceAt(ctx, auth.From)
+	require.NoError(t, err)
 	gasPrice, err := client.SuggestGasPrice(ctx)
 	require.NoError(t, err)
 
