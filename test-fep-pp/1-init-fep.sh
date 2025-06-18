@@ -206,4 +206,29 @@ cd "$PWD_DIR"
 
 make run-old
 sleep 3
+
+
+if grep -q "^BRIDGE_ADDRESS=" .env; then
+    sed_inplace "s|^BRIDGE_ADDRESS=.*|BRIDGE_ADDRESS=${BRIDGE_ADDRESS}|" .env
+else
+    echo -e "BRIDGE_ADDRESS=${BRIDGE_ADDRESS}" >> .env
+fi
+
+L2_WETH=$(cast call $BRIDGE_ADDRESS 'function WETHToken() public returns (address)' --rpc-url=$RPC_L2)
+if grep -q "^L2_WETH=" .env; then
+    sed_inplace "s|^L2_WETH=.*|L2_WETH=${L2_WETH}|" .env
+else
+    echo -e "L2_WETH=${L2_WETH}" >> .env
+fi
+
+L2_WOKB=$(forge create $(pwd)/WOKB.sol:WOKB --legacy --broadcast --rpc-url $RPC_L2 --private-key $ADDR_PRIVATE_KEY | grep 'Deployed to:' | awk '{print $3}')
+echo $L2_WOKB
+if grep -q "^L2_WOKB=" .env; then
+    sed_inplace "s|^L2_WOKB=.*|L2_WOKB=${L2_WOKB}|" .env
+else
+    echo -e "L2_WOKB=${L2_WOKB}" >> .env
+fi
+export ADDR=0x8f8e2d6cf621f30e9a11309d6a56a876281fd534
+cast send --value 1000000000 $L2_WOKB -f $ADDR --private-key $ADDR_PRIVATE_KEY --rpc-url=$RPC_L2 --legacy
+
 ./6-bridge.sh 

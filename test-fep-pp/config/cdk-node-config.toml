@@ -16,15 +16,15 @@ AggregatorPrivateKeyPath = "/etc/cdk/aggregator.keystore"
 AggregatorPrivateKeyPassword  = "testonly"
  # TODO X Layer?
 SenderProofToL1Addr = "0x70997970c51812dc3a010c7d01b50e0d17dc79c8"
-polygonBridgeAddr = "0xA88662CbefD093A305c86Db2be67Ac1A8E39908a"
+polygonBridgeAddr = "0x3a277Fa4E78cc1266F32E26c467F99A8eAEfF7c3"
 
 RPCURL = "http://xlayer-rpc8545"
 WitnessURL = "http://xlayer-rpc:8545"
 
 # This values can be override directly from genesis.json
-rollupCreationBlockNumber = "177"
-rollupManagerCreationBlockNumber = "182"
-genesisBlockNumber = "177"
+rollupCreationBlockNumber = "191"
+rollupManagerCreationBlockNumber = "197"
+genesisBlockNumber = "191"
 [L1Config]
 	chainId = "1337"
 	polygonZkEVMGlobalExitRootAddress = "0xB8cedD4B9eF683f0887C44a6E4312dC7A6e2fcdB"

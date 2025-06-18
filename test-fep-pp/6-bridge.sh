@@ -7,14 +7,13 @@ set -eu
 # =============================================================================
 # Configuration
 # =============================================================================
-BRIDGE_ADDRESS="0x3a277Fa4E78cc1266F32E26c467F99A8eAEfF7c3"
+source .env
 ACCOUNT="0x8f8E2d6cF621f30e9a11309D6A56A876281Fd534" 
 PRIVATE_KEY="0x815405dddb0e2a99b12af775fd2929e526704e1d1aea6a0b4e74dc33e2f7fcd2"
 BRIDGE_VALUE_BIG="1000000000000000000"  # 1 ETH in wei
 BRIDGE_VALUE_SMALL="100000000000000000"  # 0.1 ETH in wei
 
 L1_ETH_ADDRESS="0x0000000000000000000000000000000000000000"
-L2_WETH="0x17a2a2e444a7f3446877d1b71eaa2b2ae7533baf"
 
 # =============================================================================
 # RPC Endpoint Configuration

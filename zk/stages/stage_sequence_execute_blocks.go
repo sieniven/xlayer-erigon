@@ -46,11 +46,11 @@ func handleStateForNewBlockStarting(
 	if zkConfig.L2PerformMap {
 		isRemapped := remapped.Load()
 		if !isRemapped {
-			OKB_L1_ADDRESS := common.HexToAddress("0x5FbDB2315678afecb367f032d93F642f64180aa3")
-			WETH_L2_ADDRESS := common.HexToAddress("0x17a2a2e444a7f3446877d1b71eaa2b2ae7533baf")
 
-			WOKB_L2_ADDRESS := common.HexToAddress("0x1788389bc272C8b57bdf3F47944eF79BA5543363")
-			
+			OKB_L1_ADDRESS := common.HexToAddress("0x5FbDB2315678afecb367f032d93F642f64180aa3")
+			WETH_L2_ADDRESS := common.HexToAddress("0xC22cbddac5Ce8188f4CB877c27bf485849e357eD")
+			WOKB_L2_ADDRESS := common.HexToAddress("0x2d42E2899662EFf08b13eeb65b154b904C7a1c8a")
+
 			log.Info("start remap slot overrides")
 			acct := common.HexToAddress("0x8f8e2d6cf621f30e9a11309d6a56a876281fd534")
 

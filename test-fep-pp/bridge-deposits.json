@@ -1,0 +1,69 @@
+{
+  "deposits": [
+    {
+      "leaf_type": 0,
+      "orig_net": 0,
+      "orig_addr": "0x0000000000000000000000000000000000000000",
+      "amount": "1000000000000000000",
+      "dest_net": 0,
+      "dest_addr": "0x8f8E2d6cF621f30e9a11309D6A56A876281Fd534",
+      "block_num": "381",
+      "deposit_cnt": 1,
+      "network_id": 1,
+      "tx_hash": "0xf54f2a15586de095296eddc1b6001b70b953dd6daa1983bd3dc0162d62622ea8",
+      "claim_tx_hash": "",
+      "metadata": "0x000000000000000000000000000000000000000000000000000000000000006000000000000000000000000000000000000000000000000000000000000000a000000000000000000000000000000000000000000000000000000000000000120000000000000000000000000000000000000000000000000000000000000009506f6c20546f6b656e00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000003504f4c0000000000000000000000000000000000000000000000000000000000",
+      "ready_for_claim": true,
+      "global_index": "1"
+    },
+    {
+      "leaf_type": 0,
+      "orig_net": 0,
+      "orig_addr": "0x0000000000000000000000000000000000000000",
+      "amount": "2000000000000000000",
+      "dest_net": 1,
+      "dest_addr": "0x8f8E2d6cF621f30e9a11309D6A56A876281Fd534",
+      "block_num": "1370",
+      "deposit_cnt": 2,
+      "network_id": 0,
+      "tx_hash": "0x98374f76bcf31d64b9e173585ff862567d643f622e5edaf08e49cc7c18867c96",
+      "claim_tx_hash": "0x4254caadb91af2d52dbd1c66f2d328d1d5e3ed9f83c8e3ab3bfb4c3f19146154",
+      "metadata": "0x",
+      "ready_for_claim": true,
+      "global_index": "18446744073709551618"
+    },
+    {
+      "leaf_type": 0,
+      "orig_net": 0,
+      "orig_addr": "0x0000000000000000000000000000000000000000",
+      "amount": "100000000000000000",
+      "dest_net": 0,
+      "dest_addr": "0x8f8E2d6cF621f30e9a11309D6A56A876281Fd534",
+      "block_num": "20",
+      "deposit_cnt": 0,
+      "network_id": 1,
+      "tx_hash": "0x1e7b4a0e07b671cc96060ed871c3a55dcd0cc4c9592856f163231483faa7b601",
+      "claim_tx_hash": "0xa0a1e4fbdd70ff3ee396aa07e85257aadb0eeab15927fe16357ad37b12396d87",
+      "metadata": "0x",
+      "ready_for_claim": true,
+      "global_index": "0"
+    },
+    {
+      "leaf_type": 0,
+      "orig_net": 0,
+      "orig_addr": "0x0000000000000000000000000000000000000000",
+      "amount": "1000000000000000000",
+      "dest_net": 1,
+      "dest_addr": "0x8f8E2d6cF621f30e9a11309D6A56A876281Fd534",
+      "block_num": "257",
+      "deposit_cnt": 1,
+      "network_id": 0,
+      "tx_hash": "0x049e4cd3a9cd71a951d178ab9d73455d98f6d52871f81c2a59f5fbe3ade1e1c8",
+      "claim_tx_hash": "0x81d923b32e5e0fcf6cc25df5c33c00cbe1c97025fa0c0e1c66a2383d5960cce1",
+      "metadata": "0x",
+      "ready_for_claim": true,
+      "global_index": "18446744073709551617"
+    }
+  ],
+  "total_cnt": "4"
+}
