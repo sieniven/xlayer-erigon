@@ -74,22 +74,20 @@ func TestRealtimeRPC(t *testing.T) {
 
 	t.Run("RealtimeGetTransactionByHash", func(t *testing.T) {
 		includeExtraInfo := true
-		result := rpcTypes.Transaction{}
-		err := RealtimeGetTransactionByHash(common.HexToHash(txHash), &includeExtraInfo, result)
+		result, err := RealtimeGetTransactionByHash(common.HexToHash(txHash), &includeExtraInfo)
 		require.NoError(t, err)
 		log.Infof("RealtimeGetTransactionByHash result type: %T", result)
 	})
 
 	t.Run("RealtimeGetRawTransactionByHash", func(t *testing.T) {
 		result := rpcTypes.Transaction{}
-		err := RealtimeGetRawTransactionByHash(common.HexToHash(txHash), result)
+		result, err := RealtimeGetRawTransactionByHash(common.HexToHash(txHash))
 		require.NoError(t, err)
 		log.Infof("RealtimeGetRawTransactionByHash result type: %T", result)
 	})
 
 	t.Run("RealtimeGetTransactionReceipt", func(t *testing.T) {
-		var receipt types.Receipt
-		err := RealtimeGetTransactionReceipt(common.HexToHash(txHash), receipt)
+		receipt, err := RealtimeGetTransactionReceipt(common.HexToHash(txHash))
 		require.NoError(t, err)
 		log.Infof("RealtimeGetTransactionReceipt result type: %T", receipt)
 	})
@@ -193,8 +191,7 @@ func TestRealtimeStateIsConsistent(t *testing.T) {
 		require.NoError(t, err)
 		err = WaitTxToBeMined(ctx, client, signedTx, DefaultTimeoutTxToBeMined)
 		require.NoError(t, err)
-		var receipt types.Receipt
-		err = RealtimeGetTransactionReceipt(signedTx.Hash(), receipt)
+		receipt, err := RealtimeGetTransactionReceipt(signedTx.Hash())
 		require.NoError(t, err)
 		log.Infof("receipt: %+v", receipt)
 	}

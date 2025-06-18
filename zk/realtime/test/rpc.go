@@ -8,6 +8,8 @@ import (
 
 	ethereum "github.com/ledgerwatch/erigon"
 	"github.com/ledgerwatch/erigon-lib/common"
+	"github.com/ledgerwatch/erigon/core/types"
+	rpcTypes "github.com/ledgerwatch/erigon/zk/rpcdaemon"
 	zktypes "github.com/ledgerwatch/erigon/zk/types"
 	"github.com/ledgerwatch/erigon/zkevm/jsonrpc/client"
 )
@@ -39,60 +41,63 @@ func RealtimeGetBlockTransactionCountByNumber(blockNumber uint64) (uint64, error
 }
 
 // RealtimeGetTransactionByHash returns the information about a transaction requested by transaction hash in real-time
-func RealtimeGetTransactionByHash(txHash common.Hash, includeExtraInfo *bool, result any) error {
+func RealtimeGetTransactionByHash(txHash common.Hash, includeExtraInfo *bool) (rpcTypes.Transaction, error) {
 	response, err := client.JSONRPCCall(DefaultL2NetworkURL, "realtime_getTransactionByHash", txHash, includeExtraInfo)
 	if err != nil {
-		return err
+		return rpcTypes.Transaction{}, err
 	}
 	if response.Error != nil {
-		return fmt.Errorf("%d - %s", response.Error.Code, response.Error.Message)
+		return rpcTypes.Transaction{}, fmt.Errorf("%d - %s", response.Error.Code, response.Error.Message)
 	}
 
+	result := rpcTypes.Transaction{}
 	err = json.Unmarshal(response.Result, &result)
 	if err != nil {
-		return err
+		return rpcTypes.Transaction{}, err
 	}
 
-	return nil
+	return result, nil
 }
 
 // RealtimeGetTransactionByHash returns raw information about a transaction requested by transaction hash in real-time
-func RealtimeGetRawTransactionByHash(txHash common.Hash, result any) error {
+func RealtimeGetRawTransactionByHash(txHash common.Hash) (rpcTypes.Transaction, error) {
 	response, err := client.JSONRPCCall(DefaultL2NetworkURL, "realtime_getRawTransactionByHash", txHash)
 	if err != nil {
-		return err
+		return rpcTypes.Transaction{}, err
 	}
 	if response.Error != nil {
-		return fmt.Errorf("%d - %s", response.Error.Code, response.Error.Message)
+		return rpcTypes.Transaction{}, fmt.Errorf("%d - %s", response.Error.Code, response.Error.Message)
 	}
 
+	result := rpcTypes.Transaction{}
 	err = json.Unmarshal(response.Result, &result)
 	if err != nil {
-		return err
+		return rpcTypes.Transaction{}, err
 	}
 
-	return nil
+	return result, nil
 }
 
 // RealtimeGetTransactionReceipt returns the receipt of a transaction by transaction hash in real-time
-func RealtimeGetTransactionReceipt(txHash common.Hash, result any) error {
+func RealtimeGetTransactionReceipt(txHash common.Hash) (*types.Receipt, error) {
 	response, err := client.JSONRPCCall(DefaultL2NetworkURL, "realtime_getTransactionReceipt", txHash)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	if response.Error != nil {
-		return fmt.Errorf("%d - %s", response.Error.Code, response.Error.Message)
+		return nil, fmt.Errorf("%d - %s", response.Error.Code, response.Error.Message)
 	}
 
-	err = json.Unmarshal(response.Result, &result)
+	var result *types.Receipt
+	err = json.Unmarshal(response.Result, result)
 	if result == nil {
-		return fmt.Errorf("result is nil")
+		return nil, fmt.Errorf("result is nil")
 	}
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	return nil
+	return result, nil
 }
 
 // RealtimeGetInternalTransactions returns the internal transactions for a given transaction hash in real-time
