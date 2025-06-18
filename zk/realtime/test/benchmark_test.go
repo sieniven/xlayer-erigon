@@ -170,7 +170,7 @@ func TestRealtimeBenchmarkERC20Transfer(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, balance.String(), realtimeBalance.String())
 
-		signedTx := erc20TransferTx(t, ctx, privateKey, client, transferAmount, fromAddress, testAddress, erc20Address, startNonce+uint64(i))
+		signedTx := erc20TransferTx(t, ctx, privateKey, client, transferAmount, testAddress, erc20Address, startNonce+uint64(i))
 
 		// Run stateless benchmark
 		g, ctx := errgroup.WithContext(ctx)

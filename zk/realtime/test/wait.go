@@ -2,6 +2,7 @@ package test
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"math/big"
 	"time"
@@ -10,6 +11,7 @@ import (
 	"github.com/ledgerwatch/erigon-lib/common"
 	"github.com/ledgerwatch/erigon/accounts/abi/bind"
 	"github.com/ledgerwatch/erigon/core/types"
+	"github.com/ledgerwatch/erigon/zkevm/log"
 )
 
 type ethClienter interface {
@@ -179,4 +181,27 @@ func WaitTokenBalanceEth(ctx context.Context, client ethClienter, tx types.Trans
 			time.Sleep(5 * time.Millisecond)
 		}
 	}
+}
+
+// WaitTxToBeMined waits until a tx has been mined or the given timeout expires.
+func WaitTxToBeMined(parentCtx context.Context, client ethClienter, tx types.Transaction, timeout time.Duration) error {
+	ctx, cancel := context.WithTimeout(parentCtx, timeout)
+	defer cancel()
+	receipt, err := bind.WaitMined(ctx, client, tx)
+	if errors.Is(err, context.DeadlineExceeded) {
+		return err
+	} else if err != nil {
+		log.Errorf("error waiting tx %s to be mined: %v", tx.Hash(), err)
+		return err
+	}
+	if receipt.Status == types.ReceiptStatusFailed {
+		// Get revert reason
+		reason, reasonErr := RevertReason(ctx, client, tx, receipt.BlockNumber)
+		if reasonErr != nil {
+			reason = reasonErr.Error()
+		}
+		return fmt.Errorf("transaction has failed, reason: %s, receipt: %+v. tx: %+v, gas: %v", reason, receipt, tx, tx.GetGas())
+	}
+	log.Debugf("Transaction successfully mined: %v", tx.Hash())
+	return nil
 }

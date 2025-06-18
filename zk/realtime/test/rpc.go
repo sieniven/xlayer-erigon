@@ -8,6 +8,7 @@ import (
 
 	ethereum "github.com/ledgerwatch/erigon"
 	"github.com/ledgerwatch/erigon-lib/common"
+	zktypes "github.com/ledgerwatch/erigon/zk/types"
 	"github.com/ledgerwatch/erigon/zkevm/jsonrpc/client"
 )
 
@@ -38,7 +39,7 @@ func RealtimeGetBlockTransactionCountByNumber(blockNumber uint64) (uint64, error
 }
 
 // RealtimeGetTransactionByHash returns the information about a transaction requested by transaction hash in real-time
-func RealtimeGetTransactionByHash(txHash common.Hash, includeExtraInfo *bool) (interface{}, error) {
+func RealtimeGetTransactionByHash(txHash common.Hash, includeExtraInfo *bool, result interface{}) (interface{}, error) {
 	response, err := client.JSONRPCCall(DefaultL2NetworkURL, "realtime_getTransactionByHash", txHash, includeExtraInfo)
 	if err != nil {
 		return nil, err
@@ -47,7 +48,6 @@ func RealtimeGetTransactionByHash(txHash common.Hash, includeExtraInfo *bool) (i
 		return nil, fmt.Errorf("%d - %s", response.Error.Code, response.Error.Message)
 	}
 
-	var result interface{}
 	err = json.Unmarshal(response.Result, &result)
 	if err != nil {
 		return nil, err
@@ -96,21 +96,22 @@ func RealtimeGetTransactionReceipt(txHash common.Hash, result interface{}) error
 }
 
 // RealtimeGetInternalTransactions returns the internal transactions for a given transaction hash in real-time
-func RealtimeGetInternalTransactions(txHash common.Hash, result interface{}) error {
+func RealtimeGetInternalTransactions(txHash common.Hash) ([]zktypes.InnerTx, error) {
 	response, err := client.JSONRPCCall(DefaultL2NetworkURL, "realtime_getInternalTransactions", txHash)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	if response.Error != nil {
-		return fmt.Errorf("%d - %s", response.Error.Code, response.Error.Message)
+		return nil, fmt.Errorf("%d - %s", response.Error.Code, response.Error.Message)
 	}
 
+	result := []zktypes.InnerTx{}
 	err = json.Unmarshal(response.Result, &result)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	return nil
+	return result, nil
 }
 
 // RealtimeGetBalance returns the balance of an account in real-time
@@ -254,6 +255,19 @@ func RealtimeGetTokenBalance(
 	return balance, nil
 }
 
+// RealtimeDumpStateCache dumps the state cache
+func RealtimeDumpStateCache() error {
+	response, err := client.JSONRPCCall(DefaultL2NetworkURL, "realtime_dumpStateCache")
+	if err != nil {
+		return err
+	}
+	if response.Error != nil {
+		return fmt.Errorf("%d - %s", response.Error.Code, response.Error.Message)
+	}
+
+	return nil
+}
+
 // EthGetBalance returns the balance of an account
 func EthGetBalance(address common.Address, block string) (*big.Int, error) {
 	response, err := client.JSONRPCCall(DefaultL2NetworkURL, "eth_getBalance", address, block)
@@ -281,6 +295,19 @@ func EthGetBalance(address common.Address, block string) (*big.Int, error) {
 	}
 
 	return balance, nil
+}
+
+// EthGetTransactionCount returns the number of transactions sent from an address
+func EthGetTransactionCount(address common.Address, block string) (uint64, error) {
+	response, err := client.JSONRPCCall(DefaultL2NetworkURL, "eth_getTransactionCount", address, block)
+	if err != nil {
+		return 0, err
+	}
+	if response.Error != nil {
+		return 0, fmt.Errorf("%d - %s", response.Error.Code, response.Error.Message)
+	}
+
+	return transHexToUint64(response.Result)
 }
 
 func EthGetTokenBalance(

@@ -22,6 +22,7 @@ import (
 	"github.com/ledgerwatch/erigon/crypto"
 	"github.com/ledgerwatch/erigon/ethclient"
 	"github.com/ledgerwatch/erigon/test/operations"
+	"github.com/ledgerwatch/erigon/zkevm/log"
 	"github.com/stretchr/testify/require"
 )
 
@@ -148,7 +149,6 @@ func erc20TransferTx(
 	privateKey *ecdsa.PrivateKey,
 	client *ethclient.Client,
 	amount *big.Int,
-	fromAddress common.Address,
 	toAddress common.Address,
 	erc20Address common.Address,
 	nonce uint64,
@@ -177,6 +177,54 @@ func erc20TransferTx(
 	require.NoError(t, err)
 
 	return signedTx
+}
+
+func transToken(t *testing.T, ctx context.Context, client *ethclient.Client, amount *uint256.Int, toAddress string) string {
+	return transTokenWithFrom(t, ctx, client, operations.DefaultL2AdminPrivateKey, amount, toAddress)
+}
+
+func transTokenWithFrom(t *testing.T, ctx context.Context, client *ethclient.Client, fromPrivateKey string, amount *uint256.Int, toAddress string) string {
+	chainID, err := client.ChainID(ctx)
+	require.NoError(t, err)
+	auth, err := operations.GetAuth(fromPrivateKey, chainID.Uint64())
+	nonce, err := client.PendingNonceAt(ctx, auth.From)
+	gasPrice, err := client.SuggestGasPrice(ctx)
+	require.NoError(t, err)
+
+	to := common.HexToAddress(toAddress)
+	gas, err := client.EstimateGas(ctx, ethereum.CallMsg{
+		From:  auth.From,
+		To:    &to,
+		Value: amount,
+	})
+	require.NoError(t, err)
+	log.Infof("gas: %d", gas)
+	log.Infof("gasPrice: %d", gasPrice)
+
+	var tx types.Transaction = &types.LegacyTx{
+		CommonTx: types.CommonTx{
+			Nonce: nonce,
+			To:    &to,
+			Gas:   gas,
+			Value: amount,
+		},
+		GasPrice: uint256.MustFromBig(gasPrice),
+	}
+
+	privateKey, err := crypto.HexToECDSA(strings.TrimPrefix(fromPrivateKey, "0x"))
+	require.NoError(t, err)
+
+	signer := types.MakeSigner(operations.GetTestChainConfig(operations.DefaultL2ChainID), 1, 0)
+	signedTx, err := types.SignTx(tx, *signer, privateKey)
+	require.NoError(t, err)
+
+	err = client.SendTransaction(ctx, signedTx)
+	require.NoError(t, err)
+
+	err = operations.WaitTxToBeMined(ctx, client, signedTx, operations.DefaultTimeoutTxToBeMined)
+	require.NoError(t, err)
+
+	return signedTx.Hash().String()
 }
 
 // RevertReason returns the revert reason for a tx that has a receipt with failed status
