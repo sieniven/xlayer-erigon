@@ -20,7 +20,12 @@ DOCK_CONFIG_FILE="./config/test.erigon.seq.config.yaml"
 #sed_inplace "s|zkevm.executor-strict: false| |g" "$DOCK_CONFIG_FILE"
 #sed_inplace "s|zkevm.witness-full: false| |g" "$DOCK_CONFIG_FILE"
 #sed_inplace "s|zkevm.executor-mock: true| |g" "$DOCK_CONFIG_FILE"
-echo -e "\nzkevm.l2-perform-map: true" >> "$DOCK_CONFIG_FILE"
+if grep -q "^zkevm.l2-perform-map" "$DOCK_CONFIG_FILE"; then
+    sed_inplace "s|^zkevm.l2-perform-map.*|zkevm.l2-perform-map: true|" "$DOCK_CONFIG_FILE"
+else
+    echo -e "zkevm.l2-perform-map: true" >> "$DOCK_CONFIG_FILE"
+fi
+
 
 docker compose -f docker-compose.yml up -d xlayer-seq
 sleep 30
