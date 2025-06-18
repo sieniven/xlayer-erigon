@@ -24,7 +24,6 @@ import (
 	"github.com/ledgerwatch/erigon/crypto"
 	"github.com/ledgerwatch/erigon/ethclient"
 	"github.com/ledgerwatch/erigon/test/operations"
-	rpcTypes "github.com/ledgerwatch/erigon/zk/rpcdaemon"
 	"github.com/ledgerwatch/erigon/zkevm/encoding"
 	"github.com/ledgerwatch/erigon/zkevm/log"
 	logger "github.com/ledgerwatch/log/v3"
@@ -80,7 +79,6 @@ func TestRealtimeRPC(t *testing.T) {
 	})
 
 	t.Run("RealtimeGetRawTransactionByHash", func(t *testing.T) {
-		result := rpcTypes.Transaction{}
 		result, err := RealtimeGetRawTransactionByHash(common.HexToHash(txHash))
 		require.NoError(t, err)
 		log.Infof("RealtimeGetRawTransactionByHash result type: %T", result)
@@ -89,6 +87,7 @@ func TestRealtimeRPC(t *testing.T) {
 	t.Run("RealtimeGetTransactionReceipt", func(t *testing.T) {
 		receipt, err := RealtimeGetTransactionReceipt(common.HexToHash(txHash))
 		require.NoError(t, err)
+		require.NotNil(t, receipt)
 		log.Infof("RealtimeGetTransactionReceipt result type: %T", receipt)
 	})
 
@@ -193,6 +192,7 @@ func TestRealtimeStateIsConsistent(t *testing.T) {
 		require.NoError(t, err)
 		receipt, err := RealtimeGetTransactionReceipt(signedTx.Hash())
 		require.NoError(t, err)
+		require.NotNil(t, receipt)
 		log.Infof("receipt: %+v", receipt)
 	}
 

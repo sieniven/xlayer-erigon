@@ -60,19 +60,19 @@ func RealtimeGetTransactionByHash(txHash common.Hash, includeExtraInfo *bool) (r
 }
 
 // RealtimeGetTransactionByHash returns raw information about a transaction requested by transaction hash in real-time
-func RealtimeGetRawTransactionByHash(txHash common.Hash) (rpcTypes.Transaction, error) {
+func RealtimeGetRawTransactionByHash(txHash common.Hash) ([]byte, error) {
 	response, err := client.JSONRPCCall(DefaultL2NetworkURL, "realtime_getRawTransactionByHash", txHash)
 	if err != nil {
-		return rpcTypes.Transaction{}, err
+		return nil, err
 	}
 	if response.Error != nil {
-		return rpcTypes.Transaction{}, fmt.Errorf("%d - %s", response.Error.Code, response.Error.Message)
+		return nil, fmt.Errorf("%d - %s", response.Error.Code, response.Error.Message)
 	}
 
-	result := rpcTypes.Transaction{}
+	var result []byte
 	err = json.Unmarshal(response.Result, &result)
 	if err != nil {
-		return rpcTypes.Transaction{}, err
+		return nil, err
 	}
 
 	return result, nil
@@ -88,16 +88,13 @@ func RealtimeGetTransactionReceipt(txHash common.Hash) (*types.Receipt, error) {
 		return nil, fmt.Errorf("%d - %s", response.Error.Code, response.Error.Message)
 	}
 
-	var result *types.Receipt
-	err = json.Unmarshal(response.Result, result)
-	if result == nil {
-		return nil, fmt.Errorf("result is nil")
-	}
+	var result types.Receipt
+	err = json.Unmarshal(response.Result, &result)
 	if err != nil {
 		return nil, err
 	}
 
-	return result, nil
+	return &result, nil
 }
 
 // RealtimeGetInternalTransactions returns the internal transactions for a given transaction hash in real-time

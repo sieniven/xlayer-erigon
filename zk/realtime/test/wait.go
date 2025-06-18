@@ -45,7 +45,7 @@ func WaitCallback(
 func WaitMinedRealtime(ctx context.Context, client ethClienter, tx types.Transaction, _, _ common.Address, _ *big.Int) error {
 	for {
 		receipt, err := RealtimeGetTransactionReceipt(tx.Hash())
-		if err == nil {
+		if err == nil && receipt != nil {
 			if receipt.Status == types.ReceiptStatusFailed {
 				// Get revert reason
 				reason, reasonErr := RevertReason(ctx, client, tx, receipt.BlockNumber)
@@ -68,8 +68,8 @@ func WaitMinedRealtime(ctx context.Context, client ethClienter, tx types.Transac
 
 func WaitMinedEth(ctx context.Context, client ethClienter, tx types.Transaction, _, _ common.Address, _ *big.Int) error {
 	for {
-		receipt, _ := client.TransactionReceipt(ctx, tx.Hash())
-		if receipt != nil {
+		receipt, err := client.TransactionReceipt(ctx, tx.Hash())
+		if err == nil && receipt != nil {
 			if receipt.Status == types.ReceiptStatusFailed {
 				// Get revert reason
 				reason, reasonErr := RevertReason(ctx, client, tx, receipt.BlockNumber)
