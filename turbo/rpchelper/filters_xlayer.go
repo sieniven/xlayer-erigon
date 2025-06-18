@@ -22,9 +22,9 @@ type (
 
 // ################ Realtime Transacions ################
 
-func (ff *Filters) SubscribeRealtimeTransactions(size int) (<-chan *types.Transaction, RealtimeTransactionSubID) {
+func (ff *Filters) SubscribeRealtimeTransactions(size int) (<-chan *proto_realtime.RealtimeTransactionReply, RealtimeTransactionSubID) {
 	id := RealtimeTransactionSubID(generateSubscriptionID())
-	sub := newChanSub[*types.Transaction](size)
+	sub := newChanSub[*proto_realtime.RealtimeTransactionReply](size)
 	ff.realtimeTransactionSubs.Put(id, sub)
 	return sub.ch, id
 }
@@ -68,16 +68,11 @@ func (ff *Filters) subscribeToRealtimeTransactionMsgs(ctx context.Context, realt
 }
 
 func (ff *Filters) HandleRealtmeTransaction(reply *proto_realtime.RealtimeTransactionReply) {
-	tx, err := types.DecodeTransaction(reply.RlpTransaction)
-	if err != nil {
-		ff.logger.Warn("OnRealtimeTransaction rpc filters, unprocessable tx payload", "err", err)
-	}
-
 	ff.mu.Lock()
 	defer ff.mu.Unlock()
 
-	ff.realtimeTransactionSubs.Range(func(k RealtimeTransactionSubID, v Sub[*types.Transaction]) error {
-		v.Send(&tx)
+	ff.realtimeTransactionSubs.Range(func(k RealtimeTransactionSubID, v Sub[*proto_realtime.RealtimeTransactionReply]) error {
+		v.Send(reply)
 		return nil
 	})
 }

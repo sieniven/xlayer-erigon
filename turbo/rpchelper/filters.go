@@ -16,6 +16,7 @@ import (
 	"github.com/ledgerwatch/erigon-lib/gointerfaces"
 	"github.com/ledgerwatch/erigon-lib/gointerfaces/grpcutil"
 	"github.com/ledgerwatch/erigon-lib/gointerfaces/realtime"
+	proto_realtime "github.com/ledgerwatch/erigon-lib/gointerfaces/realtime"
 	"github.com/ledgerwatch/erigon-lib/gointerfaces/remote"
 	"github.com/ledgerwatch/erigon-lib/gointerfaces/txpool"
 	txpool2 "github.com/ledgerwatch/erigon/zk/txpool"
@@ -47,7 +48,7 @@ type Filters struct {
 	logger             log.Logger
 
 	// For X Layer
-	realtimeTransactionSubs *SyncMap[RealtimeTransactionSubID, Sub[*types.Transaction]]
+	realtimeTransactionSubs *SyncMap[RealtimeTransactionSubID, Sub[*proto_realtime.RealtimeTransactionReply]]
 	realtimeLogsSubs        *LogsFilterAggregator
 }
 
@@ -65,7 +66,7 @@ func New(ctx context.Context, ethBackend ApiBackend, txPool txpool.TxpoolClient,
 		pendingHeadsStores:      NewSyncMap[HeadsSubID, []*types.Header](),
 		pendingTxsStores:        NewSyncMap[PendingTxsSubID, [][]types.Transaction](),
 		logger:                  logger,
-		realtimeTransactionSubs: NewSyncMap[RealtimeTransactionSubID, Sub[*types.Transaction]](),
+		realtimeTransactionSubs: NewSyncMap[RealtimeTransactionSubID, Sub[*proto_realtime.RealtimeTransactionReply]](),
 		realtimeLogsSubs:        NewLogsFilterAggregator(),
 	}
 

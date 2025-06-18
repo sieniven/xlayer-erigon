@@ -27,7 +27,9 @@ const (
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type RealtimeClient interface {
+	// OnRealtimeTransaction streams real-time transaction data, including the RLP-encoded transaction, receipt, and internal transactions.
 	OnRealtimeTransaction(ctx context.Context, in *RealtimeTransactionRequest, opts ...grpc.CallOption) (Realtime_OnRealtimeTransactionClient, error)
+	// OnRealtimeLogs streams real-time log data, providing RLP-encoded logs emitted by smart contracts.
 	OnRealtimeLogs(ctx context.Context, in *RealtimeLogsRequest, opts ...grpc.CallOption) (Realtime_OnRealtimeLogsClient, error)
 }
 
@@ -107,7 +109,9 @@ func (x *realtimeOnRealtimeLogsClient) Recv() (*RealtimeLogsReply, error) {
 // All implementations must embed UnimplementedRealtimeServer
 // for forward compatibility
 type RealtimeServer interface {
+	// OnRealtimeTransaction streams real-time transaction data, including the RLP-encoded transaction, receipt, and internal transactions.
 	OnRealtimeTransaction(*RealtimeTransactionRequest, Realtime_OnRealtimeTransactionServer) error
+	// OnRealtimeLogs streams real-time log data, providing RLP-encoded logs emitted by smart contracts.
 	OnRealtimeLogs(*RealtimeLogsRequest, Realtime_OnRealtimeLogsServer) error
 	mustEmbedUnimplementedRealtimeServer()
 }

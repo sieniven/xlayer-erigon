@@ -3,10 +3,10 @@ package privateapi
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"sync"
 
 	proto_realtime "github.com/ledgerwatch/erigon-lib/gointerfaces/realtime"
-	"github.com/ledgerwatch/erigon/rlp"
 	kafkaTypes "github.com/ledgerwatch/erigon/zk/realtime/kafka/types"
 	"github.com/ledgerwatch/log/v3"
 )
@@ -47,25 +47,15 @@ func (s *RealtimeServer) OnRealtimeLogs(req *proto_realtime.RealtimeLogsRequest,
 
 func (s *RealtimeServer) BroadcastRealtimeTransactionMessage(msg *kafkaTypes.TransactionMessage) error {
 	s.logger.Debug("BroadcastRealtimeTransactionMessage", "tx hash", msg.Hash, "block number", msg.BlockNumber, "tx index", msg.Receipt.TransactionIndex)
-	tx, _, err := msg.GetTransaction()
+
+	txReply, err := toRealtimeTransactionReply(msg, s.logger)
 	if err != nil {
 		return err
 	}
-
-	var txBuf, logsBuf bytes.Buffer
-	if err := tx.EncodeRLP(&txBuf); err != nil {
-		s.logger.Warn("failed to encode transactions", "err", err)
-		return err
-	}
-	if err := rlp.Encode(&logsBuf, msg.Receipt.Logs); err != nil {
-		s.logger.Warn("failed to encode logs", "err", err)
-		return err
-	}
-
-	txReply := &proto_realtime.RealtimeTransactionReply{RlpTransaction: txBuf.Bytes()}
 	s.realtimeTxStreams.Broadcast(txReply, s.logger)
 
-	logsReply := &proto_realtime.RealtimeLogsReply{RlpLogs: logsBuf.Bytes()}
+	var buf bytes.Buffer
+	logsReply := &proto_realtime.RealtimeLogsReply{RlpLogs: buf.Bytes()}
 	s.realtimeLogsStreams.Broadcast(logsReply, s.logger)
 
 	return nil
@@ -163,4 +153,94 @@ func (s *RealtimeLogsStreams) remove(id uint) {
 		return
 	}
 	delete(s.chans, id)
+}
+
+// ################ Helper Method ################
+
+func toRealtimeTransactionReply(txMsg *kafkaTypes.TransactionMessage, logger log.Logger) (*proto_realtime.RealtimeTransactionReply, error) {
+	if txMsg == nil {
+		return nil, fmt.Errorf("transaction message is nil")
+	}
+
+	tx, _, err := txMsg.GetTransaction()
+	if err != nil {
+		logger.Warn("failed to get transaction from message", "err", err)
+		return nil, err
+	}
+
+	var buf bytes.Buffer
+	if err := tx.EncodeRLP(&buf); err != nil {
+		logger.Warn("failed to encode transactions", "err", err)
+		return nil, err
+	}
+
+	protoReply := &proto_realtime.RealtimeTransactionReply{
+		RlpTransaction: buf.Bytes(), // No RLP transaction data in TransactionMessage
+		Receipt:        &proto_realtime.Receipt{},
+		InnerTxs:       make([]*proto_realtime.InnerTx, len(txMsg.InnerTxs)),
+	}
+
+	// Convert Receipt
+	if txMsg.Receipt != nil {
+		protoReply.Receipt = &proto_realtime.Receipt{
+			Type:              uint32(txMsg.Receipt.Type),
+			Root:              txMsg.Receipt.PostState,
+			Status:            txMsg.Receipt.Status,
+			CumulativeGasUsed: txMsg.Receipt.CumulativeGasUsed,
+			LogsBloom:         txMsg.Receipt.Bloom[:],
+			Logs:              make([]*proto_realtime.Log, len(txMsg.Receipt.Logs)),
+			TransactionHash:   txMsg.Receipt.TxHash[:],
+			ContractAddress:   txMsg.Receipt.ContractAddress[:],
+			GasUsed:           txMsg.Receipt.GasUsed,
+			BlockHash:         txMsg.Receipt.BlockHash[:],
+			BlockNumber:       txMsg.Receipt.BlockNumber.String(),
+			TransactionIndex:  uint64(txMsg.Receipt.TransactionIndex),
+		}
+
+		// Convert Logs
+		for i, log := range txMsg.Receipt.Logs {
+			protoTopics := make([][]byte, len(log.Topics))
+			for j, topic := range log.Topics {
+				protoTopics[j] = topic[:]
+			}
+			protoReply.Receipt.Logs[i] = &proto_realtime.Log{
+				Address:          log.Address[:],
+				Topics:           protoTopics,
+				Data:             log.Data,
+				BlockNumber:      log.BlockNumber,
+				TransactionHash:  log.TxHash[:],
+				TransactionIndex: uint64(log.TxIndex),
+				BlockHash:        log.BlockHash[:],
+				LogIndex:         uint64(log.Index),
+				Removed:          log.Removed,
+			}
+		}
+	} else {
+		protoReply.Receipt = nil
+	}
+
+	// Convert InnerTxs
+	for i, innerTx := range txMsg.InnerTxs {
+		protoReply.InnerTxs[i] = &proto_realtime.InnerTx{
+			Dept:          innerTx.Dept.String(),
+			InternalIndex: innerTx.InternalIndex.String(),
+			CallType:      innerTx.CallType,
+			Name:          innerTx.Name,
+			TraceAddress:  innerTx.TraceAddress,
+			CodeAddress:   innerTx.CodeAddress,
+			From:          innerTx.From,
+			To:            innerTx.To,
+			Input:         innerTx.Input,
+			Output:        innerTx.Output,
+			IsError:       innerTx.IsError,
+			Gas:           innerTx.Gas,
+			GasUsed:       innerTx.GasUsed,
+			Value:         innerTx.Value,
+			ValueWei:      innerTx.ValueWei,
+			CallValueWei:  innerTx.CallValueWei,
+			Error:         innerTx.Error,
+		}
+	}
+
+	return protoReply, nil
 }
