@@ -222,7 +222,7 @@ else
 fi
 
 L2_WOKB=$(forge create $(pwd)/WOKB.sol:WOKB --legacy --broadcast --rpc-url $RPC_L2 --private-key $ADDR_PRIVATE_KEY --constructor-args $BRIDGE_ADDRESS | grep 'Deployed to:' | awk '{print $3}')
-echo $L2_WOKB
+echo "L2_WOKB: $L2_WOKB"
 if grep -q "^L2_WOKB=" .env; then
     sed_inplace "s|^L2_WOKB=.*|L2_WOKB=${L2_WOKB}|" .env
 else

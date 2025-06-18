@@ -50,11 +50,7 @@ contract WOKB {
         _;
     }
 
-     constructor(address _bridge) {
-     bridgeAddress=_bridge;
-     }
-
-   function receive() external payable {
+   receive() external payable {
         deposit();
     }
 
