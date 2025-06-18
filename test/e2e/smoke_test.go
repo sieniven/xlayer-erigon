@@ -649,7 +649,6 @@ func TestSpecificProjectFreeGas(t *testing.T) {
 	ctx := context.Background()
 
 	client, err := ethclient.Dial(operations.DefaultL2NetworkURL)
-	require.NoError(t, err)
 	transToken(t, ctx, client,
 		new(uint256.Int).Mul(uint256.NewInt(1000), uint256.NewInt(1e18)),
 		tmpFromAddress.String())
