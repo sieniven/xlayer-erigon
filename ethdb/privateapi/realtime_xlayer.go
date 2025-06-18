@@ -7,6 +7,7 @@ import (
 	"sync"
 
 	proto_realtime "github.com/ledgerwatch/erigon-lib/gointerfaces/realtime"
+	"github.com/ledgerwatch/erigon/rlp"
 	kafkaTypes "github.com/ledgerwatch/erigon/zk/realtime/kafka/types"
 	"github.com/ledgerwatch/log/v3"
 )
@@ -55,6 +56,11 @@ func (s *RealtimeServer) BroadcastRealtimeTransactionMessage(msg *kafkaTypes.Tra
 	s.realtimeTxStreams.Broadcast(txReply, s.logger)
 
 	var buf bytes.Buffer
+	if err := rlp.Encode(&buf, msg.Receipt.Logs); err != nil {
+		s.logger.Warn("failed to encode logs", "err", err)
+		return err
+	}
+
 	logsReply := &proto_realtime.RealtimeLogsReply{RlpLogs: buf.Bytes()}
 	s.realtimeLogsStreams.Broadcast(logsReply, s.logger)
 
