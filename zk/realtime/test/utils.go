@@ -27,7 +27,9 @@ import (
 )
 
 var (
-	erc20ABI, _ = abi.JSON(strings.NewReader(erc20ABIJson))
+	erc20ABI, _   = abi.JSON(strings.NewReader(erc20ABIJson))
+	factoryABI, _ = abi.JSON(strings.NewReader(factoryABIJson))
+	destroyABI, _ = abi.JSON(strings.NewReader(destroyABIJson))
 )
 
 // setupRealtimeTestEnvironment creates a test environment with necessary data for tests
