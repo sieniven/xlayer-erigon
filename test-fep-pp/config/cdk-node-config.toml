@@ -16,7 +16,7 @@ AggregatorPrivateKeyPath = "/etc/cdk/aggregator.keystore"
 AggregatorPrivateKeyPassword  = "testonly"
  # TODO X Layer?
 SenderProofToL1Addr = "0x70997970c51812dc3a010c7d01b50e0d17dc79c8"
-polygonBridgeAddr = "0x3a277Fa4E78cc1266F32E26c467F99A8eAEfF7c3"
+polygonBridgeAddr = "0xA88662CbefD093A305c86Db2be67Ac1A8E39908a"
 
 RPCURL = "http://xlayer-rpc8545"
 WitnessURL = "http://xlayer-rpc:8545"
