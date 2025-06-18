@@ -1,0 +1,24 @@
+syntax = "proto3";
+
+package realtime;
+
+option go_package = "./realtime";
+
+service Realtime {
+  rpc OnRealtimeTransaction (RealtimeTransactionRequest) returns (stream RealtimeTransactionReply);
+
+  rpc OnRealtimeLogs (RealtimeLogsRequest) returns (stream RealtimeLogsReply);
+}
+
+message RealtimeTransactionRequest{}
+
+message RealtimeTransactionReply {
+  bytes rlp_transaction = 1;
+  bytes rlp_receipt = 2;
+}
+
+message RealtimeLogsRequest{}
+
+message RealtimeLogsReply {
+  bytes rlp_logs = 1;
+}

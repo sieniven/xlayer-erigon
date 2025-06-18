@@ -48,6 +48,8 @@ http.timeouts.idle: "10s"
 rpc.batch.concurrency: 2
 rpc.batch.limit: 20
 ws: true
+ws.addr: 0.0.0.0
+ws.port: 8546
 
 zkevm.apollo-enabled: false
 zkevm.apollo-ip-addr: ""

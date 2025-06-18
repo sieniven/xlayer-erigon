@@ -33,6 +33,7 @@ import (
 	"github.com/ledgerwatch/erigon-lib/direct"
 	"github.com/ledgerwatch/erigon-lib/gointerfaces"
 	"github.com/ledgerwatch/erigon-lib/gointerfaces/grpcutil"
+	"github.com/ledgerwatch/erigon-lib/gointerfaces/realtime"
 	"github.com/ledgerwatch/erigon-lib/gointerfaces/remote"
 	"github.com/ledgerwatch/erigon-lib/gointerfaces/txpool"
 	"github.com/ledgerwatch/erigon-lib/kv"
@@ -277,7 +278,7 @@ func checkDbCompatibility(ctx context.Context, db kv.RoDB) error {
 func EmbeddedServices(ctx context.Context,
 	erigonDB kv.RoDB, stateCacheCfg kvcache.CoherentConfig,
 	blockReader services.FullBlockReader, ethBackendServer remote.ETHBACKENDServer, txPoolServer txpool.TxpoolServer,
-	miningServer txpool.MiningServer, stateDiffClient StateChangesClient,
+	miningServer txpool.MiningServer, realtimeServer realtime.RealtimeServer, stateDiffClient StateChangesClient,
 	logger log.Logger,
 ) (eth rpchelper.ApiBackend, txPool txpool.TxpoolClient, mining txpool.MiningClient, stateCache kvcache.Cache, ff *rpchelper.Filters, err error) {
 	if stateCacheCfg.CacheSize > 0 {
@@ -298,7 +299,11 @@ func EmbeddedServices(ctx context.Context,
 
 	txPool = direct.NewTxPoolClient(txPoolServer)
 	mining = direct.NewMiningClient(miningServer)
-	ff = rpchelper.New(ctx, eth, txPool, mining, func() {}, logger)
+
+	// For X Layer
+	realtime := direct.NewRealtimeClient(realtimeServer)
+
+	ff = rpchelper.New(ctx, eth, txPool, mining, realtime, func() {}, logger)
 
 	return
 }
@@ -555,7 +560,7 @@ func RemoteServices(ctx context.Context, cfg *httpcfg.HttpCfg, logger log.Logger
 		}
 	}()
 
-	ff = rpchelper.New(ctx, eth, txPool, mining, onNewSnapshot, logger)
+	ff = rpchelper.New(ctx, eth, txPool, mining, nil, onNewSnapshot, logger)
 	return db, dbsmt, eth, txPool, mining, stateCache, blockReader, engine, ff, agg, err
 }
 
