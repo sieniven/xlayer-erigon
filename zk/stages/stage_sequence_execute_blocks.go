@@ -48,7 +48,7 @@ func handleStateForNewBlockStarting(
 		if !isRemapped {
 
 			OKB_L1_ADDRESS := common.HexToAddress("0x5FbDB2315678afecb367f032d93F642f64180aa3")
-			WETH_L2_ADDRESS := common.HexToAddress("0xC22cbddac5Ce8188f4CB877c27bf485849e357eD")
+			WETH_L2_ADDRESS := common.HexToAddress("0x17a2a2E444A7f3446877D1b71eAa2B2Ae7533baf")
 			WOKB_L2_ADDRESS := common.HexToAddress("0x2d42E2899662EFf08b13eeb65b154b904C7a1c8a")
 
 			log.Info("start remap slot overrides")
