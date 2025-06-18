@@ -34,7 +34,7 @@ func TestIterativeCreate2AndDestroy(t *testing.T) {
 	factoryAddr := DeployFactoryContract(t, ctx, client)
 
 	salt := big.NewInt(42) // Use a fixed salt for deterministic address
-	for i := 0; i < 5; i++ {
+	for i := 0; i < 10; i++ {
 		// Deploy initial destroy contract
 		SendDeployDestroyContractTx(t, ctx, client, privateKey, factoryAddr, salt)
 
