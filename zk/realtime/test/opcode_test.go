@@ -51,6 +51,40 @@ func TestIterativeCreate2AndDestroy(t *testing.T) {
 	}
 }
 
+func TestMultipleCreate2AndDestroy(t *testing.T) {
+	if testing.Short() {
+		t.Skip()
+	}
+
+	ctx := context.Background()
+	client, err := ethclient.Dial(DefaultL2NetworkURL)
+	require.NoError(t, err)
+
+	privateKey, err := crypto.HexToECDSA(DefaultL2AdminPrivateKey[2:])
+	require.NoError(t, err)
+
+	// Deploy Factory contract
+	factoryAddr := DeployFactoryContract(t, ctx, client)
+
+	for i := 50; i < 70; i++ {
+		salt := big.NewInt(int64(i)) // Use a fixed salt for deterministic address
+
+		// Deploy initial destroy contract
+		SendDeployDestroyContractTx(t, ctx, client, privateKey, factoryAddr, salt)
+
+		destroyAddr := GetContractAddress(t, ctx, client, factoryAddr, salt)
+		code, err := RealtimeGetCode(destroyAddr)
+		require.NoError(t, err)
+		require.NotEmpty(t, code, "Destroy contract code should exist after deploy")
+
+		SendDestroyContractTx(t, ctx, client, privateKey, destroyAddr)
+
+		code, err = RealtimeGetCode(destroyAddr)
+		require.NoError(t, err)
+		require.Equal(t, code, "0x", "Destroy contract code should not exist after destroy")
+	}
+}
+
 func DeployFactoryContract(t *testing.T, ctx context.Context, client *ethclient.Client) common.Address {
 	// Deploy Factory contract
 	chainID, err := client.ChainID(ctx)
