@@ -39,25 +39,25 @@ func RealtimeGetBlockTransactionCountByNumber(blockNumber uint64) (uint64, error
 }
 
 // RealtimeGetTransactionByHash returns the information about a transaction requested by transaction hash in real-time
-func RealtimeGetTransactionByHash(txHash common.Hash, includeExtraInfo *bool, result interface{}) (interface{}, error) {
+func RealtimeGetTransactionByHash(txHash common.Hash, includeExtraInfo *bool, result any) error {
 	response, err := client.JSONRPCCall(DefaultL2NetworkURL, "realtime_getTransactionByHash", txHash, includeExtraInfo)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	if response.Error != nil {
-		return nil, fmt.Errorf("%d - %s", response.Error.Code, response.Error.Message)
+		return fmt.Errorf("%d - %s", response.Error.Code, response.Error.Message)
 	}
 
 	err = json.Unmarshal(response.Result, &result)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	return result, nil
+	return nil
 }
 
 // RealtimeGetTransactionByHash returns raw information about a transaction requested by transaction hash in real-time
-func RealtimeGetRawTransactionByHash(txHash common.Hash, result interface{}) error {
+func RealtimeGetRawTransactionByHash(txHash common.Hash, result any) error {
 	response, err := client.JSONRPCCall(DefaultL2NetworkURL, "realtime_getRawTransactionByHash", txHash)
 	if err != nil {
 		return err
@@ -75,7 +75,7 @@ func RealtimeGetRawTransactionByHash(txHash common.Hash, result interface{}) err
 }
 
 // RealtimeGetTransactionReceipt returns the receipt of a transaction by transaction hash in real-time
-func RealtimeGetTransactionReceipt(txHash common.Hash, result interface{}) error {
+func RealtimeGetTransactionReceipt(txHash common.Hash, result any) error {
 	response, err := client.JSONRPCCall(DefaultL2NetworkURL, "realtime_getTransactionReceipt", txHash)
 	if err != nil {
 		return err
@@ -196,7 +196,7 @@ func RealtimeGetStorageAt(address common.Address, position string) (string, erro
 
 // RealtimeCall executes a new message call immediately without creating a transaction in real-time
 func RealtimeCall(from, to common.Address, gas string, gasPrice string, value string, data string) (string, error) {
-	txParams := map[string]interface{}{
+	txParams := map[string]any{
 		"from":     from,
 		"to":       to,
 		"gas":      gas,

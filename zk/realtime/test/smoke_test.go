@@ -75,9 +75,9 @@ func TestRealtimeRPC(t *testing.T) {
 	t.Run("RealtimeGetTransactionByHash", func(t *testing.T) {
 		includeExtraInfo := true
 		result := rpcTypes.Transaction{}
-		tx, err := RealtimeGetTransactionByHash(common.HexToHash(txHash), &includeExtraInfo, result)
+		err := RealtimeGetTransactionByHash(common.HexToHash(txHash), &includeExtraInfo, result)
 		require.NoError(t, err)
-		log.Infof("RealtimeGetTransactionByHash result type: %T", tx)
+		log.Infof("RealtimeGetTransactionByHash result type: %T", result)
 	})
 
 	t.Run("RealtimeGetRawTransactionByHash", func(t *testing.T) {
