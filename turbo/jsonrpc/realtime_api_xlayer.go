@@ -11,7 +11,7 @@ import (
 	"github.com/ledgerwatch/erigon/core/types"
 	"github.com/ledgerwatch/erigon/rpc"
 	ethapi2 "github.com/ledgerwatch/erigon/turbo/adapter/ethapi"
-	"github.com/ledgerwatch/erigon/zk/realtime"
+	realtimeCache "github.com/ledgerwatch/erigon/zk/realtime/cache"
 	zktypes "github.com/ledgerwatch/erigon/zk/types"
 )
 
@@ -49,13 +49,13 @@ type RealtimeAPI interface {
 // RealtimeAPIImpl is implementation of the RealtimeAPI interface
 type RealtimeAPIImpl struct {
 	ethApi  *APIImpl
-	cacheDB *realtime.RealtimeCache
+	cacheDB *realtimeCache.RealtimeCache
 }
 
 // NewRealtimeAPI returns RealtimeAPIImpl instance
 func NewRealtimeAPI(
 	base *APIImpl,
-	cacheDB *realtime.RealtimeCache,
+	cacheDB *realtimeCache.RealtimeCache,
 ) *RealtimeAPIImpl {
 
 	return &RealtimeAPIImpl{
@@ -65,30 +65,35 @@ func NewRealtimeAPI(
 }
 
 func (api *RealtimeAPIImpl) getBlockNumber(blockNr rpc.BlockNumber) (uint64, bool, error) {
-	currentBlockNumber := api.cacheDB.GetHighestPendingHeight()
-	if currentBlockNumber == 0 {
+	confirmHeight := api.cacheDB.GetHighestConfirmHeight()
+	if confirmHeight == 0 {
 		return 0, false, fmt.Errorf("no block number found in stateless cache")
 	}
 
 	switch blockNr {
 	case rpc.LatestBlockNumber:
-		return currentBlockNumber, true, nil
+		return confirmHeight, true, nil
 	case rpc.EarliestBlockNumber:
-		return 0, false, nil
+		// Unsupported
+		return 0, false, fmt.Errorf("earliest block number is not supported")
 	case rpc.FinalizedBlockNumber:
-		return currentBlockNumber, true, nil
+		return confirmHeight, true, nil
 	case rpc.SafeBlockNumber:
-		return currentBlockNumber, true, nil
+		return confirmHeight, true, nil
 	case rpc.PendingBlockNumber:
-		return currentBlockNumber, true, nil
+		pendingHeight := api.cacheDB.GetHighestPendingHeight()
+		if pendingHeight == 0 {
+			return 0, false, fmt.Errorf("no block number found in stateless cache")
+		}
+		return pendingHeight, true, nil
 	case rpc.LatestExecutedBlockNumber:
-		return currentBlockNumber, true, nil
+		return confirmHeight, true, nil
 	default:
 		blockNumber := uint64(blockNr.Int64())
-		if blockNumber > currentBlockNumber {
+		if blockNumber > confirmHeight {
 			return 0, false, fmt.Errorf("block with number %d not found", blockNumber)
 		}
-		return blockNumber, blockNumber == currentBlockNumber, nil
+		return blockNumber, blockNumber == confirmHeight, nil
 	}
 }
 

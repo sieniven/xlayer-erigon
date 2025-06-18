@@ -1,11 +1,11 @@
-package realtime
+package cache
 
 import (
 	"sync"
 
-	libcommon "github.com/ledgerwatch/erigon-lib/common"
 	"github.com/ledgerwatch/erigon/cl/phase1/core/state/lru"
 	kafkaTypes "github.com/ledgerwatch/erigon/zk/realtime/kafka/types"
+	realtimeTypes "github.com/ledgerwatch/erigon/zk/realtime/types"
 )
 
 // -------------- Kafka Cache --------------
@@ -125,11 +125,11 @@ func (cache *BlockMessageCache) GetLowestBlockHeight() uint64 {
 // -------------- Tx Message Cache --------------
 type TransactionMessageCache struct {
 	mu    sync.RWMutex
-	cache *lru.Cache[uint64, *libcommon.OrderedList[*kafkaTypes.TransactionMessage]]
+	cache *lru.Cache[uint64, *realtimeTypes.OrderedList[*kafkaTypes.TransactionMessage]]
 }
 
 func NewTransactionMessageCache(maxCacheSize int) (*TransactionMessageCache, error) {
-	cache, err := lru.New[uint64, *libcommon.OrderedList[*kafkaTypes.TransactionMessage]]("tx_message_cache", maxCacheSize)
+	cache, err := lru.New[uint64, *realtimeTypes.OrderedList[*kafkaTypes.TransactionMessage]]("tx_message_cache", maxCacheSize)
 	if err != nil {
 		return nil, err
 	}
@@ -144,7 +144,7 @@ func (cache *TransactionMessageCache) Add(txMsg *kafkaTypes.TransactionMessage) 
 
 	txMsgsList, ok := cache.cache.Get(txMsg.BlockNumber)
 	if !ok {
-		txMsgsList = libcommon.NewOrderedList(DefaultTxMsgSliceSize, CompareTransactionMessages)
+		txMsgsList = realtimeTypes.NewOrderedList(DefaultTxMsgSliceSize, CompareTransactionMessages)
 		cache.cache.Add(txMsg.BlockNumber, txMsgsList)
 	}
 	txMsgsList.Add(txMsg)
@@ -186,8 +186,8 @@ func (cache *TransactionMessageCache) Flush(blockNumber uint64) {
 	}
 }
 
-func NewOrderedListOfTransactionMessage(size int) *libcommon.OrderedList[*kafkaTypes.TransactionMessage] {
-	return libcommon.NewOrderedList(size, CompareTransactionMessages)
+func NewOrderedListOfTransactionMessage(size int) *realtimeTypes.OrderedList[*kafkaTypes.TransactionMessage] {
+	return realtimeTypes.NewOrderedList(size, CompareTransactionMessages)
 }
 
 func CompareTransactionMessages(a, b *kafkaTypes.TransactionMessage) int {

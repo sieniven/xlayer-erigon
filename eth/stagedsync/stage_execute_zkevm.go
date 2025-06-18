@@ -32,11 +32,11 @@ import (
 	"github.com/ledgerwatch/erigon/eth/stagedsync/stages"
 	"github.com/ledgerwatch/erigon/eth/tracers/logger"
 	rawdbZk "github.com/ledgerwatch/erigon/zk/rawdb"
-	realtimeTypes "github.com/ledgerwatch/erigon/zk/realtime/types"
+	realtimeCache "github.com/ledgerwatch/erigon/zk/realtime/cache"
 	"github.com/ledgerwatch/erigon/zk/utils"
 )
 
-func SpawnExecuteBlocksStageZk(s *StageState, u Unwinder, tx kv.RwTx, toBlock uint64, ctx context.Context, cfg ExecuteBlockCfg, initialCycle bool, statelessCache *realtimeTypes.StatelessCache) (err error) {
+func SpawnExecuteBlocksStageZk(s *StageState, u Unwinder, tx kv.RwTx, toBlock uint64, ctx context.Context, cfg ExecuteBlockCfg, initialCycle bool, statelessCache *realtimeCache.StatelessCache) (err error) {
 	if cfg.historyV3 {
 		if err = ExecBlockV3(s, u, wrap.TxContainer{Tx: tx}, toBlock, ctx, cfg, initialCycle, log.New()); err != nil {
 			return fmt.Errorf("ExecBlockV3: %w", err)

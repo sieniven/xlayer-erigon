@@ -60,7 +60,7 @@ build-docker: ## Build cdk-erigoin for sequencer and rpc
 	docker build -t cdk-erigon -f ../Dockerfile.local ../
 
 .PHONY: run
-run: stop build-docker ## Runs a full node
+run: stop build-docker
 	$(DOCKER_COMPOSE) up -d xlayer-mock-l1-network
 	$(DOCKER_COMPOSE) up -d xlayer-agg-db
 	$(DOCKER_COMPOSE) up -d xlayer-bridge-db
@@ -71,7 +71,8 @@ run: stop build-docker ## Runs a full node
 	$(DOCKER_COMPOSE) up -d kafka-zookeeper
 	$(DOCKER_COMPOSE) up -d xlayer-bridge-coin-kafka
 	$(RUN_DOCKER_KAFKA)
-	sleep 15
+
+	sleep 3
 	$(DOCKER_COMPOSE) up -d xlayer-approve
 	$(DOCKER_COMPOSE) up -d xlayer-seq
 	$(DOCKER_COMPOSE) up -d xlayer-pool-manager
@@ -96,7 +97,11 @@ multi-run: run
 
 	sleep 5
 	$(DOCKER_COMPOSE) up -d polygonzkevm-rpc
-	
+
+	sleep 10
+	$(DOCKER_COMPOSE) up -d polygonzkevm-bridge-service
+	$(DOCKER_COMPOSE) up -d polygonzkevm-bridge-ui
+
 	sleep 10
 	${INIT_POLYGON_ZKEVM_BRIDGE_ACCOUNT}
 	$(DOCKER_COMPOSE) up -d polygonzkevm-cdk-node

@@ -11,7 +11,7 @@ import (
 	stages "github.com/ledgerwatch/erigon/eth/stagedsync"
 	stages2 "github.com/ledgerwatch/erigon/eth/stagedsync/stages"
 	"github.com/ledgerwatch/erigon/zk/datastream/server"
-	realtimeTypes "github.com/ledgerwatch/erigon/zk/realtime/types"
+	realtimeCache "github.com/ledgerwatch/erigon/zk/realtime/cache"
 )
 
 var (
@@ -240,7 +240,7 @@ func DefaultZkStages(
 	callTraces stages.CallTracesCfg,
 	txLookup stages.TxLookupCfg,
 	finish stages.FinishCfg,
-	statelessCache *realtimeTypes.StatelessCache,
+	statelessCache *realtimeCache.StatelessCache,
 	test bool,
 ) []*stages.Stage {
 	return []*stages.Stage{

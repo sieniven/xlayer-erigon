@@ -135,6 +135,7 @@ import (
 	"github.com/ledgerwatch/erigon/zk/l1_cache"
 	"github.com/ledgerwatch/erigon/zk/l1infotree"
 	"github.com/ledgerwatch/erigon/zk/realtime"
+	realtimeCache "github.com/ledgerwatch/erigon/zk/realtime/cache"
 	"github.com/ledgerwatch/erigon/zk/realtime/kafka"
 	realtimeTypes "github.com/ledgerwatch/erigon/zk/realtime/types"
 	zkStages "github.com/ledgerwatch/erigon/zk/stages"
@@ -255,7 +256,7 @@ type Ethereum struct {
 	// For X Layer, kafka
 	txKafkaProducer *kafka.KafkaProducer
 	txKafkaConsumer *kafka.KafkaConsumer
-	realtimeCache   *realtime.RealtimeCache
+	realtimeCache   *realtimeCache.RealtimeCache
 	blockInfoChan   chan *realtimeTypes.BlockInfo
 	txInfoChan      chan *state.TxInfo
 	finishChan      chan uint64
@@ -1300,7 +1301,7 @@ func New(ctx context.Context, stack *node.Node, config *ethconfig.Config, logger
 				backend.txKafkaConsumer = kafkaConsumer
 
 				// Init realtime cache
-				backend.realtimeCache, err = realtime.NewRealtimeCache(backend.sentryCtx, backend.chainDB)
+				backend.realtimeCache, err = realtimeCache.NewRealtimeCache(backend.sentryCtx, backend.chainDB)
 				if err != nil {
 					return nil, err
 				}

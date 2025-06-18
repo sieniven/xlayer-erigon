@@ -8,14 +8,13 @@ import (
 )
 
 // BlockNumber implements realtime_blockNumber.
-// Returns the block number of the most recent pre-confirmed block.
+// Returns the block number of the most recent confirmed block.
 func (api *RealtimeAPIImpl) BlockNumber(ctx context.Context) (hexutil.Uint64, error) {
-	highestHeight := api.cacheDB.GetHighestPendingHeight()
-	if highestHeight == 0 {
+	blockNumber, _, err := api.getBlockNumber(rpc.LatestBlockNumber)
+	if err != nil {
 		return api.ethApi.BlockNumber(ctx)
 	}
-
-	return hexutil.Uint64(highestHeight), nil
+	return hexutil.Uint64(blockNumber), nil
 }
 
 // GetBlockTransactionCountByNumber implements realtime_getBlockTransactionCountByNumber.

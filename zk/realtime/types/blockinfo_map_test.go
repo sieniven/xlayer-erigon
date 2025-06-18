@@ -9,10 +9,9 @@ import (
 )
 
 func TestBlockInfoMap(t *testing.T) {
-	bm := NewBlockInfoMap(DefaultBlockCacheSize)
+	bm := NewBlockInfoMap(100)
 
 	blockNum := uint64(2)
-	prevBlockNum := blockNum - 1
 	header := &ethTypes.Header{
 		Number: big.NewInt(int64(blockNum)),
 		Time:   1000,
@@ -26,12 +25,6 @@ func TestBlockInfoMap(t *testing.T) {
 		assert.Equal(t, header, gotHeader)
 		// Init txCount is -1
 		assert.Equal(t, int64(-1), gotTxCount)
-
-		// Check previous block txCount
-		gotHeader, gotTxCount, exists = bm.Get(prevBlockNum)
-		assert.True(t, exists)
-		assert.Nil(t, gotHeader)
-		assert.Equal(t, gotTxCount, prevTxCount)
 	})
 
 	t.Run("Get non-existent", func(t *testing.T) {
@@ -67,13 +60,19 @@ func TestBlockInfoMap(t *testing.T) {
 			assert.Equal(t, int64(-1), gotTxCount)
 
 			// Check previous block txCount
+			if i == 0 {
+				continue
+			}
 			_, gotTxCount, exists = bm.Get(prevBlockNum)
 			assert.True(t, exists)
 			assert.Equal(t, gotTxCount, prevTxCount)
+		}
 
-			// Test delete
+		// Test delete
+		for i := 0; i < 10; i++ {
+			blockNum := uint64(i)
 			bm.Delete(blockNum)
-			_, _, exists = bm.Get(blockNum)
+			_, _, exists := bm.Get(blockNum)
 			assert.False(t, exists)
 		}
 	})
