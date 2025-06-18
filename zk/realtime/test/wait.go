@@ -166,7 +166,6 @@ func WaitTokenBalanceEth(ctx context.Context, client ethClienter, tx types.Trans
 		if err != nil {
 			return err
 		}
-		fmt.Printf("balance: %v, rpcBalance: %v\n", tokenBalance, rpcBalance)
 
 		// Check if balance matches expected value
 		if rpcBalance.Cmp(tokenBalance) != 0 {
