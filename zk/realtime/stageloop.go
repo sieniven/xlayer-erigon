@@ -81,7 +81,7 @@ func ListenTxKafkaConsumer(
 	logger log.Logger,
 	realtimeCache *cache.RealtimeCache,
 	finishChan chan uint64,
-	realtimeRPC *subscription.RealtimeServer) {
+	realtimeServer *subscription.RealtimeServer) {
 	if sequencer.IsSequencer() {
 		logger.Info("[Realtime] TxKafkaConsumer is disabled on sequencer, skipping")
 		return
@@ -143,7 +143,8 @@ func ListenTxKafkaConsumer(
 				continue
 			}
 			kafkaCache.TxMsgCache.Add(&txMsg)
-			go broadcastRealtimeTransaction(realtimeRPC, txMsg, logger)
+			// Publish tx to subscriptions
+			go broadcastRealtimeTransaction(realtimeServer, txMsg, logger)
 			logger.Debug("[Realtime] Received transaction message", "blockNum", txMsg.BlockNumber)
 		case errorTriggerMsg := <-errorMsgsChan:
 			resetFlag.Store(true)
@@ -283,8 +284,8 @@ func resetRealtimeCache(realtimeCache *cache.RealtimeCache) {
 	readyFlag.Store(false)
 }
 
-func broadcastRealtimeTransaction(realtimeRPC *subscription.RealtimeServer, txMsg kafkaTypes.TransactionMessage, logger log.Logger) {
-	if err := realtimeRPC.BroadcastRealtimeTransactionMessage(&txMsg); err != nil {
+func broadcastRealtimeTransaction(realtimeServer *subscription.RealtimeServer, txMsg kafkaTypes.TransactionMessage, logger log.Logger) {
+	if err := realtimeServer.BroadcastRealtimeTransactionMessage(&txMsg); err != nil {
 		logger.Error("[Realtime] Failed to broadcast realtime transaction message", "txHash", txMsg.Hash, "error", err)
 	}
 }

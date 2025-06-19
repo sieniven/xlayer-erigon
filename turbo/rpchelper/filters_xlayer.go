@@ -62,12 +62,12 @@ func (ff *Filters) subscribeToRealtimeTransactionMsgs(ctx context.Context, realt
 			return err
 		}
 
-		ff.HandleRealtmeTransaction(event)
+		ff.HandleRealtimeTransaction(event)
 	}
 	return nil
 }
 
-func (ff *Filters) HandleRealtmeTransaction(reply *proto_realtime.RealtimeTransactionReply) {
+func (ff *Filters) HandleRealtimeTransaction(reply *proto_realtime.RealtimeTransactionReply) {
 	ff.mu.Lock()
 	defer ff.mu.Unlock()
 
@@ -155,12 +155,12 @@ func (ff *Filters) subscribeToRealtimeLogMsgs(ctx context.Context, realtime prot
 			return err
 		}
 
-		ff.HandleRealtmeLog(event)
+		ff.HandleRealtimeLog(event)
 	}
 	return nil
 }
 
-func (ff *Filters) HandleRealtmeLog(reply *proto_realtime.RealtimeLogsReply) {
+func (ff *Filters) HandleRealtimeLog(reply *proto_realtime.RealtimeLogsReply) {
 	if len(reply.RlpLogs) == 0 {
 		return
 	}
