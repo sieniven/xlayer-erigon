@@ -1,24 +1,24 @@
-package direct
+package subscription
 
 import (
 	"context"
 	"io"
 
-	proto_realtime "github.com/ledgerwatch/erigon-lib/gointerfaces/realtime"
+	"github.com/ledgerwatch/erigon/zk/realtime/subscription/proto"
 	"google.golang.org/grpc"
 )
 
 type RealtimeClient struct {
-	server proto_realtime.RealtimeServer
+	server proto.RealtimeServer
 }
 
-func NewRealtimeClient(server proto_realtime.RealtimeServer) *RealtimeClient {
+func NewRealtimeClient(server proto.RealtimeServer) *RealtimeClient {
 	return &RealtimeClient{server: server}
 }
 
 // ################ Realtime Transacions ################
 
-func (s *RealtimeClient) OnRealtimeTransaction(ctx context.Context, in *proto_realtime.RealtimeTransactionRequest, opts ...grpc.CallOption) (proto_realtime.Realtime_OnRealtimeTransactionClient, error) {
+func (s *RealtimeClient) OnRealtimeTransaction(ctx context.Context, in *proto.RealtimeTransactionRequest, opts ...grpc.CallOption) (proto.Realtime_OnRealtimeTransactionClient, error) {
 	ch := make(chan *OnRealtimeTransactionReply, 16384)
 	streamServer := &OnRealtimeTransactionStreamS{ch: ch, ctx: ctx}
 	go func() {
@@ -28,7 +28,7 @@ func (s *RealtimeClient) OnRealtimeTransaction(ctx context.Context, in *proto_re
 	return &OnRealtimeTransactionStreamC{ch: ch, ctx: ctx}, nil
 }
 
-func (s *RealtimeClient) OnRealtimeLogs(ctx context.Context, in *proto_realtime.RealtimeLogsRequest, opts ...grpc.CallOption) (proto_realtime.Realtime_OnRealtimeLogsClient, error) {
+func (s *RealtimeClient) OnRealtimeLogs(ctx context.Context, in *proto.RealtimeLogsRequest, opts ...grpc.CallOption) (proto.Realtime_OnRealtimeLogsClient, error) {
 	ch := make(chan *OnRealtimeLogsReply, 16384)
 	streamServer := &OnRealtimeLogStreamS{ch: ch, ctx: ctx}
 	go func() {
@@ -39,7 +39,7 @@ func (s *RealtimeClient) OnRealtimeLogs(ctx context.Context, in *proto_realtime.
 }
 
 type OnRealtimeTransactionReply struct {
-	r   *proto_realtime.RealtimeTransactionReply
+	r   *proto.RealtimeTransactionReply
 	err error
 }
 
@@ -49,7 +49,7 @@ type OnRealtimeTransactionStreamS struct {
 	grpc.ServerStream
 }
 
-func (s *OnRealtimeTransactionStreamS) Send(m *proto_realtime.RealtimeTransactionReply) error {
+func (s *OnRealtimeTransactionStreamS) Send(m *proto.RealtimeTransactionReply) error {
 	s.ch <- &OnRealtimeTransactionReply{r: m}
 	return nil
 }
@@ -67,7 +67,7 @@ type OnRealtimeTransactionStreamC struct {
 	grpc.ClientStream
 }
 
-func (c *OnRealtimeTransactionStreamC) Recv() (*proto_realtime.RealtimeTransactionReply, error) {
+func (c *OnRealtimeTransactionStreamC) Recv() (*proto.RealtimeTransactionReply, error) {
 	m, ok := <-c.ch
 	if !ok || m == nil {
 		return nil, io.EOF
@@ -79,7 +79,7 @@ func (c *OnRealtimeTransactionStreamC) Context() context.Context { return c.ctx 
 // ################ Realtime Logs ################
 
 type OnRealtimeLogsReply struct {
-	r   *proto_realtime.RealtimeLogsReply
+	r   *proto.RealtimeLogsReply
 	err error
 }
 
@@ -89,7 +89,7 @@ type OnRealtimeLogStreamS struct {
 	grpc.ServerStream
 }
 
-func (s *OnRealtimeLogStreamS) Send(m *proto_realtime.RealtimeLogsReply) error {
+func (s *OnRealtimeLogStreamS) Send(m *proto.RealtimeLogsReply) error {
 	s.ch <- &OnRealtimeLogsReply{r: m}
 	return nil
 }
@@ -107,7 +107,7 @@ type OnRealtimeLogStreamC struct {
 	grpc.ClientStream
 }
 
-func (c *OnRealtimeLogStreamC) Recv() (*proto_realtime.RealtimeLogsReply, error) {
+func (c *OnRealtimeLogStreamC) Recv() (*proto.RealtimeLogsReply, error) {
 	m, ok := <-c.ch
 	if !ok || m == nil {
 		return nil, io.EOF

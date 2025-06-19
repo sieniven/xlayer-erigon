@@ -7,10 +7,10 @@ import (
 
 	"github.com/ledgerwatch/erigon/core/state"
 	"github.com/ledgerwatch/erigon/eth/ethconfig"
-	"github.com/ledgerwatch/erigon/ethdb/privateapi"
 	"github.com/ledgerwatch/erigon/zk/realtime/cache"
 	"github.com/ledgerwatch/erigon/zk/realtime/kafka"
 	kafkaTypes "github.com/ledgerwatch/erigon/zk/realtime/kafka/types"
+	"github.com/ledgerwatch/erigon/zk/realtime/subscription"
 	realtimeTypes "github.com/ledgerwatch/erigon/zk/realtime/types"
 	"github.com/ledgerwatch/erigon/zk/sequencer"
 	"github.com/ledgerwatch/log/v3"
@@ -81,7 +81,7 @@ func ListenTxKafkaConsumer(
 	logger log.Logger,
 	realtimeCache *cache.RealtimeCache,
 	finishChan chan uint64,
-	realtimeRPC *privateapi.RealtimeServer) {
+	realtimeRPC *subscription.RealtimeServer) {
 	if sequencer.IsSequencer() {
 		logger.Info("[Realtime] TxKafkaConsumer is disabled on sequencer, skipping")
 		return
@@ -283,7 +283,7 @@ func resetRealtimeCache(realtimeCache *cache.RealtimeCache) {
 	readyFlag.Store(false)
 }
 
-func broadcastRealtimeTransaction(realtimeRPC *privateapi.RealtimeServer, txMsg kafkaTypes.TransactionMessage, logger log.Logger) {
+func broadcastRealtimeTransaction(realtimeRPC *subscription.RealtimeServer, txMsg kafkaTypes.TransactionMessage, logger log.Logger) {
 	if err := realtimeRPC.BroadcastRealtimeTransactionMessage(&txMsg); err != nil {
 		logger.Error("[Realtime] Failed to broadcast realtime transaction message", "txHash", txMsg.Hash, "error", err)
 	}

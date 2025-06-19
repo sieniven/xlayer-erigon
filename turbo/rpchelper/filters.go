@@ -15,10 +15,9 @@ import (
 	libcommon "github.com/ledgerwatch/erigon-lib/common"
 	"github.com/ledgerwatch/erigon-lib/gointerfaces"
 	"github.com/ledgerwatch/erigon-lib/gointerfaces/grpcutil"
-	"github.com/ledgerwatch/erigon-lib/gointerfaces/realtime"
-	proto_realtime "github.com/ledgerwatch/erigon-lib/gointerfaces/realtime"
 	"github.com/ledgerwatch/erigon-lib/gointerfaces/remote"
 	"github.com/ledgerwatch/erigon-lib/gointerfaces/txpool"
+	proto_realtime "github.com/ledgerwatch/erigon/zk/realtime/subscription/proto"
 	txpool2 "github.com/ledgerwatch/erigon/zk/txpool"
 	"github.com/ledgerwatch/log/v3"
 	"google.golang.org/grpc"
@@ -52,7 +51,7 @@ type Filters struct {
 	realtimeLogsSubs        *LogsFilterAggregator
 }
 
-func New(ctx context.Context, ethBackend ApiBackend, txPool txpool.TxpoolClient, mining txpool.MiningClient, realtime realtime.RealtimeClient, onNewSnapshot func(), logger log.Logger) *Filters {
+func New(ctx context.Context, ethBackend ApiBackend, txPool txpool.TxpoolClient, mining txpool.MiningClient, realtime proto_realtime.RealtimeClient, onNewSnapshot func(), logger log.Logger) *Filters {
 	logger.Info("rpc filters: subscribing to Erigon events")
 
 	ff := &Filters{

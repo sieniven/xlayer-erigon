@@ -4,7 +4,7 @@
 // 	protoc        v5.29.3
 // source: realtime.proto
 
-package realtime
+package proto
 
 import (
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
@@ -718,8 +718,7 @@ const file_realtime_proto_rawDesc = "" +
 	"\brlp_logs\x18\x01 \x01(\fR\arlpLogs2\xbf\x01\n" +
 	"\bRealtime\x12c\n" +
 	"\x15OnRealtimeTransaction\x12$.realtime.RealtimeTransactionRequest\x1a\".realtime.RealtimeTransactionReply0\x01\x12N\n" +
-	"\x0eOnRealtimeLogs\x12\x1d.realtime.RealtimeLogsRequest\x1a\x1b.realtime.RealtimeLogsReply0\x01B\fZ\n" +
-	"./realtimeb\x06proto3"
+	"\x0eOnRealtimeLogs\x12\x1d.realtime.RealtimeLogsRequest\x1a\x1b.realtime.RealtimeLogsReply0\x01B\tZ\a./protob\x06proto3"
 
 var (
 	file_realtime_proto_rawDescOnce sync.Once

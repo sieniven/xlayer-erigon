@@ -1,4 +1,4 @@
-package privateapi
+package subscription
 
 import (
 	"bytes"
@@ -6,14 +6,14 @@ import (
 	"fmt"
 	"sync"
 
-	proto_realtime "github.com/ledgerwatch/erigon-lib/gointerfaces/realtime"
 	"github.com/ledgerwatch/erigon/rlp"
 	kafkaTypes "github.com/ledgerwatch/erigon/zk/realtime/kafka/types"
+	"github.com/ledgerwatch/erigon/zk/realtime/subscription/proto"
 	"github.com/ledgerwatch/log/v3"
 )
 
 type RealtimeServer struct {
-	proto_realtime.UnimplementedRealtimeServer
+	proto.UnimplementedRealtimeServer
 	ctx                 context.Context
 	realtimeTxStreams   RealtimeTxStreams
 	realtimeLogsStreams RealtimeLogsStreams
@@ -24,7 +24,7 @@ func NewRealtimeServer(ctx context.Context, logger log.Logger) *RealtimeServer {
 	return &RealtimeServer{ctx: ctx, logger: logger}
 }
 
-func (s *RealtimeServer) OnRealtimeTransaction(req *proto_realtime.RealtimeTransactionRequest, reply proto_realtime.Realtime_OnRealtimeTransactionServer) error {
+func (s *RealtimeServer) OnRealtimeTransaction(req *proto.RealtimeTransactionRequest, reply proto.Realtime_OnRealtimeTransactionServer) error {
 	remove := s.realtimeTxStreams.Add(reply)
 	defer remove()
 	select {
@@ -35,7 +35,7 @@ func (s *RealtimeServer) OnRealtimeTransaction(req *proto_realtime.RealtimeTrans
 	}
 }
 
-func (s *RealtimeServer) OnRealtimeLogs(req *proto_realtime.RealtimeLogsRequest, reply proto_realtime.Realtime_OnRealtimeLogsServer) error {
+func (s *RealtimeServer) OnRealtimeLogs(req *proto.RealtimeLogsRequest, reply proto.Realtime_OnRealtimeLogsServer) error {
 	remove := s.realtimeLogsStreams.Add(reply)
 	defer remove()
 	select {
@@ -61,7 +61,7 @@ func (s *RealtimeServer) BroadcastRealtimeTransactionMessage(msg *kafkaTypes.Tra
 		return err
 	}
 
-	logsReply := &proto_realtime.RealtimeLogsReply{RlpLogs: buf.Bytes()}
+	logsReply := &proto.RealtimeLogsReply{RlpLogs: buf.Bytes()}
 	s.realtimeLogsStreams.Broadcast(logsReply, s.logger)
 
 	return nil
@@ -70,17 +70,17 @@ func (s *RealtimeServer) BroadcastRealtimeTransactionMessage(msg *kafkaTypes.Tra
 // ################ Realtime Transaction Stream ################
 
 type RealtimeTxStreams struct {
-	chans  map[uint]proto_realtime.Realtime_OnRealtimeTransactionServer
+	chans  map[uint]proto.Realtime_OnRealtimeTransactionServer
 	id     uint
 	mu     sync.Mutex
 	logger log.Logger
 }
 
-func (s *RealtimeTxStreams) Add(stream proto_realtime.Realtime_OnRealtimeTransactionServer) (remove func()) {
+func (s *RealtimeTxStreams) Add(stream proto.Realtime_OnRealtimeTransactionServer) (remove func()) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if s.chans == nil {
-		s.chans = make(map[uint]proto_realtime.Realtime_OnRealtimeTransactionServer)
+		s.chans = make(map[uint]proto.Realtime_OnRealtimeTransactionServer)
 	}
 	s.id++
 	id := s.id
@@ -88,7 +88,7 @@ func (s *RealtimeTxStreams) Add(stream proto_realtime.Realtime_OnRealtimeTransac
 	return func() { s.remove(id) }
 }
 
-func (s *RealtimeTxStreams) Broadcast(reply *proto_realtime.RealtimeTransactionReply, logger log.Logger) {
+func (s *RealtimeTxStreams) Broadcast(reply *proto.RealtimeTransactionReply, logger log.Logger) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	for id, stream := range s.chans {
@@ -117,17 +117,17 @@ func (s *RealtimeTxStreams) remove(id uint) {
 // ################ Realtime Logs Stream ################
 
 type RealtimeLogsStreams struct {
-	chans  map[uint]proto_realtime.Realtime_OnRealtimeLogsServer
+	chans  map[uint]proto.Realtime_OnRealtimeLogsServer
 	id     uint
 	mu     sync.Mutex
 	logger log.Logger
 }
 
-func (s *RealtimeLogsStreams) Add(stream proto_realtime.Realtime_OnRealtimeLogsServer) (remove func()) {
+func (s *RealtimeLogsStreams) Add(stream proto.Realtime_OnRealtimeLogsServer) (remove func()) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if s.chans == nil {
-		s.chans = make(map[uint]proto_realtime.Realtime_OnRealtimeLogsServer)
+		s.chans = make(map[uint]proto.Realtime_OnRealtimeLogsServer)
 	}
 	s.id++
 	id := s.id
@@ -135,7 +135,7 @@ func (s *RealtimeLogsStreams) Add(stream proto_realtime.Realtime_OnRealtimeLogsS
 	return func() { s.remove(id) }
 }
 
-func (s *RealtimeLogsStreams) Broadcast(reply *proto_realtime.RealtimeLogsReply, logger log.Logger) {
+func (s *RealtimeLogsStreams) Broadcast(reply *proto.RealtimeLogsReply, logger log.Logger) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	for id, stream := range s.chans {
@@ -163,7 +163,7 @@ func (s *RealtimeLogsStreams) remove(id uint) {
 
 // ################ Helper Method ################
 
-func toRealtimeTransactionReply(txMsg *kafkaTypes.TransactionMessage, logger log.Logger) (*proto_realtime.RealtimeTransactionReply, error) {
+func toRealtimeTransactionReply(txMsg *kafkaTypes.TransactionMessage, logger log.Logger) (*proto.RealtimeTransactionReply, error) {
 	if txMsg == nil {
 		return nil, fmt.Errorf("transaction message is nil")
 	}
@@ -180,21 +180,21 @@ func toRealtimeTransactionReply(txMsg *kafkaTypes.TransactionMessage, logger log
 		return nil, err
 	}
 
-	protoReply := &proto_realtime.RealtimeTransactionReply{
+	protoReply := &proto.RealtimeTransactionReply{
 		RlpTransaction: buf.Bytes(), // No RLP transaction data in TransactionMessage
-		Receipt:        &proto_realtime.Receipt{},
-		InnerTxs:       make([]*proto_realtime.InnerTx, len(txMsg.InnerTxs)),
+		Receipt:        &proto.Receipt{},
+		InnerTxs:       make([]*proto.InnerTx, len(txMsg.InnerTxs)),
 	}
 
 	// Convert Receipt
 	if txMsg.Receipt != nil {
-		protoReply.Receipt = &proto_realtime.Receipt{
+		protoReply.Receipt = &proto.Receipt{
 			Type:              uint32(txMsg.Receipt.Type),
 			Root:              txMsg.Receipt.PostState,
 			Status:            txMsg.Receipt.Status,
 			CumulativeGasUsed: txMsg.Receipt.CumulativeGasUsed,
 			LogsBloom:         txMsg.Receipt.Bloom[:],
-			Logs:              make([]*proto_realtime.Log, len(txMsg.Receipt.Logs)),
+			Logs:              make([]*proto.Log, len(txMsg.Receipt.Logs)),
 			TransactionHash:   txMsg.Receipt.TxHash[:],
 			ContractAddress:   txMsg.Receipt.ContractAddress[:],
 			GasUsed:           txMsg.Receipt.GasUsed,
@@ -209,7 +209,7 @@ func toRealtimeTransactionReply(txMsg *kafkaTypes.TransactionMessage, logger log
 			for j, topic := range log.Topics {
 				protoTopics[j] = topic[:]
 			}
-			protoReply.Receipt.Logs[i] = &proto_realtime.Log{
+			protoReply.Receipt.Logs[i] = &proto.Log{
 				Address:          log.Address[:],
 				Topics:           protoTopics,
 				Data:             log.Data,
@@ -227,7 +227,7 @@ func toRealtimeTransactionReply(txMsg *kafkaTypes.TransactionMessage, logger log
 
 	// Convert InnerTxs
 	for i, innerTx := range txMsg.InnerTxs {
-		protoReply.InnerTxs[i] = &proto_realtime.InnerTx{
+		protoReply.InnerTxs[i] = &proto.InnerTx{
 			Dept:          innerTx.Dept.String(),
 			InternalIndex: innerTx.InternalIndex.String(),
 			CallType:      innerTx.CallType,

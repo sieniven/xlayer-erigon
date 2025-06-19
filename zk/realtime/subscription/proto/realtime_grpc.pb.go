@@ -4,7 +4,7 @@
 // - protoc             v5.29.3
 // source: realtime.proto
 
-package realtime
+package proto
 
 import (
 	context "context"

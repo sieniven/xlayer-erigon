@@ -137,6 +137,7 @@ import (
 	"github.com/ledgerwatch/erigon/zk/realtime"
 	realtimeCache "github.com/ledgerwatch/erigon/zk/realtime/cache"
 	"github.com/ledgerwatch/erigon/zk/realtime/kafka"
+	realtime_subscription "github.com/ledgerwatch/erigon/zk/realtime/subscription"
 	realtimeTypes "github.com/ledgerwatch/erigon/zk/realtime/types"
 	zkStages "github.com/ledgerwatch/erigon/zk/stages"
 	"github.com/ledgerwatch/erigon/zk/syncer"
@@ -260,7 +261,7 @@ type Ethereum struct {
 	blockInfoChan   chan *realtimeTypes.BlockInfo
 	txInfoChan      chan *state.TxInfo
 	finishChan      chan uint64
-	realtimeRPC     *privateapi.RealtimeServer
+	realtimeRPC     *realtime_subscription.RealtimeServer
 }
 
 func splitAddrIntoHostAndPort(addr string) (host string, port int, err error) {
@@ -904,7 +905,7 @@ func New(ctx context.Context, stack *node.Node, config *ethconfig.Config, logger
 
 	backend.ethBackendRPC, backend.miningRPC, backend.stateChangesClient = ethBackendRPC, miningRPC, stateDiffClient
 	// For X Layer
-	backend.realtimeRPC = privateapi.NewRealtimeServer(ctx, logger)
+	backend.realtimeRPC = realtime_subscription.NewRealtimeServer(ctx, logger)
 
 	// backend.syncStages = stages2.NewDefaultStages(backend.sentryCtx, backend.chainDB, snapDb, p2pConfig, config, backend.sentriesClient, backend.notifications, backend.downloaderClient,
 	// 	blockReader, blockRetire, backend.agg, backend.silkworm, backend.forkValidator, heimdallClient, recents, signatures, logger)

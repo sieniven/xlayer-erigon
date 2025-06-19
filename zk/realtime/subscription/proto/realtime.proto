@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package realtime;
 
-option go_package = "./realtime";
+option go_package = "./proto";
 
 // Realtime service defines methods for streaming real-time transaction and log data from an Ethereum blockchain.
 service Realtime {

@@ -6,11 +6,11 @@ import (
 	"math/big"
 
 	"github.com/ledgerwatch/erigon-lib/common"
-	"github.com/ledgerwatch/erigon-lib/gointerfaces/realtime"
 	"github.com/ledgerwatch/erigon/common/debug"
 	"github.com/ledgerwatch/erigon/core/types"
 	"github.com/ledgerwatch/erigon/eth/filters"
 	"github.com/ledgerwatch/erigon/rpc"
+	proto_realtime "github.com/ledgerwatch/erigon/zk/realtime/subscription/proto"
 	zktypes "github.com/ledgerwatch/erigon/zk/types"
 	"github.com/ledgerwatch/log/v3"
 )
@@ -122,7 +122,7 @@ func (api *RealtimeAPIImpl) Logs(ctx context.Context, crit filters.FilterCriteri
 
 // ################ Helper Method ################
 
-func fromProtoTxMessage(reply *realtime.RealtimeTransactionReply) (types.Transaction, *types.Receipt, []*zktypes.InnerTx, error) {
+func fromProtoTxMessage(reply *proto_realtime.RealtimeTransactionReply) (types.Transaction, *types.Receipt, []*zktypes.InnerTx, error) {
 	if reply == nil {
 		return nil, nil, nil, fmt.Errorf("protobuf message is nil")
 	}

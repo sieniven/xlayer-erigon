@@ -33,7 +33,6 @@ import (
 	"github.com/ledgerwatch/erigon-lib/direct"
 	"github.com/ledgerwatch/erigon-lib/gointerfaces"
 	"github.com/ledgerwatch/erigon-lib/gointerfaces/grpcutil"
-	"github.com/ledgerwatch/erigon-lib/gointerfaces/realtime"
 	"github.com/ledgerwatch/erigon-lib/gointerfaces/remote"
 	"github.com/ledgerwatch/erigon-lib/gointerfaces/txpool"
 	"github.com/ledgerwatch/erigon-lib/kv"
@@ -41,6 +40,8 @@ import (
 	kv2 "github.com/ledgerwatch/erigon-lib/kv/mdbx"
 	"github.com/ledgerwatch/erigon-lib/kv/remotedb"
 	"github.com/ledgerwatch/erigon-lib/kv/remotedbserver"
+	realtime "github.com/ledgerwatch/erigon/zk/realtime/subscription"
+	proto_realtime "github.com/ledgerwatch/erigon/zk/realtime/subscription/proto"
 	"github.com/ledgerwatch/log/v3"
 	"github.com/spf13/cobra"
 	"golang.org/x/sync/semaphore"
@@ -278,7 +279,7 @@ func checkDbCompatibility(ctx context.Context, db kv.RoDB) error {
 func EmbeddedServices(ctx context.Context,
 	erigonDB kv.RoDB, stateCacheCfg kvcache.CoherentConfig,
 	blockReader services.FullBlockReader, ethBackendServer remote.ETHBACKENDServer, txPoolServer txpool.TxpoolServer,
-	miningServer txpool.MiningServer, realtimeServer realtime.RealtimeServer, stateDiffClient StateChangesClient,
+	miningServer txpool.MiningServer, realtimeServer proto_realtime.RealtimeServer, stateDiffClient StateChangesClient,
 	logger log.Logger,
 ) (eth rpchelper.ApiBackend, txPool txpool.TxpoolClient, mining txpool.MiningClient, stateCache kvcache.Cache, ff *rpchelper.Filters, err error) {
 	if stateCacheCfg.CacheSize > 0 {
@@ -301,7 +302,7 @@ func EmbeddedServices(ctx context.Context,
 	mining = direct.NewMiningClient(miningServer)
 
 	// For X Layer
-	realtime := direct.NewRealtimeClient(realtimeServer)
+	realtime := realtime.NewRealtimeClient(realtimeServer)
 
 	ff = rpchelper.New(ctx, eth, txPool, mining, realtime, func() {}, logger)
 

@@ -8,10 +8,10 @@ import (
 
 	libcommon "github.com/ledgerwatch/erigon-lib/common"
 	"github.com/ledgerwatch/erigon-lib/gointerfaces"
-	proto_realtime "github.com/ledgerwatch/erigon-lib/gointerfaces/realtime"
 	"github.com/ledgerwatch/erigon/core/types"
 	"github.com/ledgerwatch/erigon/eth/filters"
 	"github.com/ledgerwatch/erigon/rlp"
+	proto_realtime "github.com/ledgerwatch/erigon/zk/realtime/subscription/proto"
 	"google.golang.org/grpc"
 )
 
