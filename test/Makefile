@@ -72,7 +72,7 @@ run: stop build-docker
 	$(DOCKER_COMPOSE) up -d xlayer-bridge-coin-kafka
 	$(RUN_DOCKER_KAFKA)
 
-	sleep 3
+	sleep 15
 	$(DOCKER_COMPOSE) up -d xlayer-approve
 	$(DOCKER_COMPOSE) up -d xlayer-seq
 	$(DOCKER_COMPOSE) up -d xlayer-pool-manager
