@@ -13,7 +13,7 @@ func (api *RealtimeAPIImpl) DumpStateCache(ctx context.Context) error {
 		return fmt.Errorf("api is nil")
 	}
 
-	if api.cacheDB.State == nil {
+	if api.cacheDB == nil || api.cacheDB.State == nil {
 		return fmt.Errorf("stateCache is nil")
 	}
 

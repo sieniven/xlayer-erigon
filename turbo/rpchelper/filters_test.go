@@ -58,7 +58,7 @@ func TestFilters_GenerateSubscriptionID(t *testing.T) {
 
 func TestFilters_SingleSubscription_OnlyTopicsSubscribedAreBroadcast(t *testing.T) {
 	t.Parallel()
-	f := New(context.TODO(), nil, nil, nil, nil, func() {}, log.New())
+	f := New(context.TODO(), nil, nil, nil, func() {}, log.New())
 
 	subbedTopic := libcommon.BytesToHash([]byte{10, 20})
 
@@ -90,7 +90,7 @@ func TestFilters_SingleSubscription_OnlyTopicsSubscribedAreBroadcast(t *testing.
 
 func TestFilters_SingleSubscription_EmptyTopicsInCriteria_OnlyTopicsSubscribedAreBroadcast(t *testing.T) {
 	t.Parallel()
-	f := New(context.TODO(), nil, nil, nil, nil, func() {}, log.New())
+	f := New(context.TODO(), nil, nil, nil, func() {}, log.New())
 
 	var nilTopic libcommon.Hash
 	subbedTopic := libcommon.BytesToHash([]byte{10, 20})
@@ -123,7 +123,7 @@ func TestFilters_SingleSubscription_EmptyTopicsInCriteria_OnlyTopicsSubscribedAr
 
 func TestFilters_TwoSubscriptionsWithDifferentCriteria(t *testing.T) {
 	t.Parallel()
-	f := New(context.TODO(), nil, nil, nil, nil, func() {}, log.New())
+	f := New(context.TODO(), nil, nil, nil, func() {}, log.New())
 
 	criteria1 := filters.FilterCriteria{
 		Addresses: nil,
@@ -163,7 +163,7 @@ func TestFilters_TwoSubscriptionsWithDifferentCriteria(t *testing.T) {
 
 func TestFilters_ThreeSubscriptionsWithDifferentCriteria(t *testing.T) {
 	t.Parallel()
-	f := New(context.TODO(), nil, nil, nil, nil, func() {}, log.New())
+	f := New(context.TODO(), nil, nil, nil, func() {}, log.New())
 
 	criteria1 := filters.FilterCriteria{
 		Addresses: nil,
@@ -238,7 +238,7 @@ func TestFilters_SubscribeLogsGeneratesCorrectLogFilterRequest(t *testing.T) {
 		return nil
 	}
 
-	f := New(context.TODO(), nil, nil, nil, nil, func() {}, log.New())
+	f := New(context.TODO(), nil, nil, nil, func() {}, log.New())
 	f.logsRequestor.Store(loadRequester)
 
 	// first request has no filters

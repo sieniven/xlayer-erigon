@@ -214,8 +214,8 @@ Loop:
 			return fmt.Errorf("postExecuteCommitValues: %w", err)
 		}
 
-		// For X Layer, delete block data from the stateless cache
-		if cfg.zk.XLayer.Kafka.Enable {
+		// For X Layer, realtime. Delete block data from the stateless cache
+		if cfg.zk.XLayer.Realtime.Enable {
 			statelessCache.DeleteBlock(blockNum, block)
 		}
 	}

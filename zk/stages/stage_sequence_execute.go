@@ -457,8 +457,8 @@ BatchLoop:
 		sendersToTriggerStatechanges := make(map[common.Address]struct{})
 		processingTxTime := time.Now()
 
-		// For X Layer, send kafka block header
-		if cfg.zk.XLayer.Kafka.Enable {
+		// For X Layer, realtime. Send kafka block header
+		if cfg.zk.XLayer.Realtime.Enable {
 			cfg.kafkaBlockInfoChan <- &realtimeTypes.BlockInfo{
 				Header:  header,
 				TxCount: prevBlockTxCount,

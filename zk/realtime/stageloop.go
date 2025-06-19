@@ -6,11 +6,10 @@ import (
 	"time"
 
 	"github.com/ledgerwatch/erigon/core/state"
-	"github.com/ledgerwatch/erigon/eth/ethconfig"
 	"github.com/ledgerwatch/erigon/zk/realtime/cache"
 	"github.com/ledgerwatch/erigon/zk/realtime/kafka"
 	kafkaTypes "github.com/ledgerwatch/erigon/zk/realtime/kafka/types"
-	"github.com/ledgerwatch/erigon/zk/realtime/subscription"
+	realtimeSub "github.com/ledgerwatch/erigon/zk/realtime/subscription"
 	realtimeTypes "github.com/ledgerwatch/erigon/zk/realtime/types"
 	"github.com/ledgerwatch/erigon/zk/sequencer"
 	"github.com/ledgerwatch/log/v3"
@@ -30,17 +29,11 @@ var (
 func ListenTxKafkaProducer(
 	ctx context.Context,
 	txKafkaProducer *kafka.KafkaProducer,
-	config ethconfig.XLayerConfig,
 	logger log.Logger,
 	blockInfoChan chan *realtimeTypes.BlockInfo,
 	txInfoChan chan *state.TxInfo) {
 	if !sequencer.IsSequencer() {
 		logger.Info("[Realtime] TxKafkaProducer is disabled on non-sequencer, skipping")
-		return
-	}
-
-	if !config.Kafka.Enable {
-		logger.Info("[Realtime] Tx Kafka is disabled, skipping")
 		return
 	}
 
@@ -77,18 +70,12 @@ func ListenTxKafkaProducer(
 func ListenTxKafkaConsumer(
 	ctx context.Context,
 	txKafkaConsumer *kafka.KafkaConsumer,
-	config ethconfig.XLayerConfig,
 	logger log.Logger,
 	realtimeCache *cache.RealtimeCache,
 	finishChan chan uint64,
-	realtimeServer *subscription.RealtimeServer) {
+	subService *realtimeSub.RealtimeSubscription) {
 	if sequencer.IsSequencer() {
 		logger.Info("[Realtime] TxKafkaConsumer is disabled on sequencer, skipping")
-		return
-	}
-
-	if !config.Kafka.Enable {
-		logger.Info("[Realtime] Tx Kafka is disabled, skipping")
 		return
 	}
 
@@ -143,8 +130,10 @@ func ListenTxKafkaConsumer(
 				continue
 			}
 			kafkaCache.TxMsgCache.Add(&txMsg)
-			// Publish tx to subscriptions
-			go broadcastRealtimeTransaction(realtimeServer, txMsg, logger)
+			if subService != nil {
+				// Publish tx to subscriptions
+				subService.BroadcastNewTxMsg(&txMsg)
+			}
 			logger.Debug("[Realtime] Received transaction message", "blockNum", txMsg.BlockNumber)
 		case errorTriggerMsg := <-errorMsgsChan:
 			resetFlag.Store(true)
@@ -282,10 +271,4 @@ func resetRealtimeCache(realtimeCache *cache.RealtimeCache) {
 	realtimeCache.Clear()
 	resetFlag.Store(false)
 	readyFlag.Store(false)
-}
-
-func broadcastRealtimeTransaction(realtimeServer *subscription.RealtimeServer, txMsg kafkaTypes.TransactionMessage, logger log.Logger) {
-	if err := realtimeServer.BroadcastRealtimeTransactionMessage(&txMsg); err != nil {
-		logger.Error("[Realtime] Failed to broadcast realtime transaction message", "txHash", txMsg.Hash, "error", err)
-	}
 }

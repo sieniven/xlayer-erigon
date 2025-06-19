@@ -92,7 +92,7 @@ func NewDefaultZkStages(ctx context.Context,
 		stagedsync.StageCallTracesCfg(db, cfg.Prune, 0, dirs.Tmp),
 		stagedsync.StageTxLookupCfg(db, cfg.Prune, dirs.Tmp, controlServer.ChainConfig.Bor, blockReader),
 		// For X Layer. RPC latency optimization
-		stagedsync.StageFinishCfg(db, dirs.Tmp, forkValidator, finishChan, cfg.XLayer.Kafka.Enable),
+		stagedsync.StageFinishCfg(db, dirs.Tmp, forkValidator, finishChan, cfg.XLayer.Realtime.Enable),
 		statelessCache,
 		runInTestMode)
 }

@@ -60,13 +60,16 @@ func ApplyFlagsForEthXLayerConfig(ctx *cli.Context, cfg *ethconfig.Config) {
 
 		TraceLogPath:   ctx.String(utils.TraceLogPath.Name),
 		EnableTraceLog: ctx.Bool(utils.EnableTraceLog.Name),
-		Kafka: ethconfig.KafkaConfig{
-			Enable:           ctx.Bool(utils.KafkaSyncEnableFlag.Name),
-			BootstrapServers: strings.Split(ctx.String(utils.KafkaSyncBootstrapServers.Name), ","),
-			BlockTopic:       ctx.String(utils.KafkaSyncBlockTopic.Name),
-			TxTopic:          ctx.String(utils.KafkaSyncTxTopic.Name),
-			ErrorTopic:       ctx.String(utils.KafkaSyncErrorTopic.Name),
-			ClientID:         ctx.String(utils.KafkaSyncClientID.Name),
+		Realtime: ethconfig.RealtimeConfig{
+			Enable:          ctx.Bool(utils.RealtimeEnableFlag.Name),
+			EnableSubscribe: ctx.Bool(utils.RealtimeEnableSubscribeFlag.Name),
+			Kafka: ethconfig.KafkaConfig{
+				BootstrapServers: strings.Split(ctx.String(utils.RealtimeKafkaSyncBootstrapServers.Name), ","),
+				BlockTopic:       ctx.String(utils.RealtimeKafkaSyncBlockTopic.Name),
+				TxTopic:          ctx.String(utils.RealtimeKafkaSyncTxTopic.Name),
+				ErrorTopic:       ctx.String(utils.RealtimeKafkaSyncErrorTopic.Name),
+				ClientID:         ctx.String(utils.RealtimeKafkaSyncClientID.Name),
+			},
 		},
 	}
 	if cfg.XLayer.BlockInfoConcurrent {

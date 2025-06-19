@@ -287,7 +287,7 @@ func attemptAddTransaction(
 		return nil, nil, nil, overflowNone, err
 	}
 
-	if cfg.zk.XLayer.Kafka.Enable {
+	if cfg.zk.XLayer.Realtime.Enable {
 		ibs.GenerateChangesetSinceSnapshotAndSendTxInfo(snapshot, cfg.kafkaTxInfoChan, transaction, receipt, innerTxs)
 	}
 
