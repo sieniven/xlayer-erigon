@@ -96,7 +96,7 @@ type SequenceBlockCfg struct {
 	decodedTxCache *expirable.LRU[common.Hash, *types.Transaction]
 	doneHook       DoneHook
 
-	// For X Layer, kafka
+	// For X Layer, realtime
 	kafkaBlockInfoChan chan *realtimeTypes.BlockInfo
 	kafkaTxInfoChan    chan *state.TxInfo
 }
@@ -130,7 +130,7 @@ func StageSequenceBlocksCfg(
 	infoTreeUpdater *l1infotree.Updater,
 	doneHook DoneHook,
 
-	// For X Layer, kafka
+	// For X Layer, realtime
 	kafkaBlockInfoChan chan *realtimeTypes.BlockInfo,
 	kafkaTxInfoChan chan *state.TxInfo,
 ) SequenceBlockCfg {
@@ -164,7 +164,7 @@ func StageSequenceBlocksCfg(
 		// For X Layer, split db and ac
 		dbsmt: dbsmt,
 
-		// For X Layer, kafka
+		// For X Layer, realtime
 		kafkaBlockInfoChan: kafkaBlockInfoChan,
 		kafkaTxInfoChan:    kafkaTxInfoChan,
 	}

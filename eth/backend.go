@@ -255,7 +255,7 @@ type Ethereum struct {
 	l1InfoTreeSyncer *syncer.L1Syncer
 	l1BlockSyncer    *syncer.L1Syncer
 
-	// For X Layer, kafka
+	// For X Layer, realtime
 	txKafkaProducer *realtimeKafka.KafkaProducer
 	txKafkaConsumer *realtimeKafka.KafkaConsumer
 	realtimeCache   *realtimeCache.RealtimeCache
@@ -1233,9 +1233,9 @@ func New(ctx context.Context, stack *node.Node, config *ethconfig.Config, logger
 			// For X Layer, apollo
 			backend.l1BlockSyncer = l1BlockSyncer
 
-			// For X Layer, kafka
-			if cfg.Zk.XLayer.Kafka.Enable {
-				kafkaProducer, err := kafka.NewKafkaProducer(cfg.Zk.XLayer.Kafka)
+			// For X Layer, realtime
+			if cfg.Zk.XLayer.Realtime.Enable {
+				kafkaProducer, err := kafka.NewKafkaProducer(cfg.Zk.XLayer.Realtime.Kafka)
 				if err != nil {
 					return nil, err
 				}
@@ -1291,10 +1291,10 @@ func New(ctx context.Context, stack *node.Node, config *ethconfig.Config, logger
 			}
 			streamClient := initDataStreamClient(ctx, cfg.Zk, uint16(latestForkId))
 
-			// For X Layer, kafka
-			if cfg.Zk.XLayer.Kafka.Enable {
+			// For X Layer, realtime
+			if cfg.Zk.XLayer.Realtime.Enable {
 				// Init kafka consumer
-				kafkaConsumer, err := kafka.NewKafkaConsumer(cfg.Zk.XLayer.Kafka)
+				kafkaConsumer, err := kafka.NewKafkaConsumer(cfg.Zk.XLayer.Realtime.Kafka)
 				if err != nil {
 					return nil, err
 				}
@@ -1308,7 +1308,9 @@ func New(ctx context.Context, stack *node.Node, config *ethconfig.Config, logger
 
 				backend.finishChan = make(chan uint64)
 
-				backend.realtimeSub = realtimeSub.NewRealtimeSubscription(ctx, logger)
+				if cfg.Zk.XLayer.Realtime.EnableSubscribe {
+					backend.realtimeSub = realtimeSub.NewRealtimeSubscription(ctx, logger)
+				}
 			}
 
 			backend.syncStages = stages2.NewDefaultZkStages(
@@ -2019,9 +2021,11 @@ func (s *Ethereum) Start() error {
 
 		go stages2.StageLoop(s.sentryCtx, s.chainDB, s.stagedSync, s.sentriesClient.Hd, s.waitForStageLoopStop, s.config.Sync.LoopThrottle, s.logger, s.blockReader, hook, s.config.ForcePartialCommit)
 
-		// For X Layer, Kafka
-		go realtime.ListenTxKafkaConsumer(s.sentryCtx, s.txKafkaConsumer, s.config.Zk.XLayer, s.logger, s.realtimeCache, s.finishChan, s.realtimeSub)
-		go realtime.ListenTxKafkaProducer(s.sentryCtx, s.txKafkaProducer, s.config.Zk.XLayer, s.logger, s.blockInfoChan, s.txInfoChan)
+		// For X Layer, realtime
+		if s.config.Zk.XLayer.Realtime.Enable {
+			go realtime.ListenTxKafkaConsumer(s.sentryCtx, s.txKafkaConsumer, s.logger, s.realtimeCache, s.finishChan, s.realtimeSub)
+			go realtime.ListenTxKafkaProducer(s.sentryCtx, s.txKafkaProducer, s.logger, s.blockInfoChan, s.txInfoChan)
+		}
 	}
 
 	stages := diagnostics.InitStagesFromList(nodeStages)

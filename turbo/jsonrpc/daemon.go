@@ -187,6 +187,10 @@ func APIList(db kv.RoDB, dbsmt kv.RoDB, eth rpchelper.ApiBackend, txPool txpool.
 				Version:   "1.0",
 			})
 		case "realtime":
+			if !ethCfg.Zk.XLayer.Realtime.Enable {
+				log.Warn("[Realtime] realtime api enabled but realtime backend is disabled. Failed init realtime api")
+				continue
+			}
 			list = append(list, rpc.API{
 				Namespace: "realtime",
 				Public:    true,
