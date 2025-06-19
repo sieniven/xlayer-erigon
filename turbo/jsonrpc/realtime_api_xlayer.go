@@ -56,22 +56,22 @@ type RealtimeSubscriptionAPI interface {
 
 // RealtimeAPIImpl is implementation of the RealtimeAPI interface
 type RealtimeAPIImpl struct {
-	cacheDB *realtimeCache.RealtimeCache
-	filters *subscription.RealtimeFilters
-	ethApi  *APIImpl
+	cacheDB    *realtimeCache.RealtimeCache
+	subService *subscription.RealtimeSubscription
+	ethApi     *APIImpl
 }
 
 // NewRealtimeAPI returns RealtimeAPIImpl instance
 func NewRealtimeAPI(
 	cacheDB *realtimeCache.RealtimeCache,
-	filters *subscription.RealtimeFilters,
+	subService *subscription.RealtimeSubscription,
 	base *APIImpl,
 ) *RealtimeAPIImpl {
 
 	return &RealtimeAPIImpl{
-		cacheDB: cacheDB,
-		filters: filters,
-		ethApi:  base,
+		cacheDB:    cacheDB,
+		subService: subService,
+		ethApi:     base,
 	}
 }
 

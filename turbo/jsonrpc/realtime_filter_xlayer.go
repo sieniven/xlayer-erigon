@@ -8,10 +8,11 @@ import (
 	"github.com/ledgerwatch/erigon/core/types"
 	"github.com/ledgerwatch/erigon/eth/filters"
 	"github.com/ledgerwatch/erigon/rpc"
-	"github.com/ledgerwatch/erigon/zk/realtime/subscription"
 	zktypes "github.com/ledgerwatch/erigon/zk/types"
 	"github.com/ledgerwatch/log/v3"
 )
+
+const SubscribeTxMChannelSize = 256
 
 type RPCRealtimeTransaction struct {
 	Tx       types.Transaction
@@ -21,7 +22,7 @@ type RPCRealtimeTransaction struct {
 
 // RealtimeTransactions send a notification each time when a transaction was received in real-time.
 func (api *RealtimeAPIImpl) RealtimeTransactions(ctx context.Context, fullTx, includeExtraInfo *bool) (*rpc.Subscription, error) {
-	if api.filters == nil {
+	if api.subService == nil {
 		return &rpc.Subscription{}, rpc.ErrNotificationsUnsupported
 	}
 
@@ -34,39 +35,42 @@ func (api *RealtimeAPIImpl) RealtimeTransactions(ctx context.Context, fullTx, in
 
 	go func() {
 		defer debug.LogPanic()
-		protoCh, id := api.filters.SubscribeRealtimeTransactions(256)
-		defer api.filters.UnsubscribeRealtimeTransactions(id)
+		txChan, id := api.subService.SubscribeRealtimeTransactions(SubscribeTxMChannelSize)
+		defer api.subService.UnsubscribeRealtimeTransactions(id)
 
 		for {
 			select {
-			case proto, ok := <-protoCh:
-				if proto != nil {
-					tx, receipt, innerTxs, err := subscription.FromProtoTxMessage(proto)
-					if err != nil {
-						log.Warn("[realtime rpc] error while parsing transaction message from proto message", "err", err)
-						return
-					}
-					if fullTx == nil || !*fullTx {
-						err = notifier.Notify(rpcSub.ID, tx.Hash())
-					} else {
-						if includeExtraInfo == nil || !*includeExtraInfo {
-							err = notifier.Notify(rpcSub.ID, tx)
-						} else {
-							err = notifier.Notify(rpcSub.ID, RPCRealtimeTransaction{
-								Tx:       tx,
-								Receipt:  receipt,
-								InnerTxs: innerTxs,
-							})
-						}
-					}
-
-					if err != nil {
-						log.Warn("[realtime rpc] error while notifying subscription", "err", err)
-					}
-				}
+			case txMsg, ok := <-txChan:
 				if !ok {
-					log.Warn("[realtime rpc] new realtime transactions channel was closed")
+					log.Warn("[realtime subscription] realtime txMsg channel closed")
 					return
+				}
+
+				if err := txMsg.Validate(); err != nil {
+					log.Warn("[realtime subscription] error while validating transaction message", "err", err)
+					return
+				}
+
+				_, tx, receipt, innerTxs, err := txMsg.GetAllTxData()
+				if err != nil {
+					log.Warn("[realtime subscription] error getting tx data", "err", err)
+					return
+				}
+
+				if fullTx == nil || !*fullTx {
+					err = notifier.Notify(rpcSub.ID, tx.Hash())
+					if err != nil {
+						log.Warn("[realtime subscription] error while notifying subscription", "err", err)
+					}
+				} else {
+					err = notifier.Notify(rpcSub.ID, RPCRealtimeTransaction{
+						Tx:       tx,
+						Receipt:  receipt,
+						InnerTxs: innerTxs,
+					})
+				}
+				if err != nil {
+					log.Warn("[realtime subscription] error while notifying subscription", "err", err)
 				}
 			case <-rpcSub.Err():
 				return
@@ -79,7 +83,7 @@ func (api *RealtimeAPIImpl) RealtimeTransactions(ctx context.Context, fullTx, in
 
 // Logs send a notification each time a new log appears in real-time.
 func (api *RealtimeAPIImpl) Logs(ctx context.Context, crit filters.FilterCriteria) (*rpc.Subscription, error) {
-	if api.filters == nil {
+	if api.subService == nil {
 		return &rpc.Subscription{}, rpc.ErrNotificationsUnsupported
 	}
 
@@ -92,8 +96,8 @@ func (api *RealtimeAPIImpl) Logs(ctx context.Context, crit filters.FilterCriteri
 
 	go func() {
 		defer debug.LogPanic()
-		logCh, id := api.filters.SubscribeRealtimeLogs(api.ethApi.SubscribeLogsChannelSize, crit)
-		defer api.filters.UnsubscribeRealtimeLogs(id)
+		logCh, id := api.subService.SubscribeRealtimeLogs(api.ethApi.SubscribeLogsChannelSize, crit)
+		defer api.subService.UnsubscribeRealtimeLogs(id)
 
 		for {
 			select {

@@ -137,6 +137,7 @@ import (
 	"github.com/ledgerwatch/erigon/zk/realtime"
 	realtimeCache "github.com/ledgerwatch/erigon/zk/realtime/cache"
 	"github.com/ledgerwatch/erigon/zk/realtime/kafka"
+	realtimeKafka "github.com/ledgerwatch/erigon/zk/realtime/kafka"
 	realtimeSub "github.com/ledgerwatch/erigon/zk/realtime/subscription"
 	realtimeTypes "github.com/ledgerwatch/erigon/zk/realtime/types"
 	zkStages "github.com/ledgerwatch/erigon/zk/stages"
@@ -255,14 +256,13 @@ type Ethereum struct {
 	l1BlockSyncer    *syncer.L1Syncer
 
 	// For X Layer, kafka
-	txKafkaProducer *kafka.KafkaProducer
-	txKafkaConsumer *kafka.KafkaConsumer
+	txKafkaProducer *realtimeKafka.KafkaProducer
+	txKafkaConsumer *realtimeKafka.KafkaConsumer
 	realtimeCache   *realtimeCache.RealtimeCache
 	blockInfoChan   chan *realtimeTypes.BlockInfo
 	txInfoChan      chan *state.TxInfo
 	finishChan      chan uint64
-	realtimeServer  *realtimeSub.RealtimeServer
-	realtimeFilters *realtimeSub.RealtimeFilters
+	realtimeSub     *realtimeSub.RealtimeSubscription
 }
 
 func splitAddrIntoHostAndPort(addr string) (host string, port int, err error) {
@@ -1308,8 +1308,7 @@ func New(ctx context.Context, stack *node.Node, config *ethconfig.Config, logger
 
 				backend.finishChan = make(chan uint64)
 
-				backend.realtimeServer = realtimeSub.NewRealtimeServer(ctx, logger)
-				backend.realtimeFilters = realtimeSub.NewRealtimeFilters(ctx, realtimeSub.NewRealtimeClient(backend.realtimeServer), logger)
+				backend.realtimeSub = realtimeSub.NewRealtimeSubscription(ctx, logger)
 			}
 
 			backend.syncStages = stages2.NewDefaultZkStages(
@@ -1450,7 +1449,7 @@ func (s *Ethereum) Init(stack *node.Node, config *ethconfig.Config, chainConfig 
 
 	var gpCache *jsonrpc.GasPriceCache
 	// For X Layer, split db
-	s.apiList, gpCache = jsonrpc.APIList(chainKv, s.smtDB, ethRpcClient, txPoolRpcClient, s.txPool2, miningRpcClient, ff, stateCache, blockReader, s.agg, &httpRpcCfg, s.engine, config, s.l1Syncer, s.logger, dataStreamServer, s.gasTracker, s.stagedSync.GetCache(), s.realtimeCache, s.realtimeFilters)
+	s.apiList, gpCache = jsonrpc.APIList(chainKv, s.smtDB, ethRpcClient, txPoolRpcClient, s.txPool2, miningRpcClient, ff, stateCache, blockReader, s.agg, &httpRpcCfg, s.engine, config, s.l1Syncer, s.logger, dataStreamServer, s.gasTracker, s.stagedSync.GetCache(), s.realtimeCache, s.realtimeSub)
 
 	// For X Layer
 	if s.txPool2 != nil && gpCache != nil {
@@ -2021,7 +2020,7 @@ func (s *Ethereum) Start() error {
 		go stages2.StageLoop(s.sentryCtx, s.chainDB, s.stagedSync, s.sentriesClient.Hd, s.waitForStageLoopStop, s.config.Sync.LoopThrottle, s.logger, s.blockReader, hook, s.config.ForcePartialCommit)
 
 		// For X Layer, Kafka
-		go realtime.ListenTxKafkaConsumer(s.sentryCtx, s.txKafkaConsumer, s.config.Zk.XLayer, s.logger, s.realtimeCache, s.finishChan, s.realtimeServer)
+		go realtime.ListenTxKafkaConsumer(s.sentryCtx, s.txKafkaConsumer, s.config.Zk.XLayer, s.logger, s.realtimeCache, s.finishChan, s.realtimeSub)
 		go realtime.ListenTxKafkaProducer(s.sentryCtx, s.txKafkaProducer, s.config.Zk.XLayer, s.logger, s.blockInfoChan, s.txInfoChan)
 	}
 

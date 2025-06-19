@@ -160,6 +160,23 @@ func (msg TransactionMessage) GetInnerTxs() ([]*zktypes.InnerTx, error) {
 	return msg.InnerTxs, nil
 }
 
+func (msg TransactionMessage) GetAllTxData() (uint64, ethTypes.Transaction, *ethTypes.Receipt, []*zktypes.InnerTx, error) {
+	tx, blockNum, err := msg.GetTransaction()
+	if err != nil {
+		return 0, nil, nil, nil, err
+	}
+	receipt, err := msg.GetReceipt()
+	if err != nil {
+		return 0, nil, nil, nil, err
+	}
+	innerTxs, err := msg.GetInnerTxs()
+	if err != nil {
+		return 0, nil, nil, nil, err
+	}
+
+	return blockNum, tx, receipt, innerTxs, nil
+}
+
 func (msg TransactionMessage) GetChangeset() (*realtimeTypes.Changeset, error) {
 	if msg.Changeset == nil {
 		return nil, fmt.Errorf("changeset is nil")
