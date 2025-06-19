@@ -2,6 +2,7 @@ package subscription
 
 import (
 	"context"
+	"fmt"
 	"sync"
 
 	libcommon "github.com/ledgerwatch/erigon-lib/common"
@@ -11,8 +12,11 @@ import (
 	"github.com/ledgerwatch/log/v3"
 )
 
-// Buffer size should be large enough, and limit the number of subscriptions on the node.
-const DEFAULT_BUFFER_SIZE = 1000
+// Channel size should be large enough, and limit the number of subscriptions on the node
+const DEFAULT_TX_CHAN_SIZE = 1000
+
+// Limit the number of subscriptions on the node
+const MAX_SUBSCRIPTIONS_COUNT = 100
 
 type RealtimeSubscription struct {
 	txSubs    *SyncMap[SubID, Sub[*kafkaTypes.TransactionMessage]]
@@ -25,7 +29,7 @@ func NewRealtimeSubscription(ctx context.Context, logger log.Logger) *RealtimeSu
 	return &RealtimeSubscription{
 		txSubs:    NewSyncMap[SubID, Sub[*kafkaTypes.TransactionMessage]](),
 		logsSubs:  NewSyncMap[SubID, *LogsFilter](),
-		newTxChan: make(chan *kafkaTypes.TransactionMessage, DEFAULT_BUFFER_SIZE),
+		newTxChan: make(chan *kafkaTypes.TransactionMessage, DEFAULT_TX_CHAN_SIZE),
 		logger:    logger,
 	}
 }
@@ -96,11 +100,15 @@ func (ff *RealtimeSubscription) BroadcastNewTxMsg(txMsg *kafkaTypes.TransactionM
 	ff.newTxChan <- txMsg
 }
 
-func (ff *RealtimeSubscription) SubscribeRealtimeTransactions(size int) (<-chan *kafkaTypes.TransactionMessage, SubID) {
+func (ff *RealtimeSubscription) SubscribeRealtimeTransactions(size int) (<-chan *kafkaTypes.TransactionMessage, SubID, error) {
+	if ff.txSubs.Len() > MAX_SUBSCRIPTIONS_COUNT {
+		return nil, "", fmt.Errorf("max subscriptions count reached")
+	}
+
 	id := SubID(generateSubID())
 	sub := newChanSub[*kafkaTypes.TransactionMessage](size)
 	ff.txSubs.Put(id, sub)
-	return sub.ch, id
+	return sub.ch, id, nil
 }
 
 func (ff *RealtimeSubscription) UnsubscribeRealtimeTransactions(id SubID) bool {
@@ -115,7 +123,11 @@ func (ff *RealtimeSubscription) UnsubscribeRealtimeTransactions(id SubID) bool {
 	return true
 }
 
-func (ff *RealtimeSubscription) SubscribeRealtimeLogs(size int, crit filters.FilterCriteria) (<-chan *types.Log, SubID) {
+func (ff *RealtimeSubscription) SubscribeRealtimeLogs(size int, crit filters.FilterCriteria) (<-chan *types.Log, SubID, error) {
+	if ff.logsSubs.Len() > MAX_SUBSCRIPTIONS_COUNT {
+		return nil, "", fmt.Errorf("max subscriptions count reached")
+	}
+
 	id := SubID(generateSubID())
 	sub := newChanSub[*types.Log](size)
 	filter := &LogsFilter{addrs: map[libcommon.Address]int{}, topics: map[libcommon.Hash]int{}, sender: sub}
@@ -140,7 +152,7 @@ func (ff *RealtimeSubscription) SubscribeRealtimeLogs(size int, crit filters.Fil
 	filter.topicsOriginal = crit.Topics
 	ff.logsSubs.Put(id, filter)
 
-	return sub.ch, id
+	return sub.ch, id, nil
 }
 
 func (ff *RealtimeSubscription) UnsubscribeRealtimeLogs(id SubID) bool {

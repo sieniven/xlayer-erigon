@@ -54,6 +54,12 @@ type SyncMap[K comparable, T any] struct {
 	mu sync.RWMutex
 }
 
+func (m *SyncMap[K, T]) Len() int {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	return len(m.m)
+}
+
 func (m *SyncMap[K, T]) Get(k K) (res T, ok bool) {
 	m.mu.RLock()
 	defer m.mu.RUnlock()

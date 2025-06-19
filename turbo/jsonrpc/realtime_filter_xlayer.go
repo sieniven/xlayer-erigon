@@ -32,10 +32,13 @@ func (api *RealtimeAPIImpl) RealtimeTransactions(ctx context.Context, fullTx, in
 	}
 
 	rpcSub := notifier.CreateSubscription()
+	txChan, id, err := api.subService.SubscribeRealtimeTransactions(SubscribeTxMChannelSize)
+	if err != nil {
+		return &rpc.Subscription{}, err
+	}
 
 	go func() {
 		defer debug.LogPanic()
-		txChan, id := api.subService.SubscribeRealtimeTransactions(SubscribeTxMChannelSize)
 		defer api.subService.UnsubscribeRealtimeTransactions(id)
 
 		for {
@@ -93,10 +96,13 @@ func (api *RealtimeAPIImpl) Logs(ctx context.Context, crit filters.FilterCriteri
 	}
 
 	rpcSub := notifier.CreateSubscription()
+	logCh, id, err := api.subService.SubscribeRealtimeLogs(api.ethApi.SubscribeLogsChannelSize, crit)
+	if err != nil {
+		return &rpc.Subscription{}, err
+	}
 
 	go func() {
 		defer debug.LogPanic()
-		logCh, id := api.subService.SubscribeRealtimeLogs(api.ethApi.SubscribeLogsChannelSize, crit)
 		defer api.subService.UnsubscribeRealtimeLogs(id)
 
 		for {
