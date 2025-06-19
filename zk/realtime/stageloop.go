@@ -10,6 +10,7 @@ import (
 	"github.com/ledgerwatch/erigon/zk/realtime/cache"
 	"github.com/ledgerwatch/erigon/zk/realtime/kafka"
 	kafkaTypes "github.com/ledgerwatch/erigon/zk/realtime/kafka/types"
+	"github.com/ledgerwatch/erigon/zk/realtime/subscription"
 	realtimeTypes "github.com/ledgerwatch/erigon/zk/realtime/types"
 	"github.com/ledgerwatch/erigon/zk/sequencer"
 	"github.com/ledgerwatch/log/v3"
@@ -79,7 +80,8 @@ func ListenTxKafkaConsumer(
 	config ethconfig.XLayerConfig,
 	logger log.Logger,
 	realtimeCache *cache.RealtimeCache,
-	finishChan chan uint64) {
+	finishChan chan uint64,
+	realtimeRPC *subscription.RealtimeServer) {
 	if sequencer.IsSequencer() {
 		logger.Info("[Realtime] TxKafkaConsumer is disabled on sequencer, skipping")
 		return
@@ -141,6 +143,7 @@ func ListenTxKafkaConsumer(
 				continue
 			}
 			kafkaCache.TxMsgCache.Add(&txMsg)
+			go broadcastRealtimeTransaction(realtimeRPC, txMsg, logger)
 			logger.Info("[Realtime] Received transaction message", "blockNum", txMsg.BlockNumber)
 		case errorTriggerMsg := <-errorMsgsChan:
 			resetFlag.Store(true)
@@ -278,4 +281,10 @@ func resetRealtimeCache(realtimeCache *cache.RealtimeCache) {
 	realtimeCache.Clear()
 	resetFlag.Store(false)
 	readyFlag.Store(false)
+}
+
+func broadcastRealtimeTransaction(realtimeRPC *subscription.RealtimeServer, txMsg kafkaTypes.TransactionMessage, logger log.Logger) {
+	if err := realtimeRPC.BroadcastRealtimeTransactionMessage(&txMsg); err != nil {
+		logger.Error("[Realtime] Failed to broadcast realtime transaction message", "txHash", txMsg.Hash, "error", err)
+	}
 }

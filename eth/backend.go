@@ -137,6 +137,7 @@ import (
 	"github.com/ledgerwatch/erigon/zk/realtime"
 	realtimeCache "github.com/ledgerwatch/erigon/zk/realtime/cache"
 	"github.com/ledgerwatch/erigon/zk/realtime/kafka"
+	realtime_subscription "github.com/ledgerwatch/erigon/zk/realtime/subscription"
 	realtimeTypes "github.com/ledgerwatch/erigon/zk/realtime/types"
 	zkStages "github.com/ledgerwatch/erigon/zk/stages"
 	"github.com/ledgerwatch/erigon/zk/syncer"
@@ -260,6 +261,7 @@ type Ethereum struct {
 	blockInfoChan   chan *realtimeTypes.BlockInfo
 	txInfoChan      chan *state.TxInfo
 	finishChan      chan uint64
+	realtimeRPC     *realtime_subscription.RealtimeServer
 }
 
 func splitAddrIntoHostAndPort(addr string) (host string, port int, err error) {
@@ -902,6 +904,8 @@ func New(ctx context.Context, stack *node.Node, config *ethconfig.Config, logger
 	}
 
 	backend.ethBackendRPC, backend.miningRPC, backend.stateChangesClient = ethBackendRPC, miningRPC, stateDiffClient
+	// For X Layer
+	backend.realtimeRPC = realtime_subscription.NewRealtimeServer(ctx, logger)
 
 	// backend.syncStages = stages2.NewDefaultStages(backend.sentryCtx, backend.chainDB, snapDb, p2pConfig, config, backend.sentriesClient, backend.notifications, backend.downloaderClient,
 	// 	blockReader, blockRetire, backend.agg, backend.silkworm, backend.forkValidator, heimdallClient, recents, signatures, logger)
@@ -1429,7 +1433,7 @@ func (s *Ethereum) Init(stack *node.Node, config *ethconfig.Config, chainConfig 
 	// start HTTP API
 	httpRpcCfg := stack.Config().Http
 	ethRpcClient, txPoolRpcClient, miningRpcClient, stateCache, ff, err := cli.EmbeddedServices(ctx, chainKv, httpRpcCfg.StateCache, blockReader, ethBackendRPC,
-		s.txPool2GrpcServer, miningRPC, stateDiffClient, s.logger)
+		s.txPool2GrpcServer, miningRPC, s.realtimeRPC, stateDiffClient, s.logger)
 	if err != nil {
 		return err
 	}
@@ -2015,7 +2019,7 @@ func (s *Ethereum) Start() error {
 		go stages2.StageLoop(s.sentryCtx, s.chainDB, s.stagedSync, s.sentriesClient.Hd, s.waitForStageLoopStop, s.config.Sync.LoopThrottle, s.logger, s.blockReader, hook, s.config.ForcePartialCommit)
 
 		// For X Layer, Kafka
-		go realtime.ListenTxKafkaConsumer(s.sentryCtx, s.txKafkaConsumer, s.config.Zk.XLayer, s.logger, s.realtimeCache, s.finishChan)
+		go realtime.ListenTxKafkaConsumer(s.sentryCtx, s.txKafkaConsumer, s.config.Zk.XLayer, s.logger, s.realtimeCache, s.finishChan, s.realtimeRPC)
 		go realtime.ListenTxKafkaProducer(s.sentryCtx, s.txKafkaProducer, s.config.Zk.XLayer, s.logger, s.blockInfoChan, s.txInfoChan)
 	}
 
