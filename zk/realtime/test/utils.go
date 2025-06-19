@@ -27,9 +27,10 @@ import (
 )
 
 var (
-	erc20ABI, _   = abi.JSON(strings.NewReader(erc20ABIJson))
-	factoryABI, _ = abi.JSON(strings.NewReader(factoryABIJson))
-	destroyABI, _ = abi.JSON(strings.NewReader(destroyABIJson))
+	erc20ABI, _         = abi.JSON(strings.NewReader(erc20ABIJson))
+	factoryABI, _       = abi.JSON(strings.NewReader(factoryABIJson))
+	destroyABI, _       = abi.JSON(strings.NewReader(destroyABIJson))
+	createDestroyABI, _ = abi.JSON(strings.NewReader(createDestroyABIJson))
 )
 
 // setupRealtimeTestEnvironment creates a test environment with necessary data for tests
@@ -229,6 +230,171 @@ func transTokenWithFrom(t *testing.T, ctx context.Context, client *ethclient.Cli
 	require.NoError(t, err)
 
 	return signedTx.Hash().String()
+}
+
+func DeployFactoryContract(t *testing.T, ctx context.Context, client *ethclient.Client) common.Address {
+	// Deploy Factory contract
+	chainID, err := client.ChainID(ctx)
+	require.NoError(t, err)
+	auth, err := operations.GetAuth(DefaultL2AdminPrivateKey, chainID.Uint64())
+	require.NoError(t, err)
+	nonce, err := client.PendingNonceAt(ctx, auth.From)
+	require.NoError(t, err)
+	gasPrice, err := client.SuggestGasPrice(ctx)
+	require.NoError(t, err)
+
+	auth.Nonce = big.NewInt(int64(nonce))
+	auth.Value = big.NewInt(0)
+	auth.GasLimit = uint64(3000000)
+	auth.GasPrice = gasPrice
+
+	factoryBytecode, err := hex.DecodeString(factoryBytecodeStr)
+	require.NoError(t, err)
+	factoryAddr, tx, _, err := bind.DeployContract(auth, factoryABI, factoryBytecode, client)
+	require.NoError(t, err)
+
+	fmt.Printf("Factory contract deployed at: %s, transaction hash: %s\n", factoryAddr.Hex(), tx.Hash().Hex())
+	bind.WaitDeployed(ctx, client, tx)
+
+	return factoryAddr
+}
+
+func SendDeployDestroyContractTx(t *testing.T, ctx context.Context, client *ethclient.Client, privateKey *ecdsa.PrivateKey, factoryAddr common.Address, salt *big.Int) {
+	destroyBytecode, err := hex.DecodeString(destroyBytecodeStr)
+	require.NoError(t, err)
+	data, err := factoryABI.Pack("deploy", destroyBytecode, salt)
+	require.NoError(t, err)
+
+	nonce, err := client.PendingNonceAt(ctx, common.HexToAddress(DefaultL2AdminAddress))
+	require.NoError(t, err)
+	gasPrice, err := client.SuggestGasPrice(ctx)
+	require.NoError(t, err)
+	deployTx := &types.LegacyTx{
+		CommonTx: types.CommonTx{
+			Nonce: nonce,
+			To:    &factoryAddr,
+			Gas:   3000000,
+			Value: uint256.NewInt(0),
+			Data:  data,
+		},
+		GasPrice: uint256.NewInt(uint64(gasPrice.Uint64())),
+	}
+
+	signer := types.MakeSigner(operations.GetTestChainConfig(DefaultL2ChainID), 1, 0)
+	require.NoError(t, err)
+	signedTx, err := types.SignTx(deployTx, *signer, privateKey)
+	require.NoError(t, err)
+	err = client.SendTransaction(ctx, signedTx)
+	require.NoError(t, err)
+}
+
+func SendDestroyContractTx(t *testing.T, ctx context.Context, client *ethclient.Client, privateKey *ecdsa.PrivateKey, destroyAddr common.Address) {
+	data, err := destroyABI.Pack("destroy", common.HexToAddress(DefaultL2AdminAddress))
+	require.NoError(t, err)
+
+	nonce, err := client.PendingNonceAt(ctx, common.HexToAddress(DefaultL2AdminAddress))
+	require.NoError(t, err)
+	gasPrice, err := client.SuggestGasPrice(ctx)
+	require.NoError(t, err)
+	destroyTx := &types.LegacyTx{
+		CommonTx: types.CommonTx{
+			Nonce: nonce,
+			To:    &destroyAddr,
+			Gas:   3000000,
+			Value: uint256.NewInt(0),
+			Data:  data,
+		},
+		GasPrice: uint256.NewInt(uint64(gasPrice.Uint64())),
+	}
+
+	signer := types.MakeSigner(operations.GetTestChainConfig(DefaultL2ChainID), 1, 0)
+	require.NoError(t, err)
+	signedTx, err := types.SignTx(destroyTx, *signer, privateKey)
+	require.NoError(t, err)
+	err = client.SendTransaction(ctx, signedTx)
+	require.NoError(t, err)
+}
+
+func GetContractAddressFromFactory(t *testing.T, ctx context.Context, client *ethclient.Client, factoryAddr common.Address, salt *big.Int) common.Address {
+	destroyBytecode, err := hex.DecodeString(destroyBytecodeStr)
+	require.NoError(t, err)
+
+	// Pack the call to computeAddress
+	computeInput, err := factoryABI.Pack("computeAddress", destroyBytecode, salt)
+	require.NoError(t, err)
+	result, err := RealtimeCall(common.HexToAddress(DefaultL2AdminAddress), factoryAddr, "0x300000", "0x1", "0x0", fmt.Sprintf("0x%x", computeInput))
+	require.NoError(t, err)
+
+	// Unpack the result
+	return common.HexToAddress(result)
+}
+
+func DeployCreateDestroyContract(t *testing.T, ctx context.Context, client *ethclient.Client) common.Address {
+	// Deploy Factory contract
+	chainID, err := client.ChainID(ctx)
+	require.NoError(t, err)
+	auth, err := operations.GetAuth(DefaultL2AdminPrivateKey, chainID.Uint64())
+	require.NoError(t, err)
+	nonce, err := client.PendingNonceAt(ctx, auth.From)
+	require.NoError(t, err)
+	gasPrice, err := client.SuggestGasPrice(ctx)
+	require.NoError(t, err)
+
+	auth.Nonce = big.NewInt(int64(nonce))
+	auth.Value = big.NewInt(0)
+	auth.GasLimit = uint64(3000000)
+	auth.GasPrice = gasPrice
+
+	createDestroyBytecode, err := hex.DecodeString(createDestroyBytecodeStr)
+	require.NoError(t, err)
+	createDestroyAddr, tx, _, err := bind.DeployContract(auth, createDestroyABI, createDestroyBytecode, client)
+	require.NoError(t, err)
+
+	fmt.Printf("Create Destroy contract deployed at: %s, transaction hash: %s\n", createDestroyAddr.Hex(), tx.Hash().Hex())
+	bind.WaitDeployed(ctx, client, tx)
+
+	return createDestroyAddr
+}
+
+func SendCreateAndDestroyTx(t *testing.T, ctx context.Context, client *ethclient.Client, privateKey *ecdsa.PrivateKey, createDestroyAddr common.Address, salt *big.Int) {
+	data, err := createDestroyABI.Pack("createAndDestroy", salt, common.HexToAddress(DefaultL2AdminAddress))
+	require.NoError(t, err)
+
+	nonce, err := client.PendingNonceAt(ctx, common.HexToAddress(DefaultL2AdminAddress))
+	require.NoError(t, err)
+	gasPrice, err := client.SuggestGasPrice(ctx)
+	require.NoError(t, err)
+	createAndDestroyTx := &types.LegacyTx{
+		CommonTx: types.CommonTx{
+			Nonce: nonce,
+			To:    &createDestroyAddr,
+			Gas:   3000000,
+			Value: uint256.NewInt(0),
+			Data:  data,
+		},
+		GasPrice: uint256.NewInt(uint64(gasPrice.Uint64())),
+	}
+
+	signer := types.MakeSigner(operations.GetTestChainConfig(DefaultL2ChainID), 1, 0)
+	require.NoError(t, err)
+	signedTx, err := types.SignTx(createAndDestroyTx, *signer, privateKey)
+	require.NoError(t, err)
+	err = client.SendTransaction(ctx, signedTx)
+	require.NoError(t, err)
+}
+
+func GetContractAddressFromCreateDestroy(t *testing.T, ctx context.Context, client *ethclient.Client, createDestroyAddr common.Address, salt *big.Int) common.Address {
+	destroyBytecode, err := hex.DecodeString(destroyBytecodeStr)
+	require.NoError(t, err)
+
+	// Pack the call to computeAddress
+	computeInput, err := factoryABI.Pack("computeAddress", destroyBytecode, salt)
+	require.NoError(t, err)
+	result, err := RealtimeCall(common.HexToAddress(DefaultL2AdminAddress), createDestroyAddr, "0x300000", "0x1", "0x0", fmt.Sprintf("0x%x", computeInput))
+	require.NoError(t, err)
+
+	// Unpack the result
+	return common.HexToAddress(result)
 }
 
 // RevertReason returns the revert reason for a tx that has a receipt with failed status
