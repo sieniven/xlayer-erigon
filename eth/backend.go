@@ -1310,6 +1310,7 @@ func New(ctx context.Context, stack *node.Node, config *ethconfig.Config, logger
 
 				if cfg.Zk.XLayer.Realtime.EnableSubscribe {
 					backend.realtimeSub = realtimeSub.NewRealtimeSubscription(ctx, logger)
+					backend.realtimeSub.Start(ctx)
 				}
 			}
 

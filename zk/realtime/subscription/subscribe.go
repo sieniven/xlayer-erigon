@@ -48,7 +48,6 @@ func (ff *RealtimeSubscription) Start(ctx context.Context) {
 					ff.handleRealtimeLogMsgs(ctx, txMsg)
 				}()
 				wg.Wait()
-			default:
 			}
 		}
 	}()
@@ -70,6 +69,12 @@ func (ff *RealtimeSubscription) handleRealtimeLogMsgs(ctx context.Context, txMsg
 	logs := txMsg.Receipt.Logs
 	for _, log := range logs {
 		ff.logsSubs.Range(func(k SubID, filter *LogsFilter) error {
+			select {
+			case <-ctx.Done():
+				return nil
+			default:
+			}
+
 			if filter.allAddrs == 0 {
 				_, addrOk := filter.addrs[log.Address]
 				if !addrOk {
