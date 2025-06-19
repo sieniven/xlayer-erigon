@@ -47,17 +47,17 @@ func (api *RealtimeAPIImpl) RealtimeTransactions(ctx context.Context, fullTx, in
 						log.Warn("[realtime rpc] error while parsing transaction message from proto message", "err", err)
 						return
 					}
-					if fullTx != nil && !*fullTx && receipt != nil {
-						err = notifier.Notify(rpcSub.ID, receipt.TxHash)
+					if fullTx == nil || !*fullTx {
+						err = notifier.Notify(rpcSub.ID, tx.Hash())
 					} else {
-						if includeExtraInfo != nil && *includeExtraInfo {
+						if includeExtraInfo == nil || !*includeExtraInfo {
+							err = notifier.Notify(rpcSub.ID, tx)
+						} else {
 							err = notifier.Notify(rpcSub.ID, RPCRealtimeTransaction{
 								Tx:       tx,
 								Receipt:  receipt,
 								InnerTxs: innerTxs,
 							})
-						} else {
-							err = notifier.Notify(rpcSub.ID, tx)
 						}
 					}
 
