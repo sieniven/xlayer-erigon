@@ -20,6 +20,7 @@ import (
 	"github.com/ledgerwatch/erigon/turbo/services"
 	"github.com/ledgerwatch/erigon/zk/datastream/server"
 	realtimeCache "github.com/ledgerwatch/erigon/zk/realtime/cache"
+	realtimeSub "github.com/ledgerwatch/erigon/zk/realtime/subscription"
 	"github.com/ledgerwatch/erigon/zk/sequencer"
 	"github.com/ledgerwatch/erigon/zk/syncer"
 	txpool2 "github.com/ledgerwatch/erigon/zk/txpool"
@@ -34,6 +35,7 @@ func APIList(db kv.RoDB, dbsmt kv.RoDB, eth rpchelper.ApiBackend, txPool txpool.
 	// For X Layer
 	cache *smt.SmtCache,
 	realtimeCache *realtimeCache.RealtimeCache,
+	realtimeFilters *realtimeSub.RealtimeFilters,
 ) (list []rpc.API, gpCache *GasPriceCache) {
 	// non-sequencer nodes should forward on requests to the sequencer
 	rpcUrl := ""
@@ -78,7 +80,7 @@ func APIList(db kv.RoDB, dbsmt kv.RoDB, eth rpchelper.ApiBackend, txPool txpool.
 	// For X Layer, split db and ac
 	zkEvmImpl := NewZkEvmAPI(ethImpl, db, dbsmt, cfg.ReturnDataLimit, ethCfg, l1Syncer, rpcUrl, dataStreamServer, cache)
 	// For X Layer, realtime response
-	realtimeImpl := NewRealtimeAPI(ethImpl, realtimeCache)
+	realtimeImpl := NewRealtimeAPI(realtimeCache, realtimeFilters, ethImpl)
 
 	if cfg.GraphQLEnabled {
 		list = append(list, rpc.API{

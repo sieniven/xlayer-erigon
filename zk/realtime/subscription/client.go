@@ -16,8 +16,6 @@ func NewRealtimeClient(server proto.RealtimeServer) *RealtimeClient {
 	return &RealtimeClient{server: server}
 }
 
-// ################ Realtime Transacions ################
-
 func (s *RealtimeClient) OnRealtimeTransaction(ctx context.Context, in *proto.RealtimeTransactionRequest, opts ...grpc.CallOption) (proto.Realtime_OnRealtimeTransactionClient, error) {
 	ch := make(chan *OnRealtimeTransactionReply, 16384)
 	streamServer := &OnRealtimeTransactionStreamS{ch: ch, ctx: ctx}

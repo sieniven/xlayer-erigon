@@ -17,7 +17,6 @@ import (
 	"github.com/ledgerwatch/erigon-lib/gointerfaces/grpcutil"
 	"github.com/ledgerwatch/erigon-lib/gointerfaces/remote"
 	"github.com/ledgerwatch/erigon-lib/gointerfaces/txpool"
-	proto_realtime "github.com/ledgerwatch/erigon/zk/realtime/subscription/proto"
 	txpool2 "github.com/ledgerwatch/erigon/zk/txpool"
 	"github.com/ledgerwatch/log/v3"
 	"google.golang.org/grpc"
@@ -45,28 +44,22 @@ type Filters struct {
 	pendingHeadsStores *SyncMap[HeadsSubID, []*types.Header]
 	pendingTxsStores   *SyncMap[PendingTxsSubID, [][]types.Transaction]
 	logger             log.Logger
-
-	// For X Layer
-	realtimeTransactionSubs *SyncMap[RealtimeTransactionSubID, Sub[*proto_realtime.RealtimeTransactionReply]]
-	realtimeLogsSubs        *LogsFilterAggregator
 }
 
-func New(ctx context.Context, ethBackend ApiBackend, txPool txpool.TxpoolClient, mining txpool.MiningClient, realtime proto_realtime.RealtimeClient, onNewSnapshot func(), logger log.Logger) *Filters {
+func New(ctx context.Context, ethBackend ApiBackend, txPool txpool.TxpoolClient, mining txpool.MiningClient, onNewSnapshot func(), logger log.Logger) *Filters {
 	logger.Info("rpc filters: subscribing to Erigon events")
 
 	ff := &Filters{
-		headsSubs:               NewSyncMap[HeadsSubID, Sub[*types.Header]](),
-		pendingTxsSubs:          NewSyncMap[PendingTxsSubID, Sub[[]types.Transaction]](),
-		pendingLogsSubs:         NewSyncMap[PendingLogsSubID, Sub[types.Logs]](),
-		pendingBlockSubs:        NewSyncMap[PendingBlockSubID, Sub[*types.Block]](),
-		logsSubs:                NewLogsFilterAggregator(),
-		onNewSnapshot:           onNewSnapshot,
-		logsStores:              NewSyncMap[LogsSubID, []*types.Log](),
-		pendingHeadsStores:      NewSyncMap[HeadsSubID, []*types.Header](),
-		pendingTxsStores:        NewSyncMap[PendingTxsSubID, [][]types.Transaction](),
-		logger:                  logger,
-		realtimeTransactionSubs: NewSyncMap[RealtimeTransactionSubID, Sub[*proto_realtime.RealtimeTransactionReply]](),
-		realtimeLogsSubs:        NewLogsFilterAggregator(),
+		headsSubs:          NewSyncMap[HeadsSubID, Sub[*types.Header]](),
+		pendingTxsSubs:     NewSyncMap[PendingTxsSubID, Sub[[]types.Transaction]](),
+		pendingLogsSubs:    NewSyncMap[PendingLogsSubID, Sub[types.Logs]](),
+		pendingBlockSubs:   NewSyncMap[PendingBlockSubID, Sub[*types.Block]](),
+		logsSubs:           NewLogsFilterAggregator(),
+		onNewSnapshot:      onNewSnapshot,
+		logsStores:         NewSyncMap[LogsSubID, []*types.Log](),
+		pendingHeadsStores: NewSyncMap[HeadsSubID, []*types.Header](),
+		pendingTxsStores:   NewSyncMap[PendingTxsSubID, [][]types.Transaction](),
+		logger:             logger,
 	}
 
 	go func() {
@@ -187,55 +180,6 @@ func New(ctx context.Context, ethBackend ApiBackend, txPool txpool.TxpoolClient,
 				}
 			}()
 		}
-	}
-
-	// For X Layer
-	if realtime != nil {
-		go func() {
-			for {
-				select {
-				case <-ctx.Done():
-					return
-				default:
-				}
-
-				if err := ff.subscribeToRealtimeTransactionMsgs(ctx, realtime); err != nil {
-					select {
-					case <-ctx.Done():
-						return
-					default:
-					}
-					if grpcutil.IsEndOfStream(err) || grpcutil.IsRetryLater(err) {
-						time.Sleep(3 * time.Second)
-						continue
-					}
-					logger.Warn("rpc filters: error subscribing to realtime transaction", "err", err)
-				}
-			}
-		}()
-
-		go func() {
-			for {
-				select {
-				case <-ctx.Done():
-					return
-				default:
-				}
-
-				if err := ff.subscribeToRealtimeLogMsgs(ctx, realtime); err != nil {
-					select {
-					case <-ctx.Done():
-						return
-					default:
-					}
-					if grpcutil.IsEndOfStream(err) || grpcutil.IsRetryLater(err) {
-						time.Sleep(3 * time.Second)
-						continue
-					}
-					logger.Warn("rpc filters: error subscribing to realtime logs", "err", err)
-				}
-			}
-		}()
 	}
 
 	return ff

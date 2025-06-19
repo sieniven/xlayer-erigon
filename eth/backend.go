@@ -137,7 +137,7 @@ import (
 	"github.com/ledgerwatch/erigon/zk/realtime"
 	realtimeCache "github.com/ledgerwatch/erigon/zk/realtime/cache"
 	"github.com/ledgerwatch/erigon/zk/realtime/kafka"
-	realtime_subscription "github.com/ledgerwatch/erigon/zk/realtime/subscription"
+	realtimeSub "github.com/ledgerwatch/erigon/zk/realtime/subscription"
 	realtimeTypes "github.com/ledgerwatch/erigon/zk/realtime/types"
 	zkStages "github.com/ledgerwatch/erigon/zk/stages"
 	"github.com/ledgerwatch/erigon/zk/syncer"
@@ -261,7 +261,8 @@ type Ethereum struct {
 	blockInfoChan   chan *realtimeTypes.BlockInfo
 	txInfoChan      chan *state.TxInfo
 	finishChan      chan uint64
-	realtimeServer  *realtime_subscription.RealtimeServer
+	realtimeServer  *realtimeSub.RealtimeServer
+	realtimeFilters *realtimeSub.RealtimeFilters
 }
 
 func splitAddrIntoHostAndPort(addr string) (host string, port int, err error) {
@@ -904,8 +905,6 @@ func New(ctx context.Context, stack *node.Node, config *ethconfig.Config, logger
 	}
 
 	backend.ethBackendRPC, backend.miningRPC, backend.stateChangesClient = ethBackendRPC, miningRPC, stateDiffClient
-	// For X Layer
-	backend.realtimeServer = realtime_subscription.NewRealtimeServer(ctx, logger)
 
 	// backend.syncStages = stages2.NewDefaultStages(backend.sentryCtx, backend.chainDB, snapDb, p2pConfig, config, backend.sentriesClient, backend.notifications, backend.downloaderClient,
 	// 	blockReader, blockRetire, backend.agg, backend.silkworm, backend.forkValidator, heimdallClient, recents, signatures, logger)
@@ -1308,6 +1307,9 @@ func New(ctx context.Context, stack *node.Node, config *ethconfig.Config, logger
 				}
 
 				backend.finishChan = make(chan uint64)
+
+				backend.realtimeServer = realtimeSub.NewRealtimeServer(ctx, logger)
+				backend.realtimeFilters = realtimeSub.NewRealtimeFilters(ctx, realtimeSub.NewRealtimeClient(backend.realtimeServer), logger)
 			}
 
 			backend.syncStages = stages2.NewDefaultZkStages(
@@ -1433,7 +1435,7 @@ func (s *Ethereum) Init(stack *node.Node, config *ethconfig.Config, chainConfig 
 	// start HTTP API
 	httpRpcCfg := stack.Config().Http
 	ethRpcClient, txPoolRpcClient, miningRpcClient, stateCache, ff, err := cli.EmbeddedServices(ctx, chainKv, httpRpcCfg.StateCache, blockReader, ethBackendRPC,
-		s.txPool2GrpcServer, miningRPC, s.realtimeServer, stateDiffClient, s.logger)
+		s.txPool2GrpcServer, miningRPC, stateDiffClient, s.logger)
 	if err != nil {
 		return err
 	}
@@ -1448,7 +1450,7 @@ func (s *Ethereum) Init(stack *node.Node, config *ethconfig.Config, chainConfig 
 
 	var gpCache *jsonrpc.GasPriceCache
 	// For X Layer, split db
-	s.apiList, gpCache = jsonrpc.APIList(chainKv, s.smtDB, ethRpcClient, txPoolRpcClient, s.txPool2, miningRpcClient, ff, stateCache, blockReader, s.agg, &httpRpcCfg, s.engine, config, s.l1Syncer, s.logger, dataStreamServer, s.gasTracker, s.stagedSync.GetCache(), s.realtimeCache)
+	s.apiList, gpCache = jsonrpc.APIList(chainKv, s.smtDB, ethRpcClient, txPoolRpcClient, s.txPool2, miningRpcClient, ff, stateCache, blockReader, s.agg, &httpRpcCfg, s.engine, config, s.l1Syncer, s.logger, dataStreamServer, s.gasTracker, s.stagedSync.GetCache(), s.realtimeCache, s.realtimeFilters)
 
 	// For X Layer
 	if s.txPool2 != nil && gpCache != nil {

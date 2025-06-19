@@ -14,9 +14,6 @@ type LogsFilterAggregator struct {
 	aggLogsFilter  LogsFilter                       // Aggregation of all current log filters
 	logsFilters    *SyncMap[LogsSubID, *LogsFilter] // Filter for each subscriber, keyed by filterID
 	logsFilterLock sync.RWMutex
-
-	// For X Layer
-	realtimeLogsFilters *SyncMap[RealtimeLogsSubID, *LogsFilter]
 }
 
 // LogsFilter is used for both representing log filter for a specific subscriber (RPC daemon usually)
@@ -46,8 +43,7 @@ func NewLogsFilterAggregator() *LogsFilterAggregator {
 			addrs:  make(map[libcommon.Address]int),
 			topics: make(map[libcommon.Hash]int),
 		},
-		logsFilters:         NewSyncMap[LogsSubID, *LogsFilter](),
-		realtimeLogsFilters: NewSyncMap[RealtimeLogsSubID, *LogsFilter](),
+		logsFilters: NewSyncMap[LogsSubID, *LogsFilter](),
 	}
 }
 
