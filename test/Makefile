@@ -70,6 +70,33 @@ run: stop build-docker
 	$(DOCKER_COMPOSE) up -d xlayer-bridge-redis
 	$(DOCKER_COMPOSE) up -d kafka-zookeeper
 	$(DOCKER_COMPOSE) up -d xlayer-bridge-coin-kafka
+
+	sleep 3
+	$(DOCKER_COMPOSE) up -d xlayer-approve
+	$(DOCKER_COMPOSE) up -d xlayer-seq
+	$(DOCKER_COMPOSE) up -d xlayer-pool-manager
+
+	sleep 5
+	$(DOCKER_COMPOSE) up -d xlayer-rpc
+
+	sleep 10
+	$(DOCKER_COMPOSE) up -d xlayer-bridge-service
+	$(DOCKER_COMPOSE) up -d xlayer-bridge-ui
+	$(INIT_BRIDGE_ACCOUNT)
+	
+	$(DOCKER_COMPOSE) up -d xlayer-cdk-node
+
+.PHONY: run
+realtime-run: stop build-docker
+	$(DOCKER_COMPOSE) up -d xlayer-mock-l1-network
+	$(DOCKER_COMPOSE) up -d xlayer-agg-db
+	$(DOCKER_COMPOSE) up -d xlayer-bridge-db
+	$(DOCKER_COMPOSE) up -d xlayer-pool-db
+	$(DOCKER_COMPOSE) up -d xlayer-agglayer-prover
+	$(DOCKER_COMPOSE) up -d xlayer-agglayer
+	$(DOCKER_COMPOSE) up -d xlayer-bridge-redis
+	$(DOCKER_COMPOSE) up -d kafka-zookeeper
+	$(DOCKER_COMPOSE) up -d xlayer-bridge-coin-kafka
 	$(RUN_DOCKER_KAFKA)
 
 	sleep 15
