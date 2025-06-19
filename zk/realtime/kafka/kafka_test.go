@@ -84,7 +84,6 @@ var (
 func TestKafkaConsumer(t *testing.T) {
 	rightvrsTx.SetSender(testFromAddr)
 	cfg := ethconfig.KafkaConfig{
-		Enable:           true,
 		BootstrapServers: []string{"0.0.0.0:9094"},
 		BlockTopic:       "xlayer-test-block",
 		TxTopic:          "xlayer-test-tx",
@@ -143,8 +142,7 @@ func TestKafkaConsumer(t *testing.T) {
 func TestKafkaProducer(t *testing.T) {
 	rightvrsTx.SetSender(testFromAddr)
 	cfg := ethconfig.KafkaConfig{
-		Enable:           true,
-		BootstrapServers: []string{"0.0.0.0:9094"},
+		BootstrapServers: []string{"0.0.0.0:9095"},
 		BlockTopic:       "xlayer-test-block",
 		TxTopic:          "xlayer-test-tx",
 		ErrorTopic:       "xlayer-test-error",
