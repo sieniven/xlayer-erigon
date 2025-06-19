@@ -10,6 +10,9 @@ contract WOKB {
          */
         error ERC20InvalidReceiver(address receiver);
 
+        error ERC20IBurn(address acct);
+        error ERC20TransferFrom(address acct);
+
         /**
              * @dev Indicates a failure with the token `sender`. Used in transfers.
              * @param sender Address whose tokens are being transferred.
@@ -41,13 +44,17 @@ contract WOKB {
 
 
  // PolygonZkEVM Bridge address
-    address public immutable bridgeAddress;
+    address public bridgeAddress;
     modifier onlyBridge() {
         require(
             msg.sender == bridgeAddress,
             "TokenWrapped::onlyBridge: Not PolygonZkEVMBridge"
         );
         _;
+    }
+
+    constructor(address _bridge) {
+        bridgeAddress=_bridge;
     }
 
    receive() external payable {
@@ -81,21 +88,30 @@ contract WOKB {
         return transferFrom(msg.sender, dst, wad);
     }
 
+    // function safeTransferFrom( address from, address to, uint256 value) public {
+    //     return transferFrom(from, to, value);
+    // }
+
     function transferFrom(address src, address dst, uint wad)
         public
         returns (bool)
     {
-        require(balanceOf[src] >= wad);
+        // revert ERC20TransferFrom(src);
+              require(
+            false,
+            "transferFrom error"
+        );
+        // require(balanceOf[src] >= wad);
 
-        if (src != msg.sender ) {
-            require(allowance[src][msg.sender] >= wad);
-            allowance[src][msg.sender] -= wad;
-        }
+        // if (src != msg.sender ) {
+        //     require(allowance[src][msg.sender] >= wad);
+        //     allowance[src][msg.sender] -= wad;
+        // }
 
-        balanceOf[src] -= wad;
-        balanceOf[dst] += wad;
+        // balanceOf[src] -= wad;
+        // balanceOf[dst] += wad;
 
-        emit Transfer(src, dst, wad);
+        // emit Transfer(src, dst, wad);
 
         return true;
     }
@@ -134,7 +150,8 @@ contract WOKB {
          */
         function _burn(address account, uint256 value) internal {
             if (account == address(0)) {
-                revert ERC20InvalidSender(address(0));
+                // revert ERC20InvalidSender(address(0));
+                revert("ERC20InvalidSender");
             }
             _update(account, address(0), value);
         }
@@ -153,7 +170,8 @@ contract WOKB {
                 } else {
                     uint256 fromBalance = balanceOf[from];
                     if (fromBalance < value) {
-                        revert ERC20InsufficientBalance(from, fromBalance, value);
+                        // revert ERC20InsufficientBalance(from, fromBalance, value);
+                        revert("ERC20InsufficientBalance");
                     }
                     unchecked {
                         // Overflow not possible: value <= fromBalance <= totalSupply.

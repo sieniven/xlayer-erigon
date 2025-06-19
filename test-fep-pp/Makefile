@@ -52,7 +52,7 @@ run-new:
 	$(DOCKER_COMPOSE) up -d xlayer-agg-db
 	$(DOCKER_COMPOSE) up -d xlayer-agglayer-prover
 	$(DOCKER_COMPOSE) up -d xlayer-agglayer
-	
+	sleep 3
 	$(DOCKER_COMPOSE) up -d xlayer-cdk-node
 	
 .PHONY: stop

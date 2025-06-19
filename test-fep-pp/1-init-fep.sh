@@ -221,7 +221,7 @@ else
     echo -e "L2_WETH=${L2_WETH}" >> .env
 fi
 
-L2_WOKB=$(forge create $(pwd)/WOKB.sol:WOKB --legacy --broadcast --rpc-url $RPC_L2 --private-key $ADDR_PRIVATE_KEY --constructor-args $BRIDGE_ADDRESS | grep 'Deployed to:' | awk '{print $3}')
+L2_WOKB=$(forge create $(pwd)/TokenWrapped.sol:TokenWrapped --legacy --broadcast --rpc-url $RPC_L2 --private-key $ADDR_PRIVATE_KEY --constructor-args $BRIDGE_ADDRESS "OKB" "OKB" "18" | grep 'Deployed to:' | awk '{print $3}')
 echo "L2_WOKB: $L2_WOKB"
 if grep -q "^L2_WOKB=" .env; then
     sed_inplace "s|^L2_WOKB=.*|L2_WOKB=${L2_WOKB}|" .env
@@ -229,6 +229,6 @@ else
     echo -e "L2_WOKB=${L2_WOKB}" >> .env
 fi
 export ADDR=0x8f8e2d6cf621f30e9a11309d6a56a876281fd534
-cast send --value 1000000000 $L2_WOKB -f $ADDR --private-key $ADDR_PRIVATE_KEY --rpc-url=$RPC_L2 --legacy
+# cast send --value 1000000000 $L2_WOKB -f $ADDR --private-key $ADDR_PRIVATE_KEY --rpc-url=$RPC_L2 --legacy
 
 ./6-bridge.sh 
