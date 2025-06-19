@@ -9,6 +9,7 @@ import (
 	"github.com/ledgerwatch/erigon-lib/common/hexutil"
 	"github.com/ledgerwatch/erigon-lib/common/hexutility"
 	"github.com/ledgerwatch/erigon/core/types"
+	"github.com/ledgerwatch/erigon/eth/filters"
 	"github.com/ledgerwatch/erigon/rpc"
 	ethapi2 "github.com/ledgerwatch/erigon/turbo/adapter/ethapi"
 	realtimeCache "github.com/ledgerwatch/erigon/zk/realtime/cache"
@@ -44,6 +45,12 @@ type RealtimeAPI interface {
 
 	// Debug related (see ./realtime_debug.go)
 	DumpStateCache(ctx context.Context) error
+}
+
+type RealtimeSubscriptionAPI interface {
+	// WebSocket subscription methods
+	RealtimeTransactions(ctx context.Context, fullTx, includeExtraInfo *bool) (*rpc.Subscription, error)
+	Logs(ctx context.Context, crit filters.FilterCriteria) (*rpc.Subscription, error)
 }
 
 // RealtimeAPIImpl is implementation of the RealtimeAPI interface
