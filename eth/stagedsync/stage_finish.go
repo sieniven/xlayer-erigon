@@ -101,7 +101,7 @@ func FinishForward(s *StageState, tx kv.RwTx, cfg FinishCfg, initialCycle bool) 
 
 	// For X Layer, RPC latency optimization
 	if cfg.enableLatencyOptimization {
-		log.Debug("Finish height send")
+		log.Debug("[Realtime] Finish height send")
 		cfg.finishChan <- executionAt
 	}
 
