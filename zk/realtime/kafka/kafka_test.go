@@ -84,7 +84,7 @@ var (
 func TestKafkaConsumer(t *testing.T) {
 	rightvrsTx.SetSender(testFromAddr)
 	cfg := ethconfig.KafkaConfig{
-		BootstrapServers: []string{"0.0.0.0:9094"},
+		BootstrapServers: []string{"0.0.0.0:9095"},
 		BlockTopic:       "xlayer-test-block",
 		TxTopic:          "xlayer-test-tx",
 		ErrorTopic:       "xlayer-test-error",
