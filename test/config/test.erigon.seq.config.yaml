@@ -110,9 +110,9 @@ zkevm.bulk-add-txs: true
 zkevm.enable-add-tx-notify: true
 zkevm.initial-batch.config: /usr/src/app/first-batch-config.json
 
-kafka.sync-enable-flag: true
-kafka.sync-bootstrap-servers: "xlayer-kafka:9092"
-kafka.sync-tx-topic: xlayer-tx
-kafka.sync-block-topic: xlayer-header
-kafka.sync-error-topic: xlayer-error
-kafka.sync-client-id: "xlayer-producer"
+realtime.kafka-sync-enable-flag: true
+realtime.kafka-sync-bootstrap-servers: "xlayer-kafka:9092"
+realtime.kafka-sync-tx-topic: xlayer-tx
+realtime.kafka-sync-block-topic: xlayer-header
+realtime.kafka-sync-error-topic: xlayer-error
+realtime.kafka-sync-client-id: "xlayer-producer"

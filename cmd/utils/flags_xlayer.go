@@ -336,34 +336,34 @@ var (
 		Usage: "Enable full trace log",
 		Value: true,
 	}
-	// X Layer Kafka
+	// X Layer Realtime APIs
 	KafkaSyncEnableFlag = cli.BoolFlag{
-		Name:  "kafka.sync-enable-flag",
+		Name:  "realtime.kafka-sync-enable-flag",
 		Usage: "Kafka sync enable flag",
-		Value: true,
+		Value: false,
 	}
 	KafkaSyncBootstrapServers = cli.StringFlag{
-		Name:  "kafka.sync-bootstrap-servers",
+		Name:  "realtime.kafka-sync-bootstrap-servers",
 		Usage: "Kafka sync bootstrap servers",
 		Value: "",
 	}
 	KafkaSyncBlockTopic = cli.StringFlag{
-		Name:  "kafka.sync-block-topic",
+		Name:  "realtime.kafka-sync-block-topic",
 		Usage: "Kafka block topic",
 		Value: "",
 	}
 	KafkaSyncTxTopic = cli.StringFlag{
-		Name:  "kafka.sync-tx-topic",
+		Name:  "realtime.kafka-sync-tx-topic",
 		Usage: "Kafka tx topic",
 		Value: "",
 	}
 	KafkaSyncErrorTopic = cli.StringFlag{
-		Name:  "kafka.sync-error-topic",
+		Name:  "realtime.kafka-sync-error-topic",
 		Usage: "Kafka error trigger topic",
 		Value: "",
 	}
 	KafkaSyncClientID = cli.StringFlag{
-		Name:  "kafka.sync-client-id",
+		Name:  "realtime.kafka-sync-client-id",
 		Usage: "Kafka sync client id",
 		Value: "",
 	}
