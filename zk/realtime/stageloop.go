@@ -143,10 +143,7 @@ func ListenTxKafkaConsumer(
 				continue
 			}
 			kafkaCache.TxMsgCache.Add(&txMsg)
-			if err := realtimeRPC.BroadcastRealtimeTransactionMessage(&txMsg); err != nil {
-				logger.Error("[Realtime] Failed to broadcast realtime transaction message", "txHash", txMsg.Hash, "error", err)
-				continue
-			}
+			go broadcastRealtimeTransaction(realtimeRPC, txMsg, logger)
 			logger.Info("[Realtime] Received transaction message", "blockNum", txMsg.BlockNumber)
 		case errorTriggerMsg := <-errorMsgsChan:
 			resetFlag.Store(true)
@@ -284,4 +281,10 @@ func resetRealtimeCache(realtimeCache *cache.RealtimeCache) {
 	realtimeCache.Clear()
 	resetFlag.Store(false)
 	readyFlag.Store(false)
+}
+
+func broadcastRealtimeTransaction(realtimeRPC *privateapi.RealtimeServer, txMsg kafkaTypes.TransactionMessage, logger log.Logger) {
+	if err := realtimeRPC.BroadcastRealtimeTransactionMessage(&txMsg); err != nil {
+		logger.Error("[Realtime] Failed to broadcast realtime transaction message", "txHash", txMsg.Hash, "error", err)
+	}
 }
