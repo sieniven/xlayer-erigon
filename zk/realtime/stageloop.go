@@ -118,7 +118,7 @@ func ListenTxKafkaConsumer(
 			return
 		case finishHeight := <-finishChan:
 			realtimeCache.PutExecutionHeight(finishHeight)
-			logger.Info("[Realtime] Received finish signal from execution", "finishHeight", finishHeight)
+			logger.Debug("[Realtime] Received finish signal from execution", "finishHeight", finishHeight)
 		case blockMsg := <-blockMsgsChan:
 			header, _, err := blockMsg.GetBlockInfo()
 			if err != nil {
@@ -127,11 +127,11 @@ func ListenTxKafkaConsumer(
 			}
 			if header.Number.Uint64() <= realtimeCache.GetExecutionHeight() {
 				// Ignore block msgs from previous blocks
-				logger.Info("[Realtime] Ignoring block message from previous block", "blockNum", header.Number)
+				logger.Debug("[Realtime] Ignoring block message from previous block", "blockNum", header.Number)
 				continue
 			}
 			kafkaCache.BlockMsgCache.Add(&blockMsg)
-			logger.Info("[Realtime] Received block message", "blockNum", header.Number)
+			logger.Debug("[Realtime] Received block message", "blockNum", header.Number)
 		case txMsg := <-txMsgsChan:
 			if err := txMsg.Validate(); err != nil {
 				logger.Error("[Realtime] Failed to consume transaction message from kafka", "error", err)
@@ -139,16 +139,16 @@ func ListenTxKafkaConsumer(
 			}
 			if txMsg.BlockNumber <= realtimeCache.GetExecutionHeight() {
 				// Ignore txs from previous blocks
-				logger.Info("[Realtime] Ignoring transaction message from previous block", "blockNum", txMsg.BlockNumber)
+				logger.Debug("[Realtime] Ignoring transaction message from previous block", "blockNum", txMsg.BlockNumber)
 				continue
 			}
 			kafkaCache.TxMsgCache.Add(&txMsg)
 			go broadcastRealtimeTransaction(realtimeRPC, txMsg, logger)
-			logger.Info("[Realtime] Received transaction message", "blockNum", txMsg.BlockNumber)
+			logger.Debug("[Realtime] Received transaction message", "blockNum", txMsg.BlockNumber)
 		case errorTriggerMsg := <-errorMsgsChan:
 			resetFlag.Store(true)
 			triggerHeight := errorTriggerMsg.BlockNumber
-			logger.Info("[Realtime] Received error trigger message, flushing realtime cache", "triggerHeight", triggerHeight)
+			logger.Debug("[Realtime] Received error trigger message, flushing realtime cache", "triggerHeight", triggerHeight)
 		case err := <-errorChan:
 			errorFlag.Store(true)
 			logger.Error("[Realtime] Kafka consumer failed", "error", err)

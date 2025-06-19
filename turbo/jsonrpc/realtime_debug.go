@@ -17,9 +17,6 @@ func (api *RealtimeAPIImpl) DumpStateCache(ctx context.Context) error {
 		return fmt.Errorf("stateCache is nil")
 	}
 
-	log.Info("[Realtime] StateCache type", "type", reflect.TypeOf(api.cacheDB.State).String())
-	log.Info("[Realtime] StateCache value", "value", fmt.Sprintf("%+v", api.cacheDB.State))
-
 	rv := reflect.ValueOf(api.cacheDB.State)
 	if rv.Kind() == reflect.Ptr && rv.IsNil() {
 		return fmt.Errorf("stateCache is a nil pointer")
