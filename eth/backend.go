@@ -256,6 +256,7 @@ type Ethereum struct {
 	l1BlockSyncer    *syncer.L1Syncer
 
 	// For X Layer, realtime
+	txKafkaEnabled  bool
 	txKafkaProducer *realtimeKafka.KafkaProducer
 	txKafkaConsumer *realtimeKafka.KafkaConsumer
 	realtimeCache   *realtimeCache.RealtimeCache
@@ -1237,11 +1238,14 @@ func New(ctx context.Context, stack *node.Node, config *ethconfig.Config, logger
 			if cfg.Zk.XLayer.Realtime.Enable {
 				kafkaProducer, err := kafka.NewKafkaProducer(cfg.Zk.XLayer.Realtime.Kafka)
 				if err != nil {
-					return nil, err
+					backend.txKafkaEnabled = false
+					log.Warn("[Realtime] Failed to initialize kafka producer", "error", err)
+				} else {
+					backend.txKafkaEnabled = true
+					backend.txKafkaProducer = kafkaProducer
+					backend.blockInfoChan = make(chan *realtimeTypes.BlockInfo, kafkaBufferSize)
+					backend.txInfoChan = make(chan *state.TxInfo, kafkaBufferSize)
 				}
-				backend.txKafkaProducer = kafkaProducer
-				backend.blockInfoChan = make(chan *realtimeTypes.BlockInfo, kafkaBufferSize)
-				backend.txInfoChan = make(chan *state.TxInfo, kafkaBufferSize)
 			}
 
 			backend.syncStages = stages2.NewSequencerZkStages(
@@ -1296,21 +1300,24 @@ func New(ctx context.Context, stack *node.Node, config *ethconfig.Config, logger
 				// Init kafka consumer
 				kafkaConsumer, err := kafka.NewKafkaConsumer(cfg.Zk.XLayer.Realtime.Kafka)
 				if err != nil {
-					return nil, err
-				}
-				backend.txKafkaConsumer = kafkaConsumer
+					backend.txKafkaEnabled = false
+					log.Warn("[Realtime] Failed to initialize kafka consumer", "error", err)
+				} else {
+					backend.txKafkaEnabled = true
+					backend.txKafkaConsumer = kafkaConsumer
 
-				// Init realtime cache
-				backend.realtimeCache, err = realtimeCache.NewRealtimeCache(backend.sentryCtx, backend.chainDB)
-				if err != nil {
-					return nil, err
-				}
+					// Init realtime cache
+					backend.realtimeCache, err = realtimeCache.NewRealtimeCache(backend.sentryCtx, backend.chainDB)
+					if err != nil {
+						return nil, err
+					}
 
-				backend.finishChan = make(chan uint64)
+					backend.finishChan = make(chan uint64)
 
-				if cfg.Zk.XLayer.Realtime.EnableSubscribe {
-					backend.realtimeSub = realtimeSub.NewRealtimeSubscription(ctx, logger)
-					backend.realtimeSub.Start(ctx)
+					if cfg.Zk.XLayer.Realtime.EnableSubscribe {
+						backend.realtimeSub = realtimeSub.NewRealtimeSubscription(ctx, logger)
+						backend.realtimeSub.Start(ctx)
+					}
 				}
 			}
 
@@ -2023,7 +2030,7 @@ func (s *Ethereum) Start() error {
 		go stages2.StageLoop(s.sentryCtx, s.chainDB, s.stagedSync, s.sentriesClient.Hd, s.waitForStageLoopStop, s.config.Sync.LoopThrottle, s.logger, s.blockReader, hook, s.config.ForcePartialCommit)
 
 		// For X Layer, realtime
-		if s.config.Zk.XLayer.Realtime.Enable {
+		if s.config.Zk.XLayer.Realtime.Enable && s.txKafkaEnabled {
 			go realtime.ListenTxKafkaConsumer(s.sentryCtx, s.txKafkaConsumer, s.logger, s.realtimeCache, s.finishChan, s.realtimeSub)
 			go realtime.ListenTxKafkaProducer(s.sentryCtx, s.txKafkaProducer, s.logger, s.blockInfoChan, s.txInfoChan)
 		}
