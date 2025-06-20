@@ -9,8 +9,8 @@ import (
 )
 
 func (api *RealtimeAPIImpl) DumpStateCache(ctx context.Context) error {
-	if api == nil {
-		return fmt.Errorf("api is nil")
+	if api == nil || !api.enableFlag {
+		return ErrRealtimeNotEnabled
 	}
 
 	if api.cacheDB == nil || api.cacheDB.State == nil {

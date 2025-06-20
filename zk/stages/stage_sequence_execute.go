@@ -482,7 +482,7 @@ BatchLoop:
 		processingTxTime := time.Now()
 
 		// For X Layer, realtime. Send kafka block header
-		if cfg.zk.XLayer.Realtime.Enable {
+		if cfg.zk.XLayer.Realtime.Enable && cfg.kafkaBlockInfoChan != nil {
 			cfg.kafkaBlockInfoChan <- &realtimeTypes.BlockInfo{
 				Header:  header,
 				TxCount: prevBlockTxCount,

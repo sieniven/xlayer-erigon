@@ -10,6 +10,10 @@ import (
 // GetTransactionReceipt implements realtime_getTransactionReceipt.
 // Returns the receipt of a transaction given the transaction's hash.
 func (api *RealtimeAPIImpl) GetTransactionReceipt(ctx context.Context, hash common.Hash) (map[string]interface{}, error) {
+	if !api.enableFlag {
+		return nil, ErrRealtimeNotEnabled
+	}
+
 	txn, receipt, _, _, ok := api.cacheDB.Stateless.GetTxInfo(hash)
 	if !ok {
 		return api.ethApi.GetTransactionReceipt(ctx, hash)
@@ -36,6 +40,10 @@ func (api *RealtimeAPIImpl) GetTransactionReceipt(ctx context.Context, hash comm
 // GetInternalTransactions implements realtime_getInternalTransactions.
 // Returns the internal transactions of a transaction given the transaction's hash.
 func (api *RealtimeAPIImpl) GetInternalTransactions(ctx context.Context, hash common.Hash) ([]*zktypes.InnerTx, error) {
+	if !api.enableFlag {
+		return nil, ErrRealtimeNotEnabled
+	}
+
 	_, _, _, innerTxs, ok := api.cacheDB.Stateless.GetTxInfo(hash)
 	if !ok {
 		return api.ethApi.GetInternalTransactions(ctx, hash)

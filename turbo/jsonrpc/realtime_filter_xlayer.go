@@ -22,6 +22,10 @@ type RPCRealtimeTransaction struct {
 
 // RealtimeTransactions send a notification each time when a transaction was received in real-time.
 func (api *RealtimeAPIImpl) RealtimeTransactions(ctx context.Context, fullTx, includeExtraInfo *bool) (*rpc.Subscription, error) {
+	if !api.enableFlag {
+		return &rpc.Subscription{}, ErrRealtimeNotEnabled
+	}
+
 	if api.subService == nil {
 		return &rpc.Subscription{}, rpc.ErrNotificationsUnsupported
 	}
@@ -86,6 +90,10 @@ func (api *RealtimeAPIImpl) RealtimeTransactions(ctx context.Context, fullTx, in
 
 // Logs send a notification each time a new log appears in real-time.
 func (api *RealtimeAPIImpl) Logs(ctx context.Context, crit filters.FilterCriteria) (*rpc.Subscription, error) {
+	if !api.enableFlag {
+		return &rpc.Subscription{}, ErrRealtimeNotEnabled
+	}
+
 	if api.subService == nil {
 		return &rpc.Subscription{}, rpc.ErrNotificationsUnsupported
 	}

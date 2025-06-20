@@ -11,6 +11,10 @@ import (
 // GetTransactionByHash implements realtime_getTransactionByHash.
 // Returns information about a transaction given the transaction's hash.
 func (api *RealtimeAPIImpl) GetTransactionByHash(ctx context.Context, txnHash common.Hash, includeExtraInfo *bool) (interface{}, error) {
+	if !api.enableFlag {
+		return nil, ErrRealtimeNotEnabled
+	}
+
 	txn, _, blockNum, _, ok := api.cacheDB.Stateless.GetTxInfo(txnHash)
 	if !ok {
 		return api.ethApi.GetTransactionByHash(ctx, txnHash, includeExtraInfo)
@@ -43,6 +47,10 @@ func (api *RealtimeAPIImpl) GetTransactionByHash(ctx context.Context, txnHash co
 // GetRawTransactionByHash implements realtime_getRawTransactionByHash.
 // Returns the bytes of the transaction for the given hash.
 func (api *RealtimeAPIImpl) GetRawTransactionByHash(ctx context.Context, hash common.Hash) (hexutility.Bytes, error) {
+	if !api.enableFlag {
+		return nil, ErrRealtimeNotEnabled
+	}
+
 	txn, _, _, _, ok := api.cacheDB.Stateless.GetTxInfo(hash)
 	if !ok || txn == nil {
 		return api.ethApi.GetRawTransactionByHash(ctx, hash)

@@ -319,7 +319,7 @@ func attemptAddTransaction(
 
 	ibs.FinalizeTx(evm.ChainRules(), noop)
 
-	if cfg.zk.XLayer.Realtime.Enable {
+	if cfg.zk.XLayer.Realtime.Enable && cfg.kafkaTxInfoChan != nil {
 		ibs.GenerateChangesetSinceSnapshotAndSendTxInfo(snapshot, cfg.kafkaTxInfoChan, transaction, receipt, innerTxs)
 	}
 
