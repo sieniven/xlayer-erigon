@@ -21,6 +21,20 @@ func (api *RealtimeAPIImpl) BlockNumber(ctx context.Context) (hexutil.Uint64, er
 	return hexutil.Uint64(blockNumber), nil
 }
 
+// PendingBlockNumber implements realtime_pendingBlockNumber.
+// Returns the block number of the most recent pre-confirmed block.
+func (api *RealtimeAPIImpl) PendingBlockNumber(ctx context.Context) (hexutil.Uint64, error) {
+	if !api.enableFlag {
+		return hexutil.Uint64(0), ErrRealtimeNotEnabled
+	}
+
+	blockNumber, _, err := api.getBlockNumber(rpc.PendingBlockNumber)
+	if err != nil {
+		return api.ethApi.BlockNumber(ctx)
+	}
+	return hexutil.Uint64(blockNumber), nil
+}
+
 // GetBlockTransactionCountByNumber implements realtime_getBlockTransactionCountByNumber.
 // Returns the number of transactions in a block given the block's block number.
 func (api *RealtimeAPIImpl) GetBlockTransactionCountByNumber(ctx context.Context, blockNr rpc.BlockNumber) (*hexutil.Uint, error) {
