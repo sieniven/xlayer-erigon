@@ -18,7 +18,8 @@ import (
 )
 
 var (
-	mockBlockHash = libcommon.BytesToHash([]byte{1})
+	mockBlockHash         = libcommon.BytesToHash([]byte{1})
+	ErrRealtimeNotEnabled = fmt.Errorf("realtime is not enabled")
 )
 
 // RealtimeAPI is a collection of functions that are exposed in rpc only
@@ -59,6 +60,7 @@ type RealtimeAPIImpl struct {
 	cacheDB    *realtimeCache.RealtimeCache
 	subService *subscription.RealtimeSubscription
 	ethApi     *APIImpl
+	enableFlag bool
 }
 
 // NewRealtimeAPI returns RealtimeAPIImpl instance
@@ -66,16 +68,22 @@ func NewRealtimeAPI(
 	cacheDB *realtimeCache.RealtimeCache,
 	subService *subscription.RealtimeSubscription,
 	base *APIImpl,
+	enableFlag bool,
 ) *RealtimeAPIImpl {
 
 	return &RealtimeAPIImpl{
 		cacheDB:    cacheDB,
 		subService: subService,
 		ethApi:     base,
+		enableFlag: enableFlag,
 	}
 }
 
 func (api *RealtimeAPIImpl) getBlockNumber(blockNr rpc.BlockNumber) (uint64, bool, error) {
+	if !api.enableFlag {
+		return 0, false, ErrRealtimeNotEnabled
+	}
+
 	confirmHeight := api.cacheDB.GetHighestConfirmHeight()
 	if confirmHeight == 0 {
 		return 0, false, fmt.Errorf("no block number found in stateless cache")
