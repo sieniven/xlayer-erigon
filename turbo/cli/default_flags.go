@@ -357,6 +357,7 @@ var DefaultFlags = []cli.Flag{
 	&utils.GetLogsRetries,
 	&utils.OkPaySenderAccountsList,
 	&utils.OkPayBlockPriorityTxsLimit,
+	&utils.VerificationCheckDelay,
 
 	&utils.ACLPrintHistory,
 	&utils.InfoTreeUpdateInterval,

@@ -50,6 +50,8 @@ type XLayerConfig struct {
 	EnableTraceLog bool
 
 	SequencerBatchCounterPercentage int
+
+	VerificationCheckDelay time.Duration
 }
 
 var DefaultXLayerConfig = XLayerConfig{}
