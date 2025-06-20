@@ -32,13 +32,21 @@ type FinishCfg struct {
 	db            kv.RwDB
 	tmpDir        string
 	forkValidator *engine_helpers.ForkValidator
+
+	// For X Layer, realtime
+	finishChan     chan uint64
+	enableRealtime bool
 }
 
-func StageFinishCfg(db kv.RwDB, tmpDir string, forkValidator *engine_helpers.ForkValidator) FinishCfg {
+func StageFinishCfg(db kv.RwDB, tmpDir string, forkValidator *engine_helpers.ForkValidator, finishChan chan uint64, enableRealtime bool) FinishCfg {
 	return FinishCfg{
 		db:            db,
 		tmpDir:        tmpDir,
 		forkValidator: forkValidator,
+
+		// For X Layer. RPC latency optimization
+		finishChan:     finishChan,
+		enableRealtime: enableRealtime,
 	}
 }
 
@@ -89,6 +97,12 @@ func FinishForward(s *StageState, tx kv.RwTx, cfg FinishCfg, initialCycle bool) 
 		if err := tx.Commit(); err != nil {
 			return err
 		}
+	}
+
+	// For X Layer, RPC latency optimization
+	if cfg.enableRealtime {
+		log.Debug("[Realtime] Finish height send")
+		cfg.finishChan <- executionAt
 	}
 
 	return nil

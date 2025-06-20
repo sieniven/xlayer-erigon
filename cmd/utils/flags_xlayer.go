@@ -342,6 +342,42 @@ var (
 		Usage: "Enable full trace log",
 		Value: true,
 	}
+	// For realtime features
+	RealtimeEnableFlag = cli.BoolFlag{
+		Name:  "realtime.enable-flag",
+		Usage: "Kafka sync enable flag",
+		Value: true,
+	}
+	RealtimeEnableSubscribeFlag = cli.BoolFlag{
+		Name:  "realtime.enable-subscribe-flag",
+		Usage: "Enable subscribe flag",
+		Value: false,
+	}
+	RealtimeKafkaSyncBootstrapServers = cli.StringFlag{
+		Name:  "realtime.kafka-sync-bootstrap-servers",
+		Usage: "Kafka sync bootstrap servers",
+		Value: "",
+	}
+	RealtimeKafkaSyncBlockTopic = cli.StringFlag{
+		Name:  "realtime.kafka-sync-block-topic",
+		Usage: "Kafka block topic",
+		Value: "",
+	}
+	RealtimeKafkaSyncTxTopic = cli.StringFlag{
+		Name:  "realtime.kafka-sync-tx-topic",
+		Usage: "Kafka tx topic",
+		Value: "",
+	}
+	RealtimeKafkaSyncErrorTopic = cli.StringFlag{
+		Name:  "realtime.kafka-sync-error-topic",
+		Usage: "Kafka error trigger topic",
+		Value: "",
+	}
+	RealtimeKafkaSyncClientID = cli.StringFlag{
+		Name:  "realtime.kafka-sync-client-id",
+		Usage: "Kafka sync client id",
+		Value: "",
+	}
 )
 
 func setGPOXLayer(ctx *cli.Context, cfg *gaspricecfg.Config) {

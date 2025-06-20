@@ -54,6 +54,8 @@ http.timeouts.idle: "10s"
 rpc.batch.concurrency: 2
 rpc.batch.limit: 20
 ws: true
+ws.addr: 0.0.0.0
+ws.port: 8546
 
 zkevm.apollo-enabled: false
 zkevm.apollo-ip-addr: ""
@@ -115,3 +117,11 @@ zkevm.enable-add-tx-notify: true
 
 zkevm.enable-trace-log: true
 zkevm.trace-log-path: /home/erigon/data/logs/trace.log
+
+realtime.enable-flag: true
+realtime.enable-subscribe-flag: false
+realtime.kafka-sync-bootstrap-servers: "xlayer-kafka:9092"
+realtime.kafka-sync-tx-topic: xlayer-tx
+realtime.kafka-sync-block-topic: xlayer-header
+realtime.kafka-sync-error-topic: xlayer-error
+realtime.kafka-sync-client-id: "xlayer-producer"

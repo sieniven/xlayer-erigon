@@ -35,6 +35,7 @@ import (
 	"github.com/ledgerwatch/erigon/zk/hermez_db"
 	"github.com/ledgerwatch/erigon/zk/l1infotree"
 	verifier "github.com/ledgerwatch/erigon/zk/legacy_executor_verifier"
+	realtimeTypes "github.com/ledgerwatch/erigon/zk/realtime/types"
 	zktx "github.com/ledgerwatch/erigon/zk/tx"
 	"github.com/ledgerwatch/erigon/zk/txpool"
 	zktypes "github.com/ledgerwatch/erigon/zk/types"
@@ -96,6 +97,10 @@ type SequenceBlockCfg struct {
 
 	decodedTxCache *expirable.LRU[common.Hash, *types.Transaction]
 	doneHook       DoneHook
+
+	// For X Layer, realtime
+	kafkaBlockInfoChan chan *realtimeTypes.BlockInfo
+	kafkaTxInfoChan    chan *state.TxInfo
 }
 
 func StageSequenceBlocksCfg(
@@ -127,6 +132,10 @@ func StageSequenceBlocksCfg(
 	yieldSize uint16,
 	infoTreeUpdater *l1infotree.Updater,
 	doneHook DoneHook,
+
+	// For X Layer, realtime
+	kafkaBlockInfoChan chan *realtimeTypes.BlockInfo,
+	kafkaTxInfoChan chan *state.TxInfo,
 ) SequenceBlockCfg {
 
 	return SequenceBlockCfg{
@@ -158,6 +167,10 @@ func StageSequenceBlocksCfg(
 
 		// For X Layer, split db and ac
 		dbsmt: dbsmt,
+
+		// For X Layer, realtime
+		kafkaBlockInfoChan: kafkaBlockInfoChan,
+		kafkaTxInfoChan:    kafkaTxInfoChan,
 	}
 }
 

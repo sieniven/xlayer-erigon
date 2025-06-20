@@ -21,6 +21,7 @@ import (
 	"github.com/ledgerwatch/erigon/zk/datastream/server"
 	"github.com/ledgerwatch/erigon/zk/hermez_db"
 	"github.com/ledgerwatch/erigon/zk/metrics"
+	realtimeTypes "github.com/ledgerwatch/erigon/zk/realtime/types"
 	zktx "github.com/ledgerwatch/erigon/zk/tx"
 	"github.com/ledgerwatch/erigon/zk/txpool"
 	"github.com/ledgerwatch/erigon/zk/utils"
@@ -28,6 +29,7 @@ import (
 )
 
 var shouldCheckForExecutionAndDataStreamAlignment = true
+var prevBlockTxCount = int64(0)
 
 func SpawnSequencingStage(
 	s *stagedsync.StageState,
@@ -478,6 +480,15 @@ BatchLoop:
 
 		sendersToTriggerStatechanges := make(map[common.Address]struct{})
 		processingTxTime := time.Now()
+
+		// For X Layer, realtime. Send kafka block header
+		if cfg.zk.XLayer.Realtime.Enable {
+			cfg.kafkaBlockInfoChan <- &realtimeTypes.BlockInfo{
+				Header:  header,
+				TxCount: prevBlockTxCount,
+			}
+		}
+
 	OuterLoopTransactions:
 		for {
 			if innerBreak {
@@ -632,7 +643,7 @@ BatchLoop:
 
 				// The copying of this structure is intentional
 				backupDataSizeChecker := *blockDataSizeChecker
-				receipt, execResult, txCounters, anyOverflow, err := attemptAddTransaction(cfg, sdb, ibs, batchCounters, &blockContext, header, transaction, effectiveGas, batchState.isL1Recovery(), batchState.forkId, l1TreeUpdateIndex, &backupDataSizeChecker, ethBlockGasPool)
+				receipt, execResult, txCounters, _, anyOverflow, err := attemptAddTransaction(cfg, sdb, ibs, batchCounters, &blockContext, header, transaction, effectiveGas, batchState.isL1Recovery(), batchState.forkId, l1TreeUpdateIndex, &backupDataSizeChecker, ethBlockGasPool, len(batchState.blockState.builtBlockElements.transactions))
 				if err != nil {
 					metrics.GetLogStatistics().CumulativeCounting(metrics.ProcessingInvalidTxCounter)
 					if batchState.isLimboRecovery() {
@@ -985,6 +996,8 @@ BatchLoop:
 
 		// check for new responses from the verifier
 		needsUnwind, err := updateStreamAndCheckRollback(batchContext, batchState, streamWriter, u, s)
+
+		prevBlockTxCount = int64(len(batchState.blockState.builtBlockElements.transactions))
 
 		// lets commit everything after updateStreamAndCheckRollback no matter of its result unless
 		// we're in L1 recovery where losing some blocks on restart doesn't matter

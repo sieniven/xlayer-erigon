@@ -50,6 +50,8 @@ type XLayerConfig struct {
 	EnableTraceLog bool
 
 	SequencerBatchCounterPercentage int
+
+	Realtime RealtimeConfig
 }
 
 var DefaultXLayerConfig = XLayerConfig{}
@@ -68,4 +70,19 @@ type ApolloClientConfig struct {
 	IP            string
 	AppID         string
 	NamespaceName string
+}
+
+// For realtime feature
+type RealtimeConfig struct {
+	Enable          bool
+	EnableSubscribe bool
+	Kafka           KafkaConfig
+}
+
+type KafkaConfig struct {
+	BootstrapServers []string
+	BlockTopic       string
+	TxTopic          string
+	ErrorTopic       string
+	ClientID         string
 }

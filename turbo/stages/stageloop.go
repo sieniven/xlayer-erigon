@@ -542,7 +542,8 @@ func NewDefaultStages(ctx context.Context,
 		stagedsync.StageLogIndexCfg(db, cfg.Prune, dirs.Tmp, noPruneContracts),
 		stagedsync.StageCallTracesCfg(db, cfg.Prune, 0, dirs.Tmp),
 		stagedsync.StageTxLookupCfg(db, cfg.Prune, dirs.Tmp, controlServer.ChainConfig.Bor, blockReader),
-		stagedsync.StageFinishCfg(db, dirs.Tmp, forkValidator),
+		// For X Layer, RPC latency optimization
+		stagedsync.StageFinishCfg(db, dirs.Tmp, forkValidator, nil, false),
 		runInTestMode)
 }
 
@@ -622,7 +623,8 @@ func NewPipelineStages(ctx context.Context,
 			stagedsync.StageLogIndexCfg(db, cfg.Prune, dirs.Tmp, noPruneContracts),
 			stagedsync.StageCallTracesCfg(db, cfg.Prune, 0, dirs.Tmp),
 			stagedsync.StageTxLookupCfg(db, cfg.Prune, dirs.Tmp, controlServer.ChainConfig.Bor, blockReader),
-			stagedsync.StageFinishCfg(db, dirs.Tmp, forkValidator),
+			// For X Layer, RPC latency optimization
+			stagedsync.StageFinishCfg(db, dirs.Tmp, forkValidator, nil, false),
 			runInTestMode)
 	}
 
@@ -659,7 +661,8 @@ func NewPipelineStages(ctx context.Context,
 		stagedsync.StageLogIndexCfg(db, cfg.Prune, dirs.Tmp, noPruneContracts),
 		stagedsync.StageCallTracesCfg(db, cfg.Prune, 0, dirs.Tmp),
 		stagedsync.StageTxLookupCfg(db, cfg.Prune, dirs.Tmp, controlServer.ChainConfig.Bor, blockReader),
-		stagedsync.StageFinishCfg(db, dirs.Tmp, forkValidator),
+		// For X Layer, RPC latency optimization
+		stagedsync.StageFinishCfg(db, dirs.Tmp, forkValidator, nil, false),
 		runInTestMode)
 
 }

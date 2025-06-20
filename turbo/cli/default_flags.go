@@ -375,4 +375,11 @@ var DefaultFlags = []cli.Flag{
 
 	&utils.TraceLogPath,
 	&utils.EnableTraceLog,
+	&utils.RealtimeEnableFlag,
+	&utils.RealtimeEnableSubscribeFlag,
+	&utils.RealtimeKafkaSyncBootstrapServers,
+	&utils.RealtimeKafkaSyncBlockTopic,
+	&utils.RealtimeKafkaSyncTxTopic,
+	&utils.RealtimeKafkaSyncErrorTopic,
+	&utils.RealtimeKafkaSyncClientID,
 }
