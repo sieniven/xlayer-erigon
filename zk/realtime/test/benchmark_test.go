@@ -9,11 +9,16 @@ import (
 	"time"
 
 	"github.com/holiman/uint256"
+	ethereum "github.com/ledgerwatch/erigon"
 	"github.com/ledgerwatch/erigon-lib/common"
 	"github.com/ledgerwatch/erigon/crypto"
 	"github.com/ledgerwatch/erigon/ethclient"
+	"github.com/ledgerwatch/erigon/rpc"
+	kafkaTypes "github.com/ledgerwatch/erigon/zk/realtime/kafka/types"
+	types "github.com/ledgerwatch/erigon/zk/rpcdaemon"
 	"github.com/ledgerwatch/erigon/zkevm/encoding"
 	"github.com/ledgerwatch/erigon/zkevm/log"
+	logger "github.com/ledgerwatch/log/v3"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/sync/errgroup"
 )
@@ -239,4 +244,196 @@ func TestRealtimeBenchmarkERC20Transfer(t *testing.T) {
 	fmt.Printf("Avg eth stateless erc20 tx transfer confirmation duration: %s\n", avgEthDuration)
 	fmt.Printf("Avg realtime state erc20 tx transfer confirmation duration: %s\n", avgRealtimeBalanceDuration)
 	fmt.Printf("Avg eth state erc20 tx transfer confirmation duration: %s\n", avgEthBalanceDuration)
+}
+
+func TestRealtimeBenchmarkTransactionSubscription(t *testing.T) {
+	if testing.Short() {
+		t.Skip()
+	}
+
+	blockNumber := setupRealtimeTestEnvironment(t)
+
+	t.Run("RealtimeGetBlockTransactionCountByNumber", func(t *testing.T) {
+		transactionCount, err := RealtimeGetBlockTransactionCountByNumber(blockNumber)
+		require.NoError(t, err)
+		log.Infof("RealtimeGetBlockTransactionCountByNumber result: %d", transactionCount)
+	})
+
+	ctx := context.Background()
+	logger := logger.New()
+	client, err := ethclient.Dial(DefaultL2NetworkURL)
+	require.NoError(t, err)
+	wsClient, err := rpc.Dial(DefaultL2NetworkWSURL, logger)
+	require.NoError(t, err)
+
+	// Default test address for tests that require an address
+	testAddress := common.HexToAddress("0x1234567890123456789012345678901234567890")
+
+	// Benchmark variables
+	var totalsubDuration time.Duration
+
+	txCh := make(chan kafkaTypes.TransactionMessage)
+	sub, err := wsClient.Subscribe(ctx, "realtime", txCh, "realtimeTransactions", true)
+	require.NoError(t, err)
+	defer sub.Unsubscribe()
+
+	// Benchmark subscibe realtime transaction
+	for i := 0; i < 100; i++ {
+		// Send tx
+		nativeTransferTx(t, ctx, client, uint256.NewInt(encoding.Gwei), testAddress.String())
+
+		g, _ := errgroup.WithContext(ctx)
+		var subDuration time.Duration
+
+		// realtime subscription
+		g.Go(func() error {
+			startTime := time.Now()
+
+			select {
+			case <-txCh:
+				subDuration = time.Since(startTime)
+				return nil
+			case err := <-sub.Err():
+				return err
+			case <-time.After(DefaultTimeoutTxToBeMined):
+				return fmt.Errorf("realtime subscription timeout")
+			}
+		})
+
+		// Wait for all goroutines to complete
+		err = g.Wait()
+		require.NoError(t, err)
+
+		totalsubDuration += subDuration
+
+		fmt.Printf("Iteration %v:\n", i)
+		fmt.Printf("Realtime transaction subscription duration: %s\n", subDuration)
+	}
+
+	avgsubDuration := totalsubDuration / 100
+
+	// Log out metrics
+	fmt.Printf("Avg realtime transaction subscription duration: %s\n", avgsubDuration)
+}
+
+func TestRealtimeBenchmarkLogSubscription(t *testing.T) {
+	if testing.Short() {
+		t.Skip()
+	}
+
+	blockNumber := setupRealtimeTestEnvironment(t)
+
+	t.Run("RealtimeGetBlockTransactionCountByNumber", func(t *testing.T) {
+		transactionCount, err := RealtimeGetBlockTransactionCountByNumber(blockNumber)
+		require.NoError(t, err)
+		log.Infof("RealtimeGetBlockTransactionCountByNumber result: %d", transactionCount)
+	})
+
+	ctx := context.Background()
+	logger := logger.New()
+	client, err := ethclient.Dial(DefaultL2NetworkURL)
+	require.NoError(t, err)
+	realtimeWSClient, err := rpc.Dial(DefaultL2NetworkWSURL, logger)
+	require.NoError(t, err)
+	ethWSClient, err := rpc.Dial(DefaultL2NetworkWSURL, logger)
+	require.NoError(t, err)
+
+	privateKey, err := crypto.HexToECDSA(tmpSenderPrivateKey)
+	require.NoError(t, err)
+	publicKey := privateKey.Public()
+	publicKeyECDSA, ok := publicKey.(*ecdsa.PublicKey)
+	require.True(t, ok)
+	senderAddress := crypto.PubkeyToAddress(*publicKeyECDSA)
+	log.Infof("Sender: %s", senderAddress)
+
+	// Default test address for tests that require an address
+	testAddress := common.HexToAddress("0x1234567890123456789012345678901234567890")
+
+	// Deploy the contract
+	erc20Address := deployERC20Contract(t, ctx, privateKey, client)
+	transferAmount := new(big.Int).Mul(big.NewInt(1), big.NewInt(1e18)) // Adjust for token decimals (18 in this case)
+
+	startNonce, err := client.PendingNonceAt(context.Background(), senderAddress)
+	require.NoError(t, err)
+
+	// Benchmark variables
+	var totalRealtimeDuration, totalEthDuration time.Duration
+
+	// Subscirbed topic
+	erc20TransferTopic := common.HexToHash(erc20TransferTopicHex)
+	q, err := toLogFilterArg(ethereum.FilterQuery{Topics: [][]common.Hash{{erc20TransferTopic}}})
+	require.NoError(t, err)
+
+	realtimeCh := make(chan *types.Log)
+	realtimeSub, err := realtimeWSClient.Subscribe(ctx, "realtime", realtimeCh, "logs", q)
+	require.NoError(t, err)
+	defer realtimeSub.Unsubscribe()
+
+	ethCh := make(chan *types.Log)
+	ethSub, err := ethWSClient.Subscribe(ctx, "eth", ethCh, "logs", q)
+	require.NoError(t, err)
+	defer ethSub.Unsubscribe()
+
+	// Benchmark subscibe realtime log
+	for i := 0; i < 100; i++ {
+		// Send tx
+		erc20TransferTx(t, ctx, privateKey, client, transferAmount, testAddress, erc20Address, startNonce+uint64(i))
+
+		g, _ := errgroup.WithContext(ctx)
+		var realtimeDuration, ethDuration time.Duration
+
+		// realtime subscription
+		g.Go(func() error {
+			startTime := time.Now()
+
+			select {
+			case log := <-realtimeCh:
+				if log.Topics[0] != erc20TransferTopic {
+					return fmt.Errorf("realtime subscription fetched unknown logs")
+				}
+				realtimeDuration = time.Since(startTime)
+				return nil
+			case err := <-realtimeSub.Err():
+				return err
+			case <-time.After(DefaultTimeoutTxToBeMined):
+				return fmt.Errorf("realtime subscription timeout")
+			}
+		})
+
+		// eth subscription
+		g.Go(func() error {
+			startTime := time.Now()
+
+			select {
+			case log := <-ethCh:
+				if log.Topics[0] != erc20TransferTopic {
+					return fmt.Errorf("eth subscription fetched unknown logs")
+				}
+				ethDuration = time.Since(startTime)
+				return nil
+			case err := <-ethSub.Err():
+				return err
+			case <-time.After(DefaultTimeoutTxToBeMined):
+				return fmt.Errorf("eth subscription timeout")
+			}
+		})
+
+		// Wait for all goroutines to complete
+		err = g.Wait()
+		require.NoError(t, err)
+
+		totalRealtimeDuration += realtimeDuration
+		totalEthDuration += ethDuration
+
+		fmt.Printf("Iteration %v:\n", i)
+		fmt.Printf("Realtime log subscription duration: %s\n", totalRealtimeDuration)
+		fmt.Printf("Eth log subscription duration: %s\n", totalEthDuration)
+	}
+
+	avgRealtimeDuration := totalRealtimeDuration / 100
+	avgEthDuration := totalEthDuration / 100
+
+	// Log out metrics
+	fmt.Printf("Avg realtime log subscription duration: %s\n", avgRealtimeDuration)
+	fmt.Printf("Avg eth log subscription duration: %s\n", avgEthDuration)
 }
