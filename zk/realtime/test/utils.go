@@ -449,3 +449,11 @@ func transHexToUint64(hex json.RawMessage) (uint64, error) {
 
 	return result1, nil
 }
+
+func toLogFilterArg(q ethereum.FilterQuery) (interface{}, error) {
+	arg := map[string]interface{}{
+		"address": q.Addresses,
+		"topics":  q.Topics,
+	}
+	return arg, nil
+}
