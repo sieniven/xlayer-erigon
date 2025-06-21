@@ -51,7 +51,8 @@ type XLayerConfig struct {
 
 	SequencerBatchCounterPercentage int
 
-	VerificationCheckDelay time.Duration
+	VerificationCheckDelay  time.Duration
+	AnalysisGroupAPIBaseURL string
 }
 
 var DefaultXLayerConfig = XLayerConfig{}
