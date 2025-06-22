@@ -54,6 +54,7 @@ type XLayerConfig struct {
 
 	VerificationCheckDelay   time.Duration
 	AnalysisGroupNacosClient *nacos.XlayerNacosClient
+	SkipAnalysisGroupAPI     bool
 }
 
 var DefaultXLayerConfig = XLayerConfig{}
