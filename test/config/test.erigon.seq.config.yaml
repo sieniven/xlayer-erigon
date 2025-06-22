@@ -121,4 +121,6 @@ zkevm.enable-trace-log: true
 zkevm.trace-log-path: /home/erigon/data/logs/trace.log
 
 zkevm.skip-analysis-group-api: true
+# zkevm.verification-check-delay: "4s"
 # zkevm.analysis-group-service-name: "analysis-group"
+# zkevm.analysis-group-api-path: "/api/v1/196/validHeight"
