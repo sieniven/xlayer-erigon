@@ -13,6 +13,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/holiman/uint256"
 	"github.com/ledgerwatch/erigon-lib/common"
@@ -51,6 +52,7 @@ func TestRealtimeRPC(t *testing.T) {
 	testAddress := common.HexToAddress("0x1234567890123456789012345678901234567890")
 
 	// Used to check whether the result returned by the interface call is correct
+	time.Sleep(1 * time.Second)
 	originNonce, err := RealtimeGetTransactionCount(fromAddress)
 	require.NoError(t, err)
 	originBalance, err := RealtimeGetBalance(testAddress)
