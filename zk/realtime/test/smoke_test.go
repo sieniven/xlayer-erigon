@@ -145,9 +145,9 @@ func TestRealtimeStateIsConsistent(t *testing.T) {
 	client, err := ethclient.Dial(DefaultL2NetworkURL)
 	require.NoError(t, err)
 
-	signer := types.MakeSigner(operations.GetTestChainConfig(DefaultL2ChainID), 1, 0)
-	privateKey, err := crypto.HexToECDSA(tmpSenderPrivateKey)
+	privateKey, err := crypto.HexToECDSA(strings.TrimPrefix(DefaultL2AdminPrivateKey, "0x"))
 	require.NoError(t, err)
+	signer := types.MakeSigner(operations.GetTestChainConfig(DefaultL2ChainID), 1, 0)
 
 	publicKey := privateKey.Public()
 	publicKeyECDSA, ok := publicKey.(*ecdsa.PublicKey)
