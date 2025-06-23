@@ -81,7 +81,7 @@ var (
 	}
 )
 
-func TestKafkaConsumer(t *testing.T) {
+func TestKafka(t *testing.T) {
 	rightvrsTx.SetSender(testFromAddr)
 	cfg := ethconfig.KafkaConfig{
 		BootstrapServers: []string{"0.0.0.0:9095"},
@@ -90,6 +90,23 @@ func TestKafkaConsumer(t *testing.T) {
 		ErrorTopic:       "xlayer-test-error",
 		ClientID:         "xlayer-test-consumer",
 	}
+	producer, err := NewKafkaProducer(cfg)
+	assert.NilError(t, err)
+
+	for i := 0; i < 10; i++ {
+		err = producer.SendKafkaTransaction(context.Background(), uint64(i), rightvrsTx, rightvrsTxReceipt, rightvrsTxInnerTxs, rightvrsTxChangeset)
+		assert.NilError(t, err)
+
+		err = producer.SendKafkaBlockInfo(context.Background(), blockHeader, 10)
+		assert.NilError(t, err)
+
+		err = producer.SendKafkaErrorTrigger(context.Background(), uint64(i))
+		assert.NilError(t, err)
+	}
+
+	err = producer.Close()
+	assert.NilError(t, err)
+
 	consumer, err := NewKafkaConsumer(cfg)
 	assert.NilError(t, err)
 	ctx, ctxWithCancel := context.WithCancel(context.Background())
@@ -136,32 +153,5 @@ func TestKafkaConsumer(t *testing.T) {
 
 	ctxWithCancel()
 	err = consumer.Close()
-	assert.NilError(t, err)
-}
-
-func TestKafkaProducer(t *testing.T) {
-	rightvrsTx.SetSender(testFromAddr)
-	cfg := ethconfig.KafkaConfig{
-		BootstrapServers: []string{"0.0.0.0:9095"},
-		BlockTopic:       "xlayer-test-block",
-		TxTopic:          "xlayer-test-tx",
-		ErrorTopic:       "xlayer-test-error",
-		ClientID:         "xlayer-test-consumer",
-	}
-	producer, err := NewKafkaProducer(cfg)
-	assert.NilError(t, err)
-
-	for i := 0; i < 10; i++ {
-		err = producer.SendKafkaTransaction(context.Background(), uint64(i), rightvrsTx, rightvrsTxReceipt, rightvrsTxInnerTxs, rightvrsTxChangeset)
-		assert.NilError(t, err)
-
-		err = producer.SendKafkaBlockInfo(context.Background(), blockHeader, 10)
-		assert.NilError(t, err)
-
-		err = producer.SendKafkaErrorTrigger(context.Background(), uint64(i))
-		assert.NilError(t, err)
-	}
-
-	err = producer.Close()
 	assert.NilError(t, err)
 }
