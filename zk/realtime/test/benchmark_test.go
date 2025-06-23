@@ -2,9 +2,9 @@ package test
 
 import (
 	"context"
-	"crypto/ecdsa"
 	"fmt"
 	"math/big"
+	"strings"
 	"testing"
 	"time"
 
@@ -21,6 +21,10 @@ import (
 	logger "github.com/ledgerwatch/log/v3"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/sync/errgroup"
+)
+
+var (
+	Iterations = 5
 )
 
 func TestRealtimeBenchmarkNativeTransfer(t *testing.T) {
@@ -48,7 +52,7 @@ func TestRealtimeBenchmarkNativeTransfer(t *testing.T) {
 	var totalRealtimeBalanceDuration, totalEthBalanceDuration time.Duration
 
 	// Benchmark transfer tx to test address
-	for i := 0; i < 100; i++ {
+	for i := 0; i < Iterations; i++ {
 		balance, err := EthGetBalance(testAddress, "latest")
 		require.NoError(t, err)
 		realtimeBalance, err := RealtimeGetBalance(testAddress)
@@ -115,10 +119,10 @@ func TestRealtimeBenchmarkNativeTransfer(t *testing.T) {
 		fmt.Printf("Eth state duration: %s\n", ethBalanceDuration)
 	}
 
-	avgRealtimeDuration := totalRealtimeDuration / 100
-	avgEthDuration := totalEthDuration / 100
-	avgRealtimeBalanceDuration := totalRealtimeBalanceDuration / 100
-	avgEthBalanceDuration := totalEthBalanceDuration / 100
+	avgRealtimeDuration := time.Duration(int64(totalRealtimeDuration) / int64(Iterations))
+	avgEthDuration := time.Duration(int64(totalEthDuration) / int64(Iterations))
+	avgRealtimeBalanceDuration := time.Duration(int64(totalRealtimeBalanceDuration) / int64(Iterations))
+	avgEthBalanceDuration := time.Duration(int64(totalEthBalanceDuration) / int64(Iterations))
 
 	// Log out metrics
 	fmt.Printf("Avg realtime stateless native tx transfer confirmation duration: %s\n", avgRealtimeDuration)
@@ -144,13 +148,8 @@ func TestRealtimeBenchmarkERC20Transfer(t *testing.T) {
 	client, err := ethclient.Dial(DefaultL2NetworkURL)
 	require.NoError(t, err)
 
-	privateKey, err := crypto.HexToECDSA(tmpSenderPrivateKey)
+	privateKey, err := crypto.HexToECDSA(strings.TrimPrefix(DefaultL2AdminPrivateKey, "0x"))
 	require.NoError(t, err)
-	publicKey := privateKey.Public()
-	publicKeyECDSA, ok := publicKey.(*ecdsa.PublicKey)
-	require.True(t, ok)
-	senderAddress := crypto.PubkeyToAddress(*publicKeyECDSA)
-	log.Infof("Sender: %s", senderAddress)
 
 	// Default test address for tests that require an address
 	fromAddress := common.HexToAddress(DefaultL2AdminAddress)
@@ -160,7 +159,7 @@ func TestRealtimeBenchmarkERC20Transfer(t *testing.T) {
 	erc20Address := deployERC20Contract(t, ctx, privateKey, client)
 	transferAmount := new(big.Int).Mul(big.NewInt(1), big.NewInt(1e18)) // Adjust for token decimals (18 in this case)
 
-	startNonce, err := client.PendingNonceAt(context.Background(), senderAddress)
+	startNonce, err := client.PendingNonceAt(context.Background(), fromAddress)
 	require.NoError(t, err)
 
 	// Benchmark variables
@@ -168,7 +167,7 @@ func TestRealtimeBenchmarkERC20Transfer(t *testing.T) {
 	var totalRealtimeBalanceDuration, totalEthBalanceDuration time.Duration
 
 	// Benchmark erc20 transfer tx
-	for i := 0; i < 100; i++ {
+	for i := 0; i < Iterations; i++ {
 		balance, err := EthGetTokenBalance(ctx, client, testAddress, erc20Address)
 		require.NoError(t, err)
 		realtimeBalance, err := RealtimeGetTokenBalance(ctx, client, fromAddress, testAddress, erc20Address)
@@ -234,10 +233,10 @@ func TestRealtimeBenchmarkERC20Transfer(t *testing.T) {
 		fmt.Printf("Eth state duration: %s\n", ethBalanceDuration)
 	}
 
-	avgRealtimeDuration := totalRealtimeDuration / 100
-	avgEthDuration := totalEthDuration / 100
-	avgRealtimeBalanceDuration := totalRealtimeBalanceDuration / 100
-	avgEthBalanceDuration := totalEthBalanceDuration / 100
+	avgRealtimeDuration := time.Duration(int64(totalRealtimeDuration) / int64(Iterations))
+	avgEthDuration := time.Duration(int64(totalEthDuration) / int64(Iterations))
+	avgRealtimeBalanceDuration := time.Duration(int64(totalRealtimeBalanceDuration) / int64(Iterations))
+	avgEthBalanceDuration := time.Duration(int64(totalEthBalanceDuration) / int64(Iterations))
 
 	// Log out metrics
 	fmt.Printf("Avg realtime stateless erc20 tx transfer confirmation duration: %s\n", avgRealtimeDuration)
@@ -278,7 +277,7 @@ func TestRealtimeBenchmarkTransactionSubscription(t *testing.T) {
 	defer sub.Unsubscribe()
 
 	// Benchmark subscibe realtime transaction
-	for i := 0; i < 100; i++ {
+	for i := 0; i < Iterations; i++ {
 		// Send tx
 		nativeTransferTx(t, ctx, client, uint256.NewInt(encoding.Gwei), testAddress.String())
 
@@ -310,7 +309,7 @@ func TestRealtimeBenchmarkTransactionSubscription(t *testing.T) {
 		fmt.Printf("Realtime transaction subscription duration: %s\n", subDuration)
 	}
 
-	avgsubDuration := totalsubDuration / 100
+	avgsubDuration := time.Duration(int64(totalsubDuration) / int64(Iterations))
 
 	// Log out metrics
 	fmt.Printf("Avg realtime transaction subscription duration: %s\n", avgsubDuration)
@@ -338,13 +337,8 @@ func TestRealtimeBenchmarkLogSubscription(t *testing.T) {
 	ethWSClient, err := rpc.Dial(DefaultL2NetworkWSURL, logger)
 	require.NoError(t, err)
 
-	privateKey, err := crypto.HexToECDSA(tmpSenderPrivateKey)
+	privateKey, err := crypto.HexToECDSA(strings.TrimPrefix(DefaultL2AdminPrivateKey, "0x"))
 	require.NoError(t, err)
-	publicKey := privateKey.Public()
-	publicKeyECDSA, ok := publicKey.(*ecdsa.PublicKey)
-	require.True(t, ok)
-	senderAddress := crypto.PubkeyToAddress(*publicKeyECDSA)
-	log.Infof("Sender: %s", senderAddress)
 
 	// Default test address for tests that require an address
 	testAddress := common.HexToAddress("0x1234567890123456789012345678901234567890")
@@ -353,7 +347,8 @@ func TestRealtimeBenchmarkLogSubscription(t *testing.T) {
 	erc20Address := deployERC20Contract(t, ctx, privateKey, client)
 	transferAmount := new(big.Int).Mul(big.NewInt(1), big.NewInt(1e18)) // Adjust for token decimals (18 in this case)
 
-	startNonce, err := client.PendingNonceAt(context.Background(), senderAddress)
+	fromAddress := common.HexToAddress(DefaultL2AdminAddress)
+	startNonce, err := client.PendingNonceAt(context.Background(), fromAddress)
 	require.NoError(t, err)
 
 	// Benchmark variables
@@ -375,7 +370,7 @@ func TestRealtimeBenchmarkLogSubscription(t *testing.T) {
 	defer ethSub.Unsubscribe()
 
 	// Benchmark subscibe realtime log
-	for i := 0; i < 100; i++ {
+	for i := 0; i < Iterations; i++ {
 		// Send tx
 		erc20TransferTx(t, ctx, privateKey, client, transferAmount, testAddress, erc20Address, startNonce+uint64(i))
 
@@ -430,8 +425,8 @@ func TestRealtimeBenchmarkLogSubscription(t *testing.T) {
 		fmt.Printf("Eth log subscription duration: %s\n", totalEthDuration)
 	}
 
-	avgRealtimeDuration := totalRealtimeDuration / 100
-	avgEthDuration := totalEthDuration / 100
+	avgRealtimeDuration := time.Duration(int64(totalRealtimeDuration) / int64(Iterations))
+	avgEthDuration := time.Duration(int64(totalEthDuration) / int64(Iterations))
 
 	// Log out metrics
 	fmt.Printf("Avg realtime log subscription duration: %s\n", avgRealtimeDuration)
