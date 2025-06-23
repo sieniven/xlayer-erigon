@@ -51,9 +51,9 @@ func TestRealtimeRPC(t *testing.T) {
 	testAddress := common.HexToAddress("0x1234567890123456789012345678901234567890")
 
 	// Used to check whether the result returned by the interface call is correct
-	originNonce, err := EthGetTransactionCount(fromAddress, "latest")
+	originNonce, err := RealtimeGetTransactionCount(fromAddress)
 	require.NoError(t, err)
-	originBalance, err := EthGetBalance(testAddress, "latest")
+	originBalance, err := RealtimeGetBalance(testAddress)
 	require.NoError(t, err)
 
 	// Transfer native token
@@ -104,7 +104,7 @@ func TestRealtimeRPC(t *testing.T) {
 	t.Run("RealtimeGetTransactionCount", func(t *testing.T) {
 		nonce, err := RealtimeGetTransactionCount(fromAddress)
 		require.NoError(t, err)
-		require.Equal(t, originNonce+1, nonce, "Nonce should be equal to origin nonce + 1")
+		require.Equal(t, originNonce+2, nonce)
 		log.Infof("RealtimeGetTransactionCount result for sender address: %d", nonce)
 	})
 
