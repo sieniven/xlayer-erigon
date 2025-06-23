@@ -113,10 +113,6 @@ func deployERC20Contract(
 	fromAddress := crypto.PubkeyToAddress(*tmpPublicKeyECDSA)
 	fmt.Printf("Sender: %s\n", fromAddress)
 
-	nativeTransferTx(t, ctx, client,
-		new(uint256.Int).Mul(uint256.NewInt(1000), uint256.NewInt(1e18)),
-		fromAddress.String())
-
 	nonce, err := client.PendingNonceAt(ctx, fromAddress)
 	require.NoError(t, err)
 
