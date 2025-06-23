@@ -83,7 +83,7 @@ func TestTxInfoMap(t *testing.T) {
 	})
 
 	t.Run("Delete", func(t *testing.T) {
-		tm.DeleteTxInfo(txHash)
+		tm.Delete(blockNumber)
 		_, _, _, _, exists := tm.GetTx(txHash)
 		assert.False(t, exists)
 	})
@@ -153,22 +153,11 @@ func TestTxInfoMap(t *testing.T) {
 				assert.NotNil(t, gotReceipt)
 				assert.Equal(t, uint64(i), gotReceipt.Status)
 				assert.Equal(t, innerTxs, gotInnerTxs)
-
-				tm.DeleteTxInfo(hash)
-
-				_, _, _, _, exists = tm.GetTx(hash)
-				assert.False(t, exists)
 			}(i, hash)
 			hashes = append(hashes, hash)
 		}
 
 		wg.Wait()
-
-		for i := 0; i < goroutines; i++ {
-			hash := common.BytesToHash([]byte{byte(i), byte(i >> 8), byte(i >> 16), byte(i >> 24)})
-			_, _, _, _, exists := tm.GetTx(hash)
-			assert.False(t, exists)
-		}
 
 		// Check if all hashes are in the block
 		txHashes, ok := tm.GetBlockTxs(blockNumber)
@@ -178,8 +167,14 @@ func TestTxInfoMap(t *testing.T) {
 			assert.Contains(t, txHashes, hash)
 		}
 
-		tm.DeleteBlockTxs(blockNumber)
+		tm.Delete(blockNumber)
 		_, ok = tm.GetBlockTxs(blockNumber)
 		assert.False(t, ok)
+
+		for i := 0; i < goroutines; i++ {
+			hash := common.BytesToHash([]byte{byte(i), byte(i >> 8), byte(i >> 16), byte(i >> 24)})
+			_, _, _, _, exists := tm.GetTx(hash)
+			assert.False(t, exists)
+		}
 	})
 }
