@@ -9,7 +9,6 @@ INIT_POLYGON_ZKEVM_BRIDGE_ACCOUNT := cast send -f 0x8943545177806ed17b9f23f0a21e
 .PHONY: run
 run: stop build-docker
 	$(DOCKER_COMPOSE) up -d xlayer-mock-l1-network
-	$(DOCKER_COMPOSE) up -d xlayer-agg-db
 	$(DOCKER_COMPOSE) up -d xlayer-bridge-db
 	$(DOCKER_COMPOSE) up -d xlayer-pool-db
 	$(DOCKER_COMPOSE) up -d xlayer-agglayer-prover
@@ -28,7 +27,7 @@ run: stop build-docker
 	$(DOCKER_COMPOSE) up -d xlayer-bridge-ui
 	$(INIT_BRIDGE_ACCOUNT)
 	
-	$(DOCKER_COMPOSE) up -d xlayer-cdk-node
+	$(DOCKER_COMPOSE) up -d xlayer-aggkit
 
 .PHONY: multi-run
 multi-run: run

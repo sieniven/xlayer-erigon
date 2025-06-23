@@ -28,7 +28,7 @@ cd "./xlayer-contracts"
 
 git stash
 git pull
-git checkout zjg/v11.0.0-rc.0-v1; git pull
+git checkout zjg/v11.0.0-rc.0-v2; git pull
 git stash apply "$@" || true
 conflict_files=$(git diff --name-only --diff-filter=U)
 if [ -n "$conflict_files" ]; then

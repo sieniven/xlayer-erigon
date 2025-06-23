@@ -22,14 +22,14 @@ sed_inplace() {
 }
 
 
-if [ ! -d "./xlayer-cdk" ]; then
+if [ ! -d "./aggkit" ]; then
   echo "Cloning contract repository..."
-  git clone -b zjg/v0.5.4-rc1 https://github.com/okx/xlayer-cdk.git
+  git clone -b zjg/fep-pp https://github.com/okx/aggkit.git
 fi
 
-cd ./xlayer-cdk
+cd ./aggkit
 echo "Cleaning and resting contract repository..."
-git reset --hard; git checkout zjg/v0.5.4-rc1;git pull
+git reset --hard; git checkout zjg/fep-pp;git pull
 
 make build-docker
 
@@ -38,10 +38,10 @@ cd $PWD_DIR
 
 
 DOCK_CONFIG_FILE="./docker-compose.yml"
-sed_inplace "s|image: zjg555543/cdk:v0.5.4-rc1|image: cdk|g" "$DOCK_CONFIG_FILE"
+sed_inplace "s|image: zjg555543/aggkit:upstream-v0.4.0-beta1|image: aggkit:local|g" "$DOCK_CONFIG_FILE"
 
-CDK_CONFIG_FILE="config/cdk-node-config.toml"
+CDK_CONFIG_FILE="config/aggkit.toml"
 sed_inplace "s|\(LossCertType[[:space:]]*=[[:space:]]*\)[0-9]|\1$input|g" "$CDK_CONFIG_FILE"
 
-docker-compose stop xlayer-cdk-node
-docker-compose up -d xlayer-cdk-node
+docker-compose stop xlayer-aggkit
+docker-compose up -d xlayer-aggkit

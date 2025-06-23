@@ -49,11 +49,11 @@ run-new:
 	$(DOCKER_COMPOSE) up -d xlayer-rpc
 	sleep 3
 
-	$(DOCKER_COMPOSE) up -d xlayer-agg-db
 	$(DOCKER_COMPOSE) up -d xlayer-agglayer-prover
 	$(DOCKER_COMPOSE) up -d xlayer-agglayer
-	
-	$(DOCKER_COMPOSE) up -d xlayer-cdk-node
+	mkdir -p data/aggkit
+	chmod 777 data -R
+	$(DOCKER_COMPOSE) up -d xlayer-aggkit
 	
 .PHONY: stop
 stop: ## Stops all services

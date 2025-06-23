@@ -37,7 +37,7 @@ sleep 5
 git checkout docker-compose.yml
 git checkout config/test.erigon.seq.config.yaml
 git checkout config/test.erigon.rpc.config.yaml
-git checkout config/cdk-node-config.toml
+git checkout config/aggkit.toml
 
 echo "Sending funds to deployer..."
 cast send -f $RICH_ADDRESS --private-key $RICH_PRIVATE_KEY --value 30ether --legacy $DEPLOYER_ADDRESS
@@ -174,18 +174,19 @@ sed_inplace "s|zkevm.l1-first-block: [0-9]*|zkevm.l1-first-block: $L1_FIRST_BLOC
 
 mkdir -p "$PWD_DIR/config"
 
-echo "Updating polygonBridgeAddr parameter in cdk-node-config.toml..."
-CONFIG_FILE="./test-fep-pp/config/cdk-node-config.toml"
+echo "Updating polygonBridgeAddr parameter in aggkit.toml..."
+CONFIG_FILE="./test-fep-pp/config/aggkit.toml"
 sed_inplace "s|polygonBridgeAddr = \"[^\"]*\"|polygonBridgeAddr = \"$BRIDGE_ADDRESS\"|" "$CONFIG_FILE"
-CONFIG_FILE="./test-fep-pp/config/cdk-node-config.toml"
+CONFIG_FILE="./test-fep-pp/config/aggkit.toml"
 sed_inplace "s|rollupCreationBlockNumber = \"[^\"]*\"|rollupCreationBlockNumber = \"$L1_FIRST_BLOCK\"|" "$CONFIG_FILE"
 sed_inplace "s|rollupManagerCreationBlockNumber = \"[^\"]*\"|rollupManagerCreationBlockNumber = \"$L1_SECOND_BLOCK\"|" "$CONFIG_FILE"
 sed_inplace "s|genesisBlockNumber = \"[^\"]*\"|genesisBlockNumber = \"$L1_FIRST_BLOCK\"|" "$CONFIG_FILE"
 sed_inplace "s|polygonRollupManagerAddress = \"[^\"]*\"|polygonRollupManagerAddress = \"$ROLLUP_MANAGER_ADDRESS\"|" "$CONFIG_FILE"
-sed_inplace "s|polygonZkEVMBridgeAddress = \"[^\"]*\"|polygonZkEVMBridgeAddress = \"$BRIDGE_ADDRESS\"|" "$CONFIG_FILE"
+sed_inplace "s|BridgeAddr = \"[^\"]*\"|BridgeAddr = \"$BRIDGE_ADDRESS\"|" "$CONFIG_FILE"
+sed_inplace "s|BridgeAddrL2 = \"[^\"]*\"|BridgeAddrL2 = \"$BRIDGE_ADDRESS\"|" "$CONFIG_FILE"
 sed_inplace "s|polygonZkEVMGlobalExitRootAddress = \"[^\"]*\"|polygonZkEVMGlobalExitRootAddress = \"$GLOBAL_EXIT_ROOT_ADDRESS\"|" "$CONFIG_FILE"
 sed_inplace "s|polygonZkEVMAddress = \"[^\"]*\"|polygonZkEVMAddress = \"$POE_ADDRESS\"|" "$CONFIG_FILE"
-echo "Successfully updated contract address parameters in cdk-node-config.toml"
+echo "Successfully updated contract address parameters in aggkit.toml"
 
 echo "Updating contract address parameters in agglayer-config.toml..."
 AGGLAYER_CONFIG_FILE="./test-fep-pp/config/agglayer-config.toml"

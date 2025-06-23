@@ -27,7 +27,7 @@ CONFIG_FILE_1="./config/agglayer-config.toml"
 CONFIG_FILE_2="./config/agglayer-prover-config.toml"
 CONTRACT_JSON="./artifacts/contracts/mocks/VerifierRollupHelperMock.sol/VerifierRollupHelperMock.json"
 if [ "$PROVER_TYPE" == "true" ]; then
-    CONTRACT_JSON="./artifacts/contracts/verifiers/v4.0.0-rc.3/SP1VerifierPlonk.sol/SP1VerifierPlonk.json"
+    CONTRACT_JSON="./artifacts/contracts/verifiers/v5.0.0/SP1VerifierPlonk.sol/SP1VerifierPlonk.json"
     sed_inplace "s|mock-verifier *= *true|mock-verifier = false|g" "$CONFIG_FILE_1"
     sed_inplace "s|\[primary-prover\.mock-prover\]|\[primary-prover.cpu-prover\]|g" "$CONFIG_FILE_2"
 else
@@ -101,8 +101,8 @@ while [ "$current_block" -ge 0 ]; do
     if [ "$consolidated" = "true" ]; then
         echo "Block $current_block is consolidated"
         if [ "$FORCE_STOP_BLOCK" == "true" ]; then
-          CDK_CONFIG_FILE="config/cdk-node-config.toml"
-          sed_inplace "s|ForcedStopBlock = 0|ForcedStopBlock = $current_block|g" "$CDK_CONFIG_FILE"
+          CDK_CONFIG_FILE="config/aggkit.toml"
+          sed_inplace "s|UpgradeEndBlock = 0|UpgradeEndBlock = $current_block|g" "$CDK_CONFIG_FILE"
         fi
         break
     else
@@ -142,9 +142,12 @@ cat > ./tools/addRollupType/add_rollup_type.json << EOF
     "maxPriorityFeePerGas":"",
     "multiplierGas": "",
     "genesisRoot": "0xb014eb12e554f165a523f44272e2f5952cb2e1fe8dac595b0e9db2dbe39e9f21",
-    "programVKey": "0x00d6e4bdab9cac75a50d58262bb4e60b3107a6b61131ccdff649576c624b6fb7"
+    "programVKey": "0x00eff0b6998df46ec388bb305618089ae3dc74e513e7676b2e1909694f49cc30"
 }
 EOF
+
+# 0x00eff0b6998df46ec388bb305618089ae3dc74e513e7676b2e1909694f49cc30 v0.3.3
+# 0x00d6e4bdab9cac75a50d58262bb4e60b3107a6b61131ccdff649576c624b6fb7 v0.3.0
 
 cp ../contract/genesis.json ./tools/addRollupType/genesis.json
 

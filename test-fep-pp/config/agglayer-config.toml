@@ -26,7 +26,12 @@ max-request-body-size = 104857600
 # size is define in bytes e.g. 100 * 1024 * 1024
 # same for `max-encoding-message-size`
 # default value is equal to 4MB
-max-decoding-message-size = 104857600
+max-decoding-message-size = 1073741824  # 1GB
+max-encoding-message-size = 1073741824  # 1GB
+
+[grpc]
+max-decoding-message-size = 1073741824  # 1GB
+max-encoding-message-size = 1073741824  # 1GB
 
 [outbound.rpc.settle]
 max-retries = 3
