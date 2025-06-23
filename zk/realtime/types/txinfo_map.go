@@ -46,16 +46,17 @@ func (rm *TxInfoMap) Put(blockNumber uint64, txHash common.Hash, tx ethTypes.Tra
 	rm.blockTxs[blockNumber][txHash] = struct{}{}
 }
 
-func (rm *TxInfoMap) DeleteBlockTxs(blockNumber uint64) {
+func (rm *TxInfoMap) Delete(blockNumber uint64) {
 	rm.mu.Lock()
 	defer rm.mu.Unlock()
+	txHashes, exists := rm.blockTxs[blockNumber]
+	if !exists {
+		return
+	}
+	for txHash := range txHashes {
+		delete(rm.txInfos, txHash)
+	}
 	delete(rm.blockTxs, blockNumber)
-}
-
-func (rm *TxInfoMap) DeleteTxInfo(txHash common.Hash) {
-	rm.mu.Lock()
-	defer rm.mu.Unlock()
-	delete(rm.txInfos, txHash)
 }
 
 func (rm *TxInfoMap) GetTx(txHash common.Hash) (ethTypes.Transaction, *ethTypes.Receipt, uint64, []*zktypes.InnerTx, bool) {
