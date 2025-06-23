@@ -173,6 +173,8 @@ func TestRealtimeStateIsConsistent(t *testing.T) {
 		data, err := erc20ABI.Pack("transfer", recevier, amount)
 		require.NoError(t, err)
 
+		gasPrice, err := client.SuggestGasPrice(ctx)
+		require.NoError(t, err)
 		transferERC20TokenTx := &types.LegacyTx{
 			CommonTx: types.CommonTx{
 				Nonce: nonce + uint64(i),
@@ -181,7 +183,7 @@ func TestRealtimeStateIsConsistent(t *testing.T) {
 				Value: uint256.NewInt(0),
 				Data:  data,
 			},
-			GasPrice: uint256.NewInt(100),
+			GasPrice: uint256.MustFromBig(gasPrice),
 		}
 
 		signedTx, err := types.SignTx(transferERC20TokenTx, *signer, privateKey)

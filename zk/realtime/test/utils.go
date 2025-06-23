@@ -161,6 +161,8 @@ func erc20TransferTx(
 	data, err := erc20ABI.Pack("transfer", toAddress, amount)
 	require.NoError(t, err)
 
+	gasPrice, err := client.SuggestGasPrice(ctx)
+	require.NoError(t, err)
 	transferERC20TokenTx := &types.LegacyTx{
 		CommonTx: types.CommonTx{
 			Nonce: nonce,
@@ -169,7 +171,7 @@ func erc20TransferTx(
 			Value: uint256.NewInt(0),
 			Data:  data,
 		},
-		GasPrice: uint256.NewInt(100),
+		GasPrice: uint256.MustFromBig(gasPrice),
 	}
 
 	signer := types.MakeSigner(operations.GetTestChainConfig(DefaultL2ChainID), 1, 0)
