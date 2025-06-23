@@ -18,8 +18,9 @@ import (
 )
 
 var (
-	mockBlockHash         = libcommon.BytesToHash([]byte{1})
-	ErrRealtimeNotEnabled = fmt.Errorf("realtime is not enabled")
+	mockBlockHash                   = libcommon.BytesToHash([]byte{1})
+	ErrRealtimeNotEnabled           = fmt.Errorf("realtime is not enabled")
+	ErrRealtimeConfirmBlockNotFound = fmt.Errorf("realtime confirm block not found")
 )
 
 // RealtimeAPI is a collection of functions that are exposed in rpc only
