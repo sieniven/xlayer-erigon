@@ -50,13 +50,9 @@ func (cache *StatelessCache) PutTxInfo(blockNum uint64, txHash libcommon.Hash, t
 	cache.txInfoMap.Put(blockNum, txHash, tx, receipt, innerTxs)
 }
 
-func (cache *StatelessCache) DeleteBlock(blockNum uint64, block *ethTypes.Block) {
+func (cache *StatelessCache) DeleteBlock(blockNum uint64) {
 	cache.blockInfoMap.Delete(blockNum)
-	cache.txInfoMap.DeleteBlockTxs(blockNum)
-
-	for _, tx := range block.Transactions() {
-		cache.txInfoMap.DeleteTxInfo(tx.Hash())
-	}
+	cache.txInfoMap.Delete(blockNum)
 }
 
 // -------------- For HeaderReader --------------

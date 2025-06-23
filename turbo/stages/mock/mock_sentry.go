@@ -496,8 +496,8 @@ func MockWithEverything(tb testing.TB, gspec *types.Genesis, key *ecdsa.PrivateK
 			stagedsync.StageLogIndexCfg(mock.DB, prune, dirs.Tmp, nil),
 			stagedsync.StageCallTracesCfg(mock.DB, prune, 0, dirs.Tmp),
 			stagedsync.StageTxLookupCfg(mock.DB, prune, dirs.Tmp, mock.ChainConfig.Bor, mock.BlockReader),
-			// For X Layer, RPC latency optimization
-			stagedsync.StageFinishCfg(mock.DB, dirs.Tmp, forkValidator, nil, false),
+			// For X Layer, realtime
+			stagedsync.StageFinishCfg(mock.DB, dirs.Tmp, forkValidator, nil, false, nil),
 			!withPosDownloader),
 		stagedsync.DefaultUnwindOrder,
 		stagedsync.DefaultPruneOrder,

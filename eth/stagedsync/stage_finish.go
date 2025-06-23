@@ -20,6 +20,7 @@ import (
 	bortypes "github.com/ledgerwatch/erigon/polygon/bor/types"
 	"github.com/ledgerwatch/erigon/turbo/engineapi/engine_helpers"
 	"github.com/ledgerwatch/erigon/turbo/services"
+	realtimeCache "github.com/ledgerwatch/erigon/zk/realtime/cache"
 	"github.com/ledgerwatch/log/v3"
 
 	"github.com/ledgerwatch/erigon/core/rawdb"
@@ -34,19 +35,21 @@ type FinishCfg struct {
 	forkValidator *engine_helpers.ForkValidator
 
 	// For X Layer, realtime
-	finishChan     chan uint64
-	enableRealtime bool
+	realtimeCache      *realtimeCache.RealtimeCache
+	realtimeEnable     bool
+	realtimeFinishChan chan uint64
 }
 
-func StageFinishCfg(db kv.RwDB, tmpDir string, forkValidator *engine_helpers.ForkValidator, finishChan chan uint64, enableRealtime bool) FinishCfg {
+func StageFinishCfg(db kv.RwDB, tmpDir string, forkValidator *engine_helpers.ForkValidator, realtimeCache *realtimeCache.RealtimeCache, realtimeEnable bool, realtimeFinishChan chan uint64) FinishCfg {
 	return FinishCfg{
 		db:            db,
 		tmpDir:        tmpDir,
 		forkValidator: forkValidator,
 
 		// For X Layer. RPC latency optimization
-		finishChan:     finishChan,
-		enableRealtime: enableRealtime,
+		realtimeCache:      realtimeCache,
+		realtimeEnable:     realtimeEnable,
+		realtimeFinishChan: realtimeFinishChan,
 	}
 }
 
@@ -100,9 +103,10 @@ func FinishForward(s *StageState, tx kv.RwTx, cfg FinishCfg, initialCycle bool) 
 	}
 
 	// For X Layer, RPC latency optimization
-	if cfg.enableRealtime && cfg.finishChan != nil {
-		log.Debug("[Realtime] Finish height send")
-		cfg.finishChan <- executionAt
+	if cfg.realtimeEnable && cfg.realtimeFinishChan != nil && cfg.realtimeCache != nil {
+		cfg.realtimeFinishChan <- executionAt
+		cfg.realtimeCache.Stateless.DeleteBlock(executionAt)
+		log.Debug("[Realtime] Sent execution height and deleting block data in cache", "height", executionAt)
 	}
 
 	return nil
