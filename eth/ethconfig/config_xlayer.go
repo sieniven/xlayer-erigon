@@ -73,9 +73,10 @@ type ApolloClientConfig struct {
 
 // For realtime feature
 type RealtimeConfig struct {
-	Enable          bool
-	EnableSubscribe bool
-	Kafka           KafkaConfig
+	Enable               bool
+	EnableSubscribe      bool
+	CacheHeightThreshold uint64
+	Kafka                KafkaConfig
 }
 
 type KafkaConfig struct {

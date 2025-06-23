@@ -347,6 +347,11 @@ var (
 		Usage: "Enable subscribe flag",
 		Value: false,
 	}
+	RealtimeCacheHeightThreshold = cli.Uint64Flag{
+		Name:  "realtime.cache-height-threshold",
+		Usage: "Cache height threshold to clear",
+		Value: 10,
+	}
 	RealtimeKafkaSyncBootstrapServers = cli.StringFlag{
 		Name:  "realtime.kafka-sync-bootstrap-servers",
 		Usage: "Kafka sync bootstrap servers",
