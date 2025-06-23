@@ -35,21 +35,23 @@ type FinishCfg struct {
 	forkValidator *engine_helpers.ForkValidator
 
 	// For X Layer, realtime
-	realtimeCache      *realtimeCache.RealtimeCache
-	realtimeEnable     bool
-	realtimeFinishChan chan uint64
+	realtimeCache                *realtimeCache.RealtimeCache
+	realtimeEnable               bool
+	realtimeCacheHeightThreshold uint64
+	realtimeFinishChan           chan uint64
 }
 
-func StageFinishCfg(db kv.RwDB, tmpDir string, forkValidator *engine_helpers.ForkValidator, realtimeCache *realtimeCache.RealtimeCache, realtimeEnable bool, realtimeFinishChan chan uint64) FinishCfg {
+func StageFinishCfg(db kv.RwDB, tmpDir string, forkValidator *engine_helpers.ForkValidator, realtimeCache *realtimeCache.RealtimeCache, realtimeEnable bool, realtimeCacheHeightThreshold uint64, realtimeFinishChan chan uint64) FinishCfg {
 	return FinishCfg{
 		db:            db,
 		tmpDir:        tmpDir,
 		forkValidator: forkValidator,
 
-		// For X Layer. RPC latency optimization
-		realtimeCache:      realtimeCache,
-		realtimeEnable:     realtimeEnable,
-		realtimeFinishChan: realtimeFinishChan,
+		// For X Layer, realtime
+		realtimeCache:                realtimeCache,
+		realtimeEnable:               realtimeEnable,
+		realtimeCacheHeightThreshold: realtimeCacheHeightThreshold,
+		realtimeFinishChan:           realtimeFinishChan,
 	}
 }
 
@@ -105,8 +107,11 @@ func FinishForward(s *StageState, tx kv.RwTx, cfg FinishCfg, initialCycle bool) 
 	// For X Layer, realtime
 	if cfg.realtimeEnable && cfg.realtimeFinishChan != nil && cfg.realtimeCache != nil {
 		cfg.realtimeFinishChan <- executionAt
-		cfg.realtimeCache.Stateless.DeleteBlock(executionAt)
-		log.Debug("[Realtime] Sent execution height and deleting block data in cache", "height", executionAt)
+		if executionAt > cfg.realtimeCacheHeightThreshold {
+			deleteHeight := executionAt - cfg.realtimeCacheHeightThreshold
+			cfg.realtimeCache.Stateless.DeleteBlock(deleteHeight)
+			log.Debug(fmt.Sprintf("[Realtime] Sent execution height %d, delete height %d in cache", executionAt, deleteHeight))
+		}
 	}
 
 	return nil

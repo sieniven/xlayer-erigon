@@ -94,7 +94,7 @@ func NewDefaultZkStages(ctx context.Context,
 		stagedsync.StageCallTracesCfg(db, cfg.Prune, 0, dirs.Tmp),
 		stagedsync.StageTxLookupCfg(db, cfg.Prune, dirs.Tmp, controlServer.ChainConfig.Bor, blockReader),
 		// For X Layer. RPC latency optimization
-		stagedsync.StageFinishCfg(db, dirs.Tmp, forkValidator, realtimeCache, cfg.XLayer.Realtime.Enable, realtimeFinishChan),
+		stagedsync.StageFinishCfg(db, dirs.Tmp, forkValidator, realtimeCache, cfg.XLayer.Realtime.Enable, cfg.XLayer.Realtime.CacheHeightThreshold, realtimeFinishChan),
 		runInTestMode)
 }
 
@@ -173,6 +173,6 @@ func NewSequencerZkStages(ctx context.Context,
 		stagedsync.StageCallTracesCfg(db, cfg.Prune, 0, dirs.Tmp),
 		stagedsync.StageTxLookupCfg(db, cfg.Prune, dirs.Tmp, controlServer.ChainConfig.Bor, blockReader),
 		// For X Layer, realtime
-		stagedsync.StageFinishCfg(db, dirs.Tmp, forkValidator, nil, false, nil),
+		stagedsync.StageFinishCfg(db, dirs.Tmp, forkValidator, nil, false, 0, nil),
 		runInTestMode)
 }

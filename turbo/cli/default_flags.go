@@ -377,6 +377,7 @@ var DefaultFlags = []cli.Flag{
 	&utils.EnableTraceLog,
 	&utils.RealtimeEnableFlag,
 	&utils.RealtimeEnableSubscribeFlag,
+	&utils.RealtimeCacheHeightThreshold,
 	&utils.RealtimeKafkaSyncBootstrapServers,
 	&utils.RealtimeKafkaSyncBlockTopic,
 	&utils.RealtimeKafkaSyncTxTopic,
