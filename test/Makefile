@@ -123,7 +123,7 @@ realtime-run: stop build-docker
 	$(RUN_DOCKER_KAFKA)
 
 	# app services
-	sleep 3
+	sleep 15
 	$(RUN_DOCKER_SEQ)
 	$(RUN_DOCKER_PROVER)
 	sleep 10

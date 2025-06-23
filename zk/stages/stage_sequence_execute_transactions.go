@@ -280,7 +280,7 @@ func attemptAddTransaction(
 	if err != nil {
 		if errors.Is(err, core.ErrGasLimitReached) {
 			log.Debug("Transaction gas limit reached", "txHash", transaction.Hash())
-			return nil, nil, txCounters, innerTxs, overflowGas, nil
+			return nil, nil, txCounters, nil, overflowGas, nil
 		}
 		return nil, nil, nil, nil, overflowNone, err
 	}
@@ -317,11 +317,11 @@ func attemptAddTransaction(
 		return nil, nil, nil, nil, overflowNone, err
 	}
 
-	ibs.FinalizeTx(evm.ChainRules(), noop)
-
 	if cfg.zk.XLayer.Realtime.Enable && cfg.kafkaTxInfoChan != nil {
 		ibs.GenerateChangesetSinceSnapshotAndSendTxInfo(snapshot, cfg.kafkaTxInfoChan, transaction, receipt, innerTxs)
 	}
+
+	ibs.FinalizeTx(evm.ChainRules(), noop)
 
 	return receipt, execResult, txCounters, innerTxs, overflowNone, nil
 }
