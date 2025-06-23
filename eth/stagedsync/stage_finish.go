@@ -102,7 +102,7 @@ func FinishForward(s *StageState, tx kv.RwTx, cfg FinishCfg, initialCycle bool) 
 		}
 	}
 
-	// For X Layer, RPC latency optimization
+	// For X Layer, realtime
 	if cfg.realtimeEnable && cfg.realtimeFinishChan != nil && cfg.realtimeCache != nil {
 		cfg.realtimeFinishChan <- executionAt
 		cfg.realtimeCache.Stateless.DeleteBlock(executionAt)
