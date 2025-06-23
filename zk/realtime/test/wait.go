@@ -61,7 +61,6 @@ func WaitMinedRealtime(ctx context.Context, client ethClienter, tx types.Transac
 		case <-ctx.Done():
 			return ctx.Err()
 		default:
-			time.Sleep(5 * time.Millisecond)
 		}
 	}
 }
@@ -85,6 +84,7 @@ func WaitMinedEth(ctx context.Context, client ethClienter, tx types.Transaction,
 		case <-ctx.Done():
 			return ctx.Err()
 		default:
+			time.Sleep(5 * time.Millisecond)
 		}
 	}
 }
