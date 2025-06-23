@@ -24,7 +24,7 @@ import (
 )
 
 var (
-	Iterations = 5
+	Iterations = 100
 )
 
 func TestRealtimeBenchmarkNativeTransfer(t *testing.T) {
