@@ -2445,7 +2445,6 @@ func SetEthConfig(ctx *cli.Context, nodeConfig *nodecfg.Config, cfg *ethconfig.C
 
 	// For X Layer
 	SetBulkAddTxs(ctx, cfg)
-	SetVerificationConfigs(ctx, cfg)
 }
 
 // SetDNSDiscoveryDefaults configures DNS discovery with the given URL if
