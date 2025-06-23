@@ -47,12 +47,16 @@ func (api *RealtimeAPIImpl) GetBlockTransactionCountByNumber(ctx context.Context
 		return api.ethApi.GetBlockTransactionCountByNumber(ctx, blockNr)
 	}
 
-	txs, ok := api.cacheDB.Stateless.GetBlockTxs(blockNum)
+	_, _, ok := api.cacheDB.Stateless.GetHeader(blockNum)
 	if !ok {
-		return api.ethApi.GetBlockTransactionCountByNumber(ctx, blockNr)
+		return nil, ErrRealtimeConfirmBlockNotFound
 	}
 
-	numOfTx := hexutil.Uint(len(txs))
+	txs, _ := api.cacheDB.Stateless.GetBlockTxs(blockNum)
+	numOfTx := hexutil.Uint(0)
+	if ok {
+		numOfTx = hexutil.Uint(len(txs))
+	}
 
 	return &numOfTx, nil
 }
