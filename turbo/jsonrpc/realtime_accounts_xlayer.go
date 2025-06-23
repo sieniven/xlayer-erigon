@@ -25,13 +25,35 @@ func (api *RealtimeAPIImpl) GetBalance(ctx context.Context, address libcommon.Ad
 }
 
 func (api *RealtimeAPIImpl) GetTransactionCount(ctx context.Context, address libcommon.Address) (*hexutil.Uint64, error) {
-	acc, err := api.cacheDB.State.ReadAccountData(address)
-	if err != nil || acc == nil {
-		return api.ethApi.GetTransactionCount(ctx, address, nil)
+	ethNonce, err := api.ethApi.GetTransactionCount(ctx, address, nil)
+	if err != nil {
+		ethNonce = nil
 	}
-	nonce := hexutil.Uint64(acc.Nonce)
 
-	return &nonce, nil
+	var cacheNonce *hexutil.Uint64
+	acc, err := api.cacheDB.State.ReadAccountData(address)
+	if err != nil {
+		cacheNonce = nil
+	} else if acc != nil {
+		nonce := hexutil.Uint64(acc.Nonce)
+		cacheNonce = &nonce
+	}
+
+	if ethNonce == nil && cacheNonce == nil {
+		return nil, fmt.Errorf("failed to get transaction count for account %x from both sources", address)
+	}
+
+	if ethNonce == nil {
+		return cacheNonce, nil
+	}
+	if cacheNonce == nil {
+		return ethNonce, nil
+	}
+
+	if *ethNonce > *cacheNonce {
+		return ethNonce, nil
+	}
+	return cacheNonce, nil
 }
 
 func (api *RealtimeAPIImpl) GetCode(ctx context.Context, address libcommon.Address) (hexutility.Bytes, error) {
