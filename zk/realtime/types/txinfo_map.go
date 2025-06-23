@@ -1,11 +1,13 @@
 package types
 
 import (
+	"fmt"
 	"sync"
 
 	"github.com/ledgerwatch/erigon-lib/common"
 	ethTypes "github.com/ledgerwatch/erigon/core/types"
 	zktypes "github.com/ledgerwatch/erigon/zk/types"
+	"github.com/ledgerwatch/erigon/zkevm/log"
 )
 
 type TxInfo struct {
@@ -91,5 +93,19 @@ func (rm *TxInfoMap) Clear() {
 
 	for k := range rm.blockTxs {
 		delete(rm.blockTxs, k)
+	}
+}
+
+func (rm *TxInfoMap) Dump() {
+	rm.mu.RLock()
+	defer rm.mu.RUnlock()
+	log.Info("[Realtime] Logging tx info map blockTxs:")
+	for k, v := range rm.blockTxs {
+		log.Info(fmt.Sprintf("Tx block number key %d, number of tx hashes: %d", k, len(v)))
+	}
+
+	log.Info("[Realtime] Logging tx info map txInfos:")
+	for k, v := range rm.txInfos {
+		log.Info(fmt.Sprintf("Tx hash key %s, tx info: %+v", k, v))
 	}
 }
