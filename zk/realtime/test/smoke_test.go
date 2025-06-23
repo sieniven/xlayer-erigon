@@ -42,12 +42,9 @@ func TestRealtimeRPC(t *testing.T) {
 	client, err := ethclient.Dial(DefaultL2NetworkURL)
 	require.NoError(t, err)
 
-	privateKey, err := crypto.HexToECDSA(tmpSenderPrivateKey)
+	privateKey, err := crypto.HexToECDSA(strings.TrimPrefix(DefaultL2AdminPrivateKey, "0x"))
 	require.NoError(t, err)
-	publicKey := privateKey.Public()
-	publicKeyECDSA, ok := publicKey.(*ecdsa.PublicKey)
-	require.True(t, ok)
-	fromAddress := crypto.PubkeyToAddress(*publicKeyECDSA)
+	fromAddress := common.HexToAddress(DefaultL2AdminAddress)
 	log.Infof("Sender: %s", fromAddress)
 
 	// Default test address for tests that require an address
