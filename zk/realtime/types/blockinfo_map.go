@@ -1,9 +1,11 @@
 package types
 
 import (
+	"fmt"
 	"sync"
 
 	ethTypes "github.com/ledgerwatch/erigon/core/types"
+	"github.com/ledgerwatch/erigon/zkevm/log"
 )
 
 type BlockInfo struct {
@@ -59,5 +61,14 @@ func (bm *BlockInfoMap) Clear() {
 	defer bm.mu.Unlock()
 	for k := range bm.blockInfos {
 		delete(bm.blockInfos, k)
+	}
+}
+
+func (bm *BlockInfoMap) Dump() {
+	bm.mu.RLock()
+	defer bm.mu.RUnlock()
+	log.Info("[Realtime] Logging block info map:")
+	for k, v := range bm.blockInfos {
+		log.Info(fmt.Sprintf("Block number key %d, block info: %+v", k, v))
 	}
 }

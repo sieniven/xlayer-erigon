@@ -41,6 +41,11 @@ func (cache *StatelessCache) GetBlockTxs(blockNum uint64) ([]libcommon.Hash, boo
 	return cache.txInfoMap.GetBlockTxs(blockNum)
 }
 
+func (cache *StatelessCache) Dump() {
+	cache.blockInfoMap.Dump()
+	cache.txInfoMap.Dump()
+}
+
 // -------------- Write operations --------------
 func (cache *StatelessCache) PutHeader(blockNum uint64, header *ethTypes.Header, prevTxCount int64) {
 	cache.blockInfoMap.PutHeader(blockNum, header, prevTxCount)

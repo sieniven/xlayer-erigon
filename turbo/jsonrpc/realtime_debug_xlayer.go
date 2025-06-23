@@ -29,3 +29,17 @@ func (api *RealtimeAPIImpl) DumpStateCache(ctx context.Context) error {
 
 	return nil
 }
+
+func (api *RealtimeAPIImpl) DumpStatelessCache(ctx context.Context) error {
+	if api == nil || !api.enableFlag {
+		return ErrRealtimeNotEnabled
+	}
+
+	if api.cacheDB == nil || api.cacheDB.Stateless == nil {
+		return fmt.Errorf("statelessCache is nil")
+	}
+
+	api.cacheDB.Stateless.Dump()
+
+	return nil
+}
