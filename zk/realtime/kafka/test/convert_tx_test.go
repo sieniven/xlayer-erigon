@@ -1,4 +1,4 @@
-package types
+package test
 
 import (
 	"math/big"
@@ -9,6 +9,7 @@ import (
 	"github.com/ledgerwatch/erigon/common/u256"
 	types1 "github.com/ledgerwatch/erigon/core/types"
 	"github.com/ledgerwatch/erigon/core/vm"
+	kafkaTypes "github.com/ledgerwatch/erigon/zk/realtime/kafka/types"
 	realtimeTypes "github.com/ledgerwatch/erigon/zk/realtime/types"
 	zktypes "github.com/ledgerwatch/erigon/zk/types"
 	"gotest.tools/v3/assert"
@@ -49,7 +50,7 @@ func TestLegacyTx(t *testing.T) {
 	emptyTxReceipt := types1.NewReceipt(false, 1000)
 
 	blockNumber := uint64(100)
-	emptyMsg, err := ToKafkaTransactionMessage(emptyTx, emptyTxReceipt, nil, nil, blockNumber)
+	emptyMsg, err := kafkaTypes.ToKafkaTransactionMessage(emptyTx, emptyTxReceipt, nil, nil, blockNumber)
 	assert.NilError(t, err)
 	AssertCommonTx(t, emptyMsg, emptyTx, blockNumber, types1.LegacyTxType)
 	assert.Equal(t, emptyMsg.GasPrice, emptyTx.GetPrice().String())
@@ -95,7 +96,7 @@ func TestLegacyTx(t *testing.T) {
 		},
 	}
 
-	msg, err := ToKafkaTransactionMessage(rightvrsTx, rightvrsTxReceipt, rightvrsTxInnerTxs, rightvrsTxChangeset, blockNumber)
+	msg, err := kafkaTypes.ToKafkaTransactionMessage(rightvrsTx, rightvrsTxReceipt, rightvrsTxInnerTxs, rightvrsTxChangeset, blockNumber)
 	assert.NilError(t, err)
 	AssertCommonTx(t, msg, rightvrsTx, blockNumber, types1.LegacyTxType)
 	assert.Equal(t, msg.GasPrice, rightvrsTx.GetPrice().String())
@@ -166,7 +167,7 @@ func TestAccessListTx(t *testing.T) {
 	}
 
 	blockNumber := uint64(100)
-	msg, err := ToKafkaTransactionMessage(signedAccessListTx, signedAccessListTxReceipt, signedAccessListTxInnerTxs, signedAccessListTxChangeset, blockNumber)
+	msg, err := kafkaTypes.ToKafkaTransactionMessage(signedAccessListTx, signedAccessListTxReceipt, signedAccessListTxInnerTxs, signedAccessListTxChangeset, blockNumber)
 	assert.NilError(t, err)
 	AssertCommonTx(t, msg, signedAccessListTx, blockNumber, types1.AccessListTxType)
 	assert.Equal(t, msg.GasPrice, signedAccessListTx.GetPrice().String())
@@ -218,7 +219,7 @@ func TestDynamicFeeTx(t *testing.T) {
 	}
 
 	blockNumber := uint64(100)
-	msg, err := ToKafkaTransactionMessage(signedDynFeeTx, signedDynFeeTxReceipt, signedDynFeeTxInnerTxs, signedDynFeeTxChangeset, blockNumber)
+	msg, err := kafkaTypes.ToKafkaTransactionMessage(signedDynFeeTx, signedDynFeeTxReceipt, signedDynFeeTxInnerTxs, signedDynFeeTxChangeset, blockNumber)
 	assert.NilError(t, err)
 	AssertCommonTx(t, msg, signedDynFeeTx, blockNumber, types1.DynamicFeeTxType)
 	assert.Equal(t, msg.Tip, signedDynFeeTx.GetTip().String())
@@ -265,7 +266,7 @@ func TestFromBlobTx(t *testing.T) {
 	}
 
 	blockNumber := uint64(100)
-	msg, err := ToKafkaTransactionMessage(blobTx, blobTxReceipt, blobTxInnerTxs, blobTxChangeset, blockNumber)
+	msg, err := kafkaTypes.ToKafkaTransactionMessage(blobTx, blobTxReceipt, blobTxInnerTxs, blobTxChangeset, blockNumber)
 	assert.NilError(t, err)
 	AssertCommonTx(t, msg, blobTx, blockNumber, types1.BlobTxType)
 	assert.Equal(t, msg.Tip, blobTx.GetTip().String())
