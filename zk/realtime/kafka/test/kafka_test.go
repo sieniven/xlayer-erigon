@@ -1,4 +1,4 @@
-package kafka
+package test
 
 import (
 	"context"
@@ -11,6 +11,7 @@ import (
 	"github.com/ledgerwatch/erigon/common/u256"
 	ethTypes "github.com/ledgerwatch/erigon/core/types"
 	"github.com/ledgerwatch/erigon/core/vm"
+	"github.com/ledgerwatch/erigon/zk/realtime/kafka"
 	kafkaTypes "github.com/ledgerwatch/erigon/zk/realtime/kafka/types"
 	realtimeTypes "github.com/ledgerwatch/erigon/zk/realtime/types"
 	zktypes "github.com/ledgerwatch/erigon/zk/types"
@@ -19,9 +20,7 @@ import (
 )
 
 var (
-	testFromAddr = libcommon.HexToAddress("095e7baea6a6c7c4c2dfeb977efac326af552d87")
-	testToAddr   = libcommon.HexToAddress("b94f5374fce5edbc8e2a8697c15331677e6ebf0b")
-	sigBytes     = "98ff921201554726367d2be8c804a7ff89ccf285ebc57dff8ae4c44b9c19ac4a8887321be575c8095f789dd4c743dfe42c1820f9231f98a962b210e3ac2452a301"
+	sigBytes = "98ff921201554726367d2be8c804a7ff89ccf285ebc57dff8ae4c44b9c19ac4a8887321be575c8095f789dd4c743dfe42c1820f9231f98a962b210e3ac2452a301"
 
 	rightvrsTx, _ = ethTypes.NewTransaction(
 		3,
@@ -82,14 +81,14 @@ var (
 
 func TestKafka(t *testing.T) {
 	rightvrsTx.SetSender(testFromAddr)
-	cfg := KafkaConfig{
+	cfg := kafka.KafkaConfig{
 		BootstrapServers: []string{"0.0.0.0:9095"},
 		BlockTopic:       "xlayer-test-block",
 		TxTopic:          "xlayer-test-tx",
 		ErrorTopic:       "xlayer-test-error",
 		ClientID:         "xlayer-test-consumer",
 	}
-	producer, err := NewKafkaProducer(cfg)
+	producer, err := kafka.NewKafkaProducer(cfg)
 	assert.NilError(t, err)
 
 	for i := 0; i < 10; i++ {
@@ -106,7 +105,7 @@ func TestKafka(t *testing.T) {
 	err = producer.Close()
 	assert.NilError(t, err)
 
-	consumer, err := NewKafkaConsumer(cfg)
+	consumer, err := kafka.NewKafkaConsumer(cfg)
 	assert.NilError(t, err)
 	ctx, ctxWithCancel := context.WithCancel(context.Background())
 	headersChan := make(chan kafkaTypes.BlockMessage, 10)
@@ -121,10 +120,10 @@ func TestKafka(t *testing.T) {
 		case err := <-errorChan:
 			t.Fatalf("Received error from consumer: %v", err)
 		case txMsg := <-txMsgsChan:
-			kafkaTypes.AssertCommonTx(t, txMsg, rightvrsTx, uint64(i), ethTypes.LegacyTxType)
-			kafkaTypes.AssertReceipt(t, txMsg, rightvrsTxReceipt)
-			kafkaTypes.AssertInnerTxs(t, txMsg, rightvrsTxInnerTxs)
-			kafkaTypes.AssertChangeseet(t, txMsg, rightvrsTxChangeset)
+			AssertCommonTx(t, txMsg, rightvrsTx, uint64(i), ethTypes.LegacyTxType)
+			AssertReceipt(t, txMsg, rightvrsTxReceipt)
+			AssertInnerTxs(t, txMsg, rightvrsTxInnerTxs)
+			AssertChangeseet(t, txMsg, rightvrsTxChangeset)
 		}
 	}
 
@@ -136,7 +135,7 @@ func TestKafka(t *testing.T) {
 		case rcvHeader := <-headersChan:
 			header, _, err := rcvHeader.GetBlockInfo()
 			assert.NilError(t, err)
-			kafkaTypes.AssertHeader(t, blockHeader, header)
+			AssertHeader(t, blockHeader, header)
 		}
 	}
 

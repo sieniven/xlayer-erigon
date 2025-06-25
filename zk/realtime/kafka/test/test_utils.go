@@ -1,4 +1,4 @@
-package types
+package test
 
 import (
 	"encoding/hex"
@@ -7,6 +7,7 @@ import (
 	libcommon "github.com/ledgerwatch/erigon-lib/common"
 	types2 "github.com/ledgerwatch/erigon-lib/types"
 	types1 "github.com/ledgerwatch/erigon/core/types"
+	kafkaTypes "github.com/ledgerwatch/erigon/zk/realtime/kafka/types"
 	realtimeTypes "github.com/ledgerwatch/erigon/zk/realtime/types"
 	zktypes "github.com/ledgerwatch/erigon/zk/types"
 	"gotest.tools/v3/assert"
@@ -40,7 +41,7 @@ func AssertHeader(t *testing.T, header *types1.Header, rcvHeader *types1.Header)
 	assert.Equal(t, header.ExcessBlobGas, rcvHeader.ExcessBlobGas)
 }
 
-func AssertCommonTx(t *testing.T, msg TransactionMessage, tx types1.Transaction, blockNumber uint64, txType int) {
+func AssertCommonTx(t *testing.T, msg kafkaTypes.TransactionMessage, tx types1.Transaction, blockNumber uint64, txType int) {
 	assert.Equal(t, msg.BlockNumber, blockNumber)
 	assert.Equal(t, int(msg.Type), txType)
 	assert.Equal(t, msg.Hash, tx.Hash())
@@ -57,7 +58,7 @@ func AssertCommonTx(t *testing.T, msg TransactionMessage, tx types1.Transaction,
 	assert.Equal(t, msg.V, *v)
 }
 
-func AssertAccessList(t *testing.T, msgAccessList []AccessTupleMessage) {
+func AssertAccessList(t *testing.T, msgAccessList []kafkaTypes.AccessTupleMessage) {
 	assert.Equal(t, len(msgAccessList), len(accesses))
 	for idx, access := range msgAccessList {
 		assert.Equal(t, access.Address, accesses[idx].Address.String())
@@ -79,7 +80,7 @@ func assertTxAccessList(t *testing.T, accessList types2.AccessList) {
 	}
 }
 
-func AssertReceipt(t *testing.T, msg TransactionMessage, receipt *types1.Receipt) {
+func AssertReceipt(t *testing.T, msg kafkaTypes.TransactionMessage, receipt *types1.Receipt) {
 	assert.Equal(t, msg.Receipt.Type, receipt.Type)
 	assert.Equal(t, string(msg.Receipt.PostState), string(receipt.PostState))
 	assert.Equal(t, msg.Receipt.Status, receipt.Status)
@@ -102,7 +103,7 @@ func AssertReceipt(t *testing.T, msg TransactionMessage, receipt *types1.Receipt
 	assert.Equal(t, msg.Receipt.TransactionIndex, receipt.TransactionIndex)
 }
 
-func AssertInnerTxs(t *testing.T, msg TransactionMessage, innerTxs []*zktypes.InnerTx) {
+func AssertInnerTxs(t *testing.T, msg kafkaTypes.TransactionMessage, innerTxs []*zktypes.InnerTx) {
 	assert.Equal(t, len(msg.InnerTxs), len(innerTxs))
 	for i := range msg.InnerTxs {
 		assert.Equal(t, msg.InnerTxs[i].Dept.String(), innerTxs[i].Dept.String())
@@ -124,7 +125,8 @@ func AssertInnerTxs(t *testing.T, msg TransactionMessage, innerTxs []*zktypes.In
 		assert.Equal(t, msg.InnerTxs[i].Error, innerTxs[i].Error)
 	}
 }
-func AssertChangeseet(t *testing.T, msg TransactionMessage, changeset *realtimeTypes.Changeset) {
+
+func AssertChangeseet(t *testing.T, msg kafkaTypes.TransactionMessage, changeset *realtimeTypes.Changeset) {
 	assert.Equal(t, len(msg.Changeset.DeletedAccounts), len(changeset.DeletedAccounts))
 	assert.Equal(t, len(msg.Changeset.BalanceChanges), len(changeset.BalanceChanges))
 	assert.Equal(t, len(msg.Changeset.NonceChanges), len(changeset.NonceChanges))
