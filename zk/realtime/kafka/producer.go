@@ -6,7 +6,6 @@ import (
 
 	"github.com/IBM/sarama"
 	"github.com/ledgerwatch/erigon/core/types"
-	"github.com/ledgerwatch/erigon/eth/ethconfig"
 	kafkaTypes "github.com/ledgerwatch/erigon/zk/realtime/kafka/types"
 	realtimeTypes "github.com/ledgerwatch/erigon/zk/realtime/types"
 	zktypes "github.com/ledgerwatch/erigon/zk/types"
@@ -15,10 +14,10 @@ import (
 // KafkaProducer represents a Kafka producer client for sending transaction messages
 type KafkaProducer struct {
 	producer sarama.SyncProducer
-	config   ethconfig.KafkaConfig
+	config   KafkaConfig
 }
 
-func NewKafkaProducer(config ethconfig.KafkaConfig) (*KafkaProducer, error) {
+func NewKafkaProducer(config KafkaConfig) (*KafkaProducer, error) {
 	saramaConfig := sarama.NewConfig()
 	saramaConfig.Version = DEFAULT_VERSION
 	saramaConfig.ClientID = config.ClientID

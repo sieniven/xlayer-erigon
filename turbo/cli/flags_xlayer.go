@@ -10,6 +10,8 @@ import (
 	"github.com/ledgerwatch/erigon/eth/ethconfig"
 	"github.com/ledgerwatch/erigon/node/nodecfg"
 	"github.com/ledgerwatch/erigon/smt/pkg/blockinfo"
+	"github.com/ledgerwatch/erigon/zk/realtime"
+	"github.com/ledgerwatch/erigon/zk/realtime/kafka"
 	"github.com/urfave/cli/v2"
 )
 
@@ -61,11 +63,11 @@ func ApplyFlagsForEthXLayerConfig(ctx *cli.Context, cfg *ethconfig.Config) {
 
 		TraceLogPath:   ctx.String(utils.TraceLogPath.Name),
 		EnableTraceLog: ctx.Bool(utils.EnableTraceLog.Name),
-		Realtime: ethconfig.RealtimeConfig{
+		Realtime: realtime.RealtimeConfig{
 			Enable:               ctx.Bool(utils.RealtimeEnableFlag.Name),
 			EnableSubscribe:      ctx.Bool(utils.RealtimeEnableSubscribeFlag.Name),
 			CacheHeightThreshold: ctx.Uint64(utils.RealtimeCacheHeightThreshold.Name),
-			Kafka: ethconfig.KafkaConfig{
+			Kafka: kafka.KafkaConfig{
 				BootstrapServers: strings.Split(ctx.String(utils.RealtimeKafkaSyncBootstrapServers.Name), ","),
 				BlockTopic:       ctx.String(utils.RealtimeKafkaSyncBlockTopic.Name),
 				TxTopic:          ctx.String(utils.RealtimeKafkaSyncTxTopic.Name),
