@@ -6,17 +6,16 @@ import (
 	"fmt"
 
 	"github.com/IBM/sarama"
-	"github.com/ledgerwatch/erigon/eth/ethconfig"
 	kafkaTypes "github.com/ledgerwatch/erigon/zk/realtime/kafka/types"
 	"github.com/ledgerwatch/log/v3"
 )
 
 type KafkaConsumer struct {
 	consumer sarama.ConsumerGroup
-	config   ethconfig.KafkaConfig
+	config   KafkaConfig
 }
 
-func NewKafkaConsumer(config ethconfig.KafkaConfig) (*KafkaConsumer, error) {
+func NewKafkaConsumer(config KafkaConfig) (*KafkaConsumer, error) {
 	saramaConfig := sarama.NewConfig()
 	saramaConfig.Version = DEFAULT_VERSION
 	saramaConfig.ClientID = config.ClientID

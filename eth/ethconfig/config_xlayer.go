@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/ledgerwatch/erigon-lib/common"
+	"github.com/ledgerwatch/erigon/zk/realtime"
 )
 
 // XLayerConfig is the X Layer config used on the eth backend
@@ -50,7 +51,7 @@ type XLayerConfig struct {
 
 	SequencerBatchCounterPercentage int
 
-	Realtime RealtimeConfig
+	Realtime realtime.RealtimeConfig
 }
 
 var DefaultXLayerConfig = XLayerConfig{}
@@ -69,20 +70,4 @@ type ApolloClientConfig struct {
 	IP            string
 	AppID         string
 	NamespaceName string
-}
-
-// For realtime feature
-type RealtimeConfig struct {
-	Enable               bool
-	EnableSubscribe      bool
-	CacheHeightThreshold uint64
-	Kafka                KafkaConfig
-}
-
-type KafkaConfig struct {
-	BootstrapServers []string
-	BlockTopic       string
-	TxTopic          string
-	ErrorTopic       string
-	ClientID         string
 }

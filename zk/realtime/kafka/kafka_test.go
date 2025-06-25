@@ -11,7 +11,6 @@ import (
 	"github.com/ledgerwatch/erigon/common/u256"
 	ethTypes "github.com/ledgerwatch/erigon/core/types"
 	"github.com/ledgerwatch/erigon/core/vm"
-	"github.com/ledgerwatch/erigon/eth/ethconfig"
 	kafkaTypes "github.com/ledgerwatch/erigon/zk/realtime/kafka/types"
 	realtimeTypes "github.com/ledgerwatch/erigon/zk/realtime/types"
 	zktypes "github.com/ledgerwatch/erigon/zk/types"
@@ -83,7 +82,7 @@ var (
 
 func TestKafka(t *testing.T) {
 	rightvrsTx.SetSender(testFromAddr)
-	cfg := ethconfig.KafkaConfig{
+	cfg := KafkaConfig{
 		BootstrapServers: []string{"0.0.0.0:9095"},
 		BlockTopic:       "xlayer-test-block",
 		TxTopic:          "xlayer-test-tx",
