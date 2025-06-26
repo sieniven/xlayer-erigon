@@ -482,7 +482,16 @@ func migrateGenesis(chaindata, input, output string) error {
 		log.Debug("acc_addr: %s\n", acc_addr)
 		if _, exists := jsonData[acc_hex]; exists {
 			// Fixme: if xlayer account conflict with target node(such as op-geth), use which as new regenesis account?
-			fmt.Println("Adding exist account:", acc_hex)
+			a, err := plainStateReader.ReadAccountData(acc_addr)
+			if err != nil {
+				return err
+			}
+
+			if hex.EncodeToString(a.CodeHash.Bytes()) != "c5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470" {
+				fmt.Println("Adding exist contract: ", acc_hex)
+			} else {
+				fmt.Println("Adding exist account:", acc_hex)
+			}
 			continue
 		}
 		jsonData[acc_hex] = make(map[string]interface{})
@@ -519,7 +528,7 @@ func migrateGenesis(chaindata, input, output string) error {
 				if !bytes.HasPrefix(k, acc_bytes) {
 					break
 				}
-				// todo need fix same address have diff Incarnation?
+				// todo: make sure if exist same address have diff Incarnation? seem no
 				if len(k) > 28 {
 					if !first_storage {
 						if _, exists := current["storage"]; !exists {
@@ -1738,6 +1747,8 @@ func checkStateroot(chaindata, input string, incremental, debug bool) error {
 	tx, _ := db.BeginRw(context.Background())
 	eridb := db2.NewEriDb(tx, nil)
 	smtBatch := smt.NewSMT(eridb, false)
+	smtBatchRootHashOrigin, _ := smtBatch.Db.GetLastRoot()
+	fmt.Printf("smtBatchRootHashOrigin: %x\n", smtBatchRootHashOrigin)
 
 	if debug {
 		for acc, acc_info := range accChanges {
@@ -1754,11 +1765,16 @@ func checkStateroot(chaindata, input string, incremental, debug bool) error {
 			}
 		}
 	}
+
+	fmt.Printf("begin SetStorage")
 	_, _, err = smtBatch.SetStorage(ctx, "", accChanges, codeChanges, storageChanges)
 	smtBatchRootHash, _ := smtBatch.Db.GetLastRoot()
 	fmt.Printf("smtBatchRootHash: %x\n", smtBatchRootHash)
-	smtBatch.RoSMT.PrintDb()
-
+	if smtBatchRootHash.Text(16) == smtBatchRootHashOrigin.Text(16) {
+		fmt.Printf("State check pass\n")
+	} else {
+		fmt.Printf("State check failed\n")
+	}
 	tx.Rollback()
 
 	return nil
