@@ -114,6 +114,7 @@ func SpawnStageL1Syncer(
 		}
 
 		// start the syncer
+		log.Info("---------Starting syncer", "l1BlockProgress", l1BlockProgress)
 		cfg.syncer.RunQueryBlocks(l1BlockProgress)
 		defer func() {
 			if funcErr != nil {
@@ -137,7 +138,9 @@ Loop:
 		case logs := <-logsChan:
 			for _, l := range logs {
 				l := l
+				log.Info("---------Parsing log", "log", l)
 				info, batchLogType := parseLogType(cfg.zkCfg.L1RollupId, &l)
+				log.Info("---------Parsed log", "info", info, "batchLogType", batchLogType)
 				switch batchLogType {
 				case logSequence:
 					fallthrough
@@ -146,6 +149,7 @@ Loop:
 					if batchLogType == logSequence && cfg.zkCfg.L1RollupId > 1 {
 						continue
 					}
+					log.Info("---------Writing sequence", "l1BlockNo", info.L1BlockNo, "batchNo", info.BatchNo, "l1TxHash", info.L1TxHash, "stateRoot", info.StateRoot, "l1InfoRoot", info.L1InfoRoot)
 					if err := hermezDb.WriteSequence(info.L1BlockNo, info.BatchNo, info.L1TxHash, info.StateRoot, info.L1InfoRoot); err != nil {
 						return fmt.Errorf("WriteSequence: %w", err)
 					}
