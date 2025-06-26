@@ -310,8 +310,10 @@ func (c *Client) CallContext(ctx context.Context, result interface{}, method str
 	op := &requestOp{ids: []json.RawMessage{msg.ID}, resp: make(chan *jsonrpcMessage, 1)}
 
 	if c.isHTTP {
+		log.Info("HTTP SEND", "msg", msg)
 		err = c.sendHTTP(ctx, op, msg)
 	} else {
+		log.Info("NOT HTTP SEND", "msg", msg)
 		err = c.send(ctx, op, msg)
 	}
 	if err != nil {

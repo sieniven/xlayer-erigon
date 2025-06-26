@@ -456,7 +456,7 @@ func (s *L1Syncer) getSequencedLogs(jobs <-chan fetchJob, results chan jobResult
 				defer cancel()
 				logs, err = em.FilterLogs(ctx, query)
 				if err != nil {
-					log.Warn("getSequencedLogs retry error", "err", err, "from", j.From, "to", j.To, "retry", retry)
+					log.Warn("getSequencedLogs retry error", "err", err, "from", j.From, "to", j.To, "retry", retry, "query", query)
 					retry++
 					if retry >= s.getLogsRetries {
 						results <- jobResult{
