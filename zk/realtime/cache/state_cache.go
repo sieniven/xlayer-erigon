@@ -341,7 +341,7 @@ func (cache *PlainStateCache) GetSnapshotHeight() uint64 {
 	return cache.snapshotHeight.Load()
 }
 
-func (cache *PlainStateCache) Dump() error {
+func (cache *PlainStateCache) DumpToFile() error {
 	cache.cacheLock.RLock()
 	defer cache.cacheLock.RUnlock()
 
@@ -394,4 +394,13 @@ func writeToJSON(filename string, data interface{}) error {
 		return err
 	}
 	return os.WriteFile(filename, jsonData, 0644)
+}
+
+// WithAccountCache executes the given function with the account cache under read lock protection.
+// This ensures thread-safe access to the account cache during the entire operation.
+func (cache *PlainStateCache) WithAccountCache(fn func(map[libcommon.Address]*accounts.Account) error) error {
+	cache.cacheLock.RLock()
+	defer cache.cacheLock.RUnlock()
+
+	return fn(cache.accountCache)
 }
