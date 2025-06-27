@@ -28,7 +28,7 @@ func (api *RealtimeAPIImpl) DumpStateCache(ctx context.Context) error {
 		return fmt.Errorf("stateCache is a nil pointer")
 	}
 
-	if err := api.cacheDB.State.DumpToFile(); err != nil {
+	if err := api.cacheDB.State.DumpToFile(api.cacheDumpPath); err != nil {
 		log.Error("[Realtime] Failed to dump state cache", "error", err)
 		return fmt.Errorf("failed to dump state cache: %v", err)
 	}

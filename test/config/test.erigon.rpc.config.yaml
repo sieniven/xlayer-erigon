@@ -98,3 +98,4 @@ realtime.kafka-sync-tx-topic: xlayer-tx
 realtime.kafka-sync-block-topic: xlayer-header
 realtime.kafka-sync-error-topic: xlayer-error
 realtime.kafka-sync-client-id: "xlayer-consumer"
+realtime.cache-dump-path: /home/erigon/data/cache

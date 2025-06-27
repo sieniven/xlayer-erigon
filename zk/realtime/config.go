@@ -7,4 +7,5 @@ type RealtimeConfig struct {
 	EnableSubscribe      bool
 	CacheHeightThreshold uint64
 	Kafka                kafka.KafkaConfig
+	CacheDumpPath        string
 }

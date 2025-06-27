@@ -341,7 +341,7 @@ func (cache *PlainStateCache) GetSnapshotHeight() uint64 {
 	return cache.snapshotHeight.Load()
 }
 
-func (cache *PlainStateCache) DumpToFile() error {
+func (cache *PlainStateCache) DumpToFile(cacheDumpPath string) error {
 	cache.cacheLock.RLock()
 	defer cache.cacheLock.RUnlock()
 
@@ -351,7 +351,7 @@ func (cache *PlainStateCache) DumpToFile() error {
 		acc.EncodeForStorage(value)
 		accountData[hex.EncodeToString(addr[:])] = hex.EncodeToString(value)
 	}
-	if err := writeToJSON("/home/erigon/data/cache/account_cache.json", accountData); err != nil {
+	if err := writeToJSON(filepath.Join(cacheDumpPath, "account_cache.json"), accountData); err != nil {
 		return fmt.Errorf("failed to dump account cache: %v", err)
 	}
 
@@ -359,7 +359,7 @@ func (cache *PlainStateCache) DumpToFile() error {
 	for key, value := range cache.storageCache {
 		storageData[hex.EncodeToString([]byte(key))] = hex.EncodeToString(value.Bytes())
 	}
-	if err := writeToJSON("/home/erigon/data/cache/storage_cache.json", storageData); err != nil {
+	if err := writeToJSON(filepath.Join(cacheDumpPath, "storage_cache.json"), storageData); err != nil {
 		return fmt.Errorf("failed to dump storage cache: %v", err)
 	}
 
@@ -367,7 +367,7 @@ func (cache *PlainStateCache) DumpToFile() error {
 	for hash, code := range cache.codeCache {
 		codeData[hex.EncodeToString(hash[:])] = hex.EncodeToString(code)
 	}
-	if err := writeToJSON("/home/erigon/data/cache/code_cache.json", codeData); err != nil {
+	if err := writeToJSON(filepath.Join(cacheDumpPath, "code_cache.json"), codeData); err != nil {
 		return fmt.Errorf("failed to dump code cache: %v", err)
 	}
 
@@ -375,7 +375,7 @@ func (cache *PlainStateCache) DumpToFile() error {
 	for addr, incarnation := range cache.incarnationMapCache {
 		incarnationData[hex.EncodeToString(addr[:])] = incarnation
 	}
-	if err := writeToJSON("/home/erigon/data/cache/incarnation_cache.json", incarnationData); err != nil {
+	if err := writeToJSON(filepath.Join(cacheDumpPath, "incarnation_cache.json"), incarnationData); err != nil {
 		return fmt.Errorf("failed to dump incarnation cache: %v", err)
 	}
 
