@@ -20,6 +20,7 @@ import (
 	"github.com/ledgerwatch/erigon/turbo/services"
 	"github.com/ledgerwatch/erigon/zk/datastream/server"
 	realtimeCache "github.com/ledgerwatch/erigon/zk/realtime/cache"
+	realtimeRpc "github.com/ledgerwatch/erigon/zk/realtime/jsonrpc"
 	realtimeSub "github.com/ledgerwatch/erigon/zk/realtime/subscription"
 	"github.com/ledgerwatch/erigon/zk/sequencer"
 	"github.com/ledgerwatch/erigon/zk/syncer"
@@ -195,7 +196,7 @@ func APIList(db kv.RoDB, dbsmt kv.RoDB, eth rpchelper.ApiBackend, txPool txpool.
 			list = append(list, rpc.API{
 				Namespace: "realtime",
 				Public:    true,
-				Service:   RealtimeAPI(realtimeImpl),
+				Service:   realtimeRpc.RealtimeAPI(realtimeImpl),
 				Version:   "1.0",
 			})
 		case "clique":
