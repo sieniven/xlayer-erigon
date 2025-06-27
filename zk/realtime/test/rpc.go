@@ -259,7 +259,7 @@ func RealtimeGetTokenBalance(
 
 // RealtimeDumpStateCache dumps the state cache
 func RealtimeDumpCache() error {
-	response, err := client.JSONRPCCall(DefaultL2NetworkURL, "realtime_dumpCache")
+	response, err := client.JSONRPCCall(DefaultL2NetworkURL, "realtime_debugDumpCache")
 	if err != nil {
 		return err
 	}

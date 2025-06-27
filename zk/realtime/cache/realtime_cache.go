@@ -264,10 +264,11 @@ func (cache *RealtimeCache) tryCloseBlock(pendingBlockContext *PendingBlockConte
 	cache.PutHighestConfirmHeight(pendingBlockContext.blockNum)
 }
 
-func (cache *RealtimeCache) DumpToFile() error {
-	err := cache.State.DumpToFile(cache.CacheDumpPath)
+// -------------- Debug operations --------------
+func (cache *RealtimeCache) DebugDumpToFile() error {
+	err := cache.State.DebugDumpToFile(cache.CacheDumpPath)
 	if err != nil {
 		return err
 	}
-	return cache.Stateless.DumpToFile(cache.CacheDumpPath)
+	return cache.Stateless.DebugDumpToFile(cache.CacheDumpPath)
 }

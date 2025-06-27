@@ -95,7 +95,8 @@ func (rm *TxInfoMap) Clear() {
 	}
 }
 
-func (rm *TxInfoMap) DumpToFile(cacheDumpPath string) error {
+// -------------- Debug operations --------------
+func (rm *TxInfoMap) DebugDumpToFile(cacheDumpPath string) error {
 	rm.mu.RLock()
 	defer rm.mu.RUnlock()
 

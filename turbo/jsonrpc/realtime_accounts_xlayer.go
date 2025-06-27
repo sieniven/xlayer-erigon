@@ -12,6 +12,10 @@ import (
 )
 
 func (api *RealtimeAPIImpl) GetBalance(ctx context.Context, address libcommon.Address) (*hexutil.Big, error) {
+	if !api.enableFlag || api.cacheDB == nil {
+		return nil, ErrRealtimeNotEnabled
+	}
+
 	acc, err := api.cacheDB.State.ReadAccountData(address)
 	if err != nil {
 		return nil, fmt.Errorf("cant get a balance for account %x: %w", address.String(), err)
@@ -25,6 +29,10 @@ func (api *RealtimeAPIImpl) GetBalance(ctx context.Context, address libcommon.Ad
 }
 
 func (api *RealtimeAPIImpl) GetTransactionCount(ctx context.Context, address libcommon.Address) (*hexutil.Uint64, error) {
+	if !api.enableFlag || api.cacheDB == nil {
+		return nil, ErrRealtimeNotEnabled
+	}
+
 	ethNonce, err := api.ethApi.GetTransactionCount(ctx, address, nil)
 	if err != nil {
 		ethNonce = nil
@@ -57,6 +65,10 @@ func (api *RealtimeAPIImpl) GetTransactionCount(ctx context.Context, address lib
 }
 
 func (api *RealtimeAPIImpl) GetCode(ctx context.Context, address libcommon.Address) (hexutility.Bytes, error) {
+	if !api.enableFlag || api.cacheDB == nil {
+		return nil, ErrRealtimeNotEnabled
+	}
+
 	acc, err := api.cacheDB.State.ReadAccountData(address)
 	if acc == nil || err != nil {
 		return hexutility.Bytes(""), nil
@@ -69,6 +81,10 @@ func (api *RealtimeAPIImpl) GetCode(ctx context.Context, address libcommon.Addre
 }
 
 func (api *RealtimeAPIImpl) GetStorageAt(ctx context.Context, address libcommon.Address, index string) (string, error) {
+	if !api.enableFlag || api.cacheDB == nil {
+		return "", ErrRealtimeNotEnabled
+	}
+
 	var empty []byte
 
 	acc, err := api.cacheDB.State.ReadAccountData(address)

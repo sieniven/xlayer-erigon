@@ -47,8 +47,8 @@ type RealtimeAPI interface {
 	Call(ctx context.Context, args ethapi2.CallArgs, overrides *ethapi2.StateOverrides) (hexutility.Bytes, error)
 
 	// Debug related (see ./realtime_debug.go)
-	DumpCache(ctx context.Context) error
-	CompareStateCache(ctx context.Context) error
+	DebugDumpCache(ctx context.Context) error
+	DebugCompareStateCache(ctx context.Context) ([]string, error)
 }
 
 type RealtimeSubscriptionAPI interface {
@@ -82,7 +82,7 @@ func NewRealtimeAPI(
 }
 
 func (api *RealtimeAPIImpl) getBlockNumber(blockNr rpc.BlockNumber) (uint64, bool, error) {
-	if !api.enableFlag {
+	if !api.enableFlag || api.cacheDB == nil {
 		return 0, false, ErrRealtimeNotEnabled
 	}
 

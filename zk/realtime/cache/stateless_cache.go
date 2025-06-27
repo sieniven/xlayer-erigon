@@ -41,14 +41,6 @@ func (cache *StatelessCache) GetBlockTxs(blockNum uint64) ([]libcommon.Hash, boo
 	return cache.txInfoMap.GetBlockTxs(blockNum)
 }
 
-func (cache *StatelessCache) DumpToFile(cacheDumpPath string) error {
-	err := cache.blockInfoMap.DumpToFile(cacheDumpPath)
-	if err != nil {
-		return err
-	}
-	return cache.txInfoMap.DumpToFile(cacheDumpPath)
-}
-
 // -------------- Write operations --------------
 func (cache *StatelessCache) PutHeader(blockNum uint64, header *ethTypes.Header, prevTxCount int64) {
 	cache.blockInfoMap.PutHeader(blockNum, header, prevTxCount)
@@ -98,4 +90,13 @@ func (cache *StatelessCache) HeadersRange(ctx context.Context, walker func(heade
 func (cache *StatelessCache) Integrity(ctx context.Context) error {
 	// Unimplemented
 	return nil
+}
+
+// -------------- Debug operations --------------
+func (cache *StatelessCache) DebugDumpToFile(cacheDumpPath string) error {
+	err := cache.blockInfoMap.DebugDumpToFile(cacheDumpPath)
+	if err != nil {
+		return err
+	}
+	return cache.txInfoMap.DebugDumpToFile(cacheDumpPath)
 }
