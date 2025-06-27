@@ -41,6 +41,6 @@ type RealtimeAPI interface {
 
 type RealtimeSubscriptionAPI interface {
 	// Ws subscription related (see ./realtime_filters_xlayer.go)
-	RealtimeTransactions(ctx context.Context, fullTx, includeExtraInfo *bool) (*rpc.Subscription, error)
+	RealtimeTransactions(ctx context.Context, criteria StreamCriteria) (*rpc.Subscription, error)
 	Logs(ctx context.Context, crit filters.FilterCriteria) (*rpc.Subscription, error)
 }
