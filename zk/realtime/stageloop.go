@@ -118,6 +118,10 @@ func ListenTxKafkaConsumer(
 				continue
 			}
 			kafkaCache.BlockMsgCache.Add(&blockMsg)
+			if subService != nil {
+				// Publish block to subscriptions
+				subService.BroadcastNewMsg(&blockMsg, nil)
+			}
 			logger.Debug("[Realtime] Received block message", "blockNum", header.Number)
 		case txMsg := <-txMsgsChan:
 			if err := txMsg.Validate(); err != nil {
@@ -132,7 +136,7 @@ func ListenTxKafkaConsumer(
 			kafkaCache.TxMsgCache.Add(&txMsg)
 			if subService != nil {
 				// Publish tx to subscriptions
-				subService.BroadcastNewTxMsg(&txMsg)
+				subService.BroadcastNewMsg(nil, &txMsg)
 			}
 			logger.Debug("[Realtime] Received transaction message", "blockNum", txMsg.BlockNumber)
 		case errorTriggerMsg := <-errorMsgsChan:
