@@ -66,6 +66,7 @@ func ApplyFlagsForEthXLayerConfig(ctx *cli.Context, cfg *ethconfig.Config) {
 			Enable:               ctx.Bool(utils.RealtimeEnableFlag.Name),
 			EnableSubscribe:      ctx.Bool(utils.RealtimeEnableSubscribeFlag.Name),
 			CacheHeightThreshold: ctx.Uint64(utils.RealtimeCacheHeightThreshold.Name),
+			CacheDumpPath:        ctx.String(utils.RealtimeCacheDumpPath.Name),
 			Kafka: kafka.KafkaConfig{
 				BootstrapServers: strings.Split(ctx.String(utils.RealtimeKafkaSyncBootstrapServers.Name), ","),
 				BlockTopic:       ctx.String(utils.RealtimeKafkaSyncBlockTopic.Name),
@@ -73,7 +74,6 @@ func ApplyFlagsForEthXLayerConfig(ctx *cli.Context, cfg *ethconfig.Config) {
 				ErrorTopic:       ctx.String(utils.RealtimeKafkaSyncErrorTopic.Name),
 				ClientID:         ctx.String(utils.RealtimeKafkaSyncClientID.Name),
 			},
-			CacheDumpPath: ctx.String(utils.RealtimeCacheDumpPath.Name),
 		},
 	}
 	if cfg.XLayer.BlockInfoConcurrent {

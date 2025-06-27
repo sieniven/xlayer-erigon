@@ -4,9 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/hex"
-	"encoding/json"
 	"fmt"
-	"os"
 	"path/filepath"
 	"sync"
 	"sync/atomic"
@@ -351,7 +349,7 @@ func (cache *PlainStateCache) DumpToFile(cacheDumpPath string) error {
 		acc.EncodeForStorage(value)
 		accountData[hex.EncodeToString(addr[:])] = hex.EncodeToString(value)
 	}
-	if err := writeToJSON(filepath.Join(cacheDumpPath, "account_cache.json"), accountData); err != nil {
+	if err := realtimeTypes.WriteToJSON(filepath.Join(cacheDumpPath, "account_cache.json"), accountData); err != nil {
 		return fmt.Errorf("failed to dump account cache: %v", err)
 	}
 
@@ -359,7 +357,7 @@ func (cache *PlainStateCache) DumpToFile(cacheDumpPath string) error {
 	for key, value := range cache.storageCache {
 		storageData[hex.EncodeToString([]byte(key))] = hex.EncodeToString(value.Bytes())
 	}
-	if err := writeToJSON(filepath.Join(cacheDumpPath, "storage_cache.json"), storageData); err != nil {
+	if err := realtimeTypes.WriteToJSON(filepath.Join(cacheDumpPath, "storage_cache.json"), storageData); err != nil {
 		return fmt.Errorf("failed to dump storage cache: %v", err)
 	}
 
@@ -367,7 +365,7 @@ func (cache *PlainStateCache) DumpToFile(cacheDumpPath string) error {
 	for hash, code := range cache.codeCache {
 		codeData[hex.EncodeToString(hash[:])] = hex.EncodeToString(code)
 	}
-	if err := writeToJSON(filepath.Join(cacheDumpPath, "code_cache.json"), codeData); err != nil {
+	if err := realtimeTypes.WriteToJSON(filepath.Join(cacheDumpPath, "code_cache.json"), codeData); err != nil {
 		return fmt.Errorf("failed to dump code cache: %v", err)
 	}
 
@@ -375,25 +373,11 @@ func (cache *PlainStateCache) DumpToFile(cacheDumpPath string) error {
 	for addr, incarnation := range cache.incarnationMapCache {
 		incarnationData[hex.EncodeToString(addr[:])] = incarnation
 	}
-	if err := writeToJSON(filepath.Join(cacheDumpPath, "incarnation_cache.json"), incarnationData); err != nil {
+	if err := realtimeTypes.WriteToJSON(filepath.Join(cacheDumpPath, "incarnation_cache.json"), incarnationData); err != nil {
 		return fmt.Errorf("failed to dump incarnation cache: %v", err)
 	}
 
 	return nil
-}
-
-func writeToJSON(filename string, data interface{}) error {
-	dir := filepath.Dir(filename)
-
-	if err := os.MkdirAll(dir, 0755); err != nil {
-		return fmt.Errorf("failed to create directory %s: %v", dir, err)
-	}
-
-	jsonData, err := json.MarshalIndent(data, "", "  ")
-	if err != nil {
-		return err
-	}
-	return os.WriteFile(filename, jsonData, 0644)
 }
 
 // WithAccountCache executes the given function with the account cache under read lock protection.

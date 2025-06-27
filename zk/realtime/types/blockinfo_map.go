@@ -1,11 +1,10 @@
 package types
 
 import (
-	"fmt"
+	"path/filepath"
 	"sync"
 
 	ethTypes "github.com/ledgerwatch/erigon/core/types"
-	"github.com/ledgerwatch/erigon/zkevm/log"
 )
 
 type BlockInfo struct {
@@ -64,11 +63,9 @@ func (bm *BlockInfoMap) Clear() {
 	}
 }
 
-func (bm *BlockInfoMap) Dump() {
+func (bm *BlockInfoMap) DumpToFile(cacheDumpPath string) error {
 	bm.mu.RLock()
 	defer bm.mu.RUnlock()
-	log.Info("[Realtime] Logging block info map:")
-	for k, v := range bm.blockInfos {
-		log.Info(fmt.Sprintf("Block number key %d, block info: %+v", k, v))
-	}
+
+	return WriteToJSON(filepath.Join(cacheDumpPath, "block_info_map.json"), bm.blockInfos)
 }

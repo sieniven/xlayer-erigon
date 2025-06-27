@@ -48,8 +48,9 @@ func ComparePendingBlockContext(a, b *PendingBlockContext) int {
 
 type RealtimeCache struct {
 	// Caches
-	State     *PlainStateCache
-	Stateless *StatelessCache
+	State         *PlainStateCache
+	Stateless     *StatelessCache
+	CacheDumpPath string
 
 	// highestConfirmHeight is the highest confirmed block height closed from kafka
 	highestConfirmHeight atomic.Uint64
@@ -64,7 +65,7 @@ type RealtimeCache struct {
 	pendingBlocks *realtimeTypes.OrderedList[*PendingBlockContext]
 }
 
-func NewRealtimeCache(ctx context.Context, db kv.RoDB) (*RealtimeCache, error) {
+func NewRealtimeCache(ctx context.Context, db kv.RoDB, cacheDumpPath string) (*RealtimeCache, error) {
 	stateCache, err := NewPlainStateCache(ctx, db, DefaultStateCacheSize)
 	if err != nil {
 		return nil, err
@@ -73,6 +74,7 @@ func NewRealtimeCache(ctx context.Context, db kv.RoDB) (*RealtimeCache, error) {
 	return &RealtimeCache{
 		State:                  stateCache,
 		Stateless:              NewStatelessCache(DefaultStatelessBlockCacheSize, DefaultStatelessTxCacheSize),
+		CacheDumpPath:          cacheDumpPath,
 		highestConfirmHeight:   atomic.Uint64{},
 		highestExecutionHeight: atomic.Uint64{},
 		highestPendingHeight:   atomic.Uint64{},
@@ -260,4 +262,12 @@ func (cache *RealtimeCache) tryCloseBlock(pendingBlockContext *PendingBlockConte
 		}
 	}
 	cache.PutHighestConfirmHeight(pendingBlockContext.blockNum)
+}
+
+func (cache *RealtimeCache) DumpToFile() error {
+	err := cache.State.DumpToFile(cache.CacheDumpPath)
+	if err != nil {
+		return err
+	}
+	return cache.Stateless.DumpToFile(cache.CacheDumpPath)
 }
