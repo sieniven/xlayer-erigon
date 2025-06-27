@@ -377,6 +377,11 @@ var (
 		Usage: "Kafka sync client id",
 		Value: "",
 	}
+	RealtimeCacheDumpPath = cli.StringFlag{
+		Name:  "realtime.cache-dump-path",
+		Usage: "Cache dump path",
+		Value: "/home/erigon/data/cache",
+	}
 )
 
 func setGPOXLayer(ctx *cli.Context, cfg *gaspricecfg.Config) {

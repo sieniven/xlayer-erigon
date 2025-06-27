@@ -73,6 +73,7 @@ func ApplyFlagsForEthXLayerConfig(ctx *cli.Context, cfg *ethconfig.Config) {
 				ErrorTopic:       ctx.String(utils.RealtimeKafkaSyncErrorTopic.Name),
 				ClientID:         ctx.String(utils.RealtimeKafkaSyncClientID.Name),
 			},
+			CacheDumpPath: ctx.String(utils.RealtimeCacheDumpPath.Name),
 		},
 	}
 	if cfg.XLayer.BlockInfoConcurrent {
