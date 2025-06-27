@@ -47,7 +47,8 @@ type RealtimeAPI interface {
 	Call(ctx context.Context, args ethapi2.CallArgs, overrides *ethapi2.StateOverrides) (hexutility.Bytes, error)
 
 	// Debug related (see ./realtime_debug.go)
-	DumpStateCache(ctx context.Context) error
+	DumpCache(ctx context.Context) error
+	CompareStateCache(ctx context.Context) error
 }
 
 type RealtimeSubscriptionAPI interface {
@@ -58,11 +59,10 @@ type RealtimeSubscriptionAPI interface {
 
 // RealtimeAPIImpl is implementation of the RealtimeAPI interface
 type RealtimeAPIImpl struct {
-	cacheDB       *realtimeCache.RealtimeCache
-	subService    *subscription.RealtimeSubscription
-	ethApi        *APIImpl
-	enableFlag    bool
-	cacheDumpPath string
+	cacheDB    *realtimeCache.RealtimeCache
+	subService *subscription.RealtimeSubscription
+	ethApi     *APIImpl
+	enableFlag bool
 }
 
 // NewRealtimeAPI returns RealtimeAPIImpl instance
@@ -71,15 +71,13 @@ func NewRealtimeAPI(
 	subService *subscription.RealtimeSubscription,
 	base *APIImpl,
 	enableFlag bool,
-	cacheDumpPath string,
 ) *RealtimeAPIImpl {
 
 	return &RealtimeAPIImpl{
-		cacheDB:       cacheDB,
-		subService:    subService,
-		ethApi:        base,
-		enableFlag:    enableFlag,
-		cacheDumpPath: cacheDumpPath,
+		cacheDB:    cacheDB,
+		subService: subService,
+		ethApi:     base,
+		enableFlag: enableFlag,
 	}
 }
 

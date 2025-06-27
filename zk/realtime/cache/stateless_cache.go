@@ -41,9 +41,12 @@ func (cache *StatelessCache) GetBlockTxs(blockNum uint64) ([]libcommon.Hash, boo
 	return cache.txInfoMap.GetBlockTxs(blockNum)
 }
 
-func (cache *StatelessCache) Dump() {
-	cache.blockInfoMap.Dump()
-	cache.txInfoMap.Dump()
+func (cache *StatelessCache) DumpToFile(cacheDumpPath string) error {
+	err := cache.blockInfoMap.DumpToFile(cacheDumpPath)
+	if err != nil {
+		return err
+	}
+	return cache.txInfoMap.DumpToFile(cacheDumpPath)
 }
 
 // -------------- Write operations --------------

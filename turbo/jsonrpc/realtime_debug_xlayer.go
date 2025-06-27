@@ -14,12 +14,12 @@ import (
 	"github.com/ledgerwatch/erigon/zkevm/log"
 )
 
-func (api *RealtimeAPIImpl) DumpStateCache(ctx context.Context) error {
+func (api *RealtimeAPIImpl) DumpCache(ctx context.Context) error {
 	if api == nil || !api.enableFlag {
 		return ErrRealtimeNotEnabled
 	}
 
-	if api.cacheDB == nil || api.cacheDB.State == nil {
+	if api.cacheDB == nil {
 		return fmt.Errorf("stateCache is nil")
 	}
 
@@ -28,24 +28,10 @@ func (api *RealtimeAPIImpl) DumpStateCache(ctx context.Context) error {
 		return fmt.Errorf("stateCache is a nil pointer")
 	}
 
-	if err := api.cacheDB.State.DumpToFile(api.cacheDumpPath); err != nil {
+	if err := api.cacheDB.DumpToFile(); err != nil {
 		log.Error("[Realtime] Failed to dump state cache", "error", err)
 		return fmt.Errorf("failed to dump state cache: %v", err)
 	}
-
-	return nil
-}
-
-func (api *RealtimeAPIImpl) DumpStatelessCache(ctx context.Context) error {
-	if api == nil || !api.enableFlag {
-		return ErrRealtimeNotEnabled
-	}
-
-	if api.cacheDB == nil || api.cacheDB.Stateless == nil {
-		return fmt.Errorf("statelessCache is nil")
-	}
-
-	api.cacheDB.Stateless.Dump()
 
 	return nil
 }
