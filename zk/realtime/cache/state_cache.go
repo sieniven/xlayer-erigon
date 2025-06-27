@@ -339,7 +339,8 @@ func (cache *PlainStateCache) GetSnapshotHeight() uint64 {
 	return cache.snapshotHeight.Load()
 }
 
-func (cache *PlainStateCache) DumpToFile(cacheDumpPath string) error {
+// -------------- Debug operations --------------
+func (cache *PlainStateCache) DebugDumpToFile(cacheDumpPath string) error {
 	cache.cacheLock.RLock()
 	defer cache.cacheLock.RUnlock()
 
@@ -380,11 +381,47 @@ func (cache *PlainStateCache) DumpToFile(cacheDumpPath string) error {
 	return nil
 }
 
-// WithAccountCache executes the given function with the account cache under read lock protection.
-// This ensures thread-safe access to the account cache during the entire operation.
-func (cache *PlainStateCache) WithAccountCache(fn func(map[libcommon.Address]*accounts.Account) error) error {
+// DebugCompare compares the state cache with the chain-state db, and returns the
+// list of account addresses that have differing states.
+func (cache *PlainStateCache) DebugCompare(reader state.StateReader) []string {
 	cache.cacheLock.RLock()
 	defer cache.cacheLock.RUnlock()
 
-	return fn(cache.accountCache)
+	mismatches := []string{}
+	for addr, accCache := range cache.accountCache {
+		log.Info("[Realtime] Comparing account", "address", addr.String())
+		accDb, err := reader.ReadAccountData(addr)
+		if err != nil {
+			mismatch := fmt.Sprintf("chain-state db reader error, failed to read account. address: %s, error: %v", addr.String(), err)
+			mismatches = append(mismatches, mismatch)
+			continue
+		}
+		if accDb == nil {
+			mismatch := fmt.Sprintf("account %s not found in database", addr.String())
+			mismatches = append(mismatches, mismatch)
+			continue
+		}
+
+		if accCache.Nonce != accDb.Nonce {
+			mismatch := fmt.Sprintf("nonce mismatch, account %s, cache nonce: %d, db nonce: %d", addr.String(), accCache.Nonce, accDb.Nonce)
+			mismatches = append(mismatches, mismatch)
+		}
+
+		if accCache.Balance.Cmp(&accDb.Balance) != 0 {
+			mismatch := fmt.Sprintf("balance mismatch, account %s, cache balance: %d, db balance: %d", addr.String(), accCache.Balance.ToBig(), accDb.Balance.ToBig())
+			mismatches = append(mismatches, mismatch)
+		}
+
+		if accCache.Root != accDb.Root {
+			mismatch := fmt.Sprintf("root mismatch, account %s, cache root: %s, db root: %s", addr.String(), accCache.Root.String(), accDb.Root.String())
+			mismatches = append(mismatches, mismatch)
+		}
+
+		if accCache.CodeHash != accDb.CodeHash {
+			mismatch := fmt.Sprintf("codehash mismatch, account %s, cache codehash: %s, db codehash: %s", addr.String(), accCache.CodeHash.String(), accDb.CodeHash.String())
+			mismatches = append(mismatches, mismatch)
+		}
+	}
+
+	return mismatches
 }

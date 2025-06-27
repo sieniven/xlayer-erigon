@@ -10,7 +10,7 @@ import (
 // GetTransactionReceipt implements realtime_getTransactionReceipt.
 // Returns the receipt of a transaction given the transaction's hash.
 func (api *RealtimeAPIImpl) GetTransactionReceipt(ctx context.Context, hash common.Hash) (map[string]interface{}, error) {
-	if !api.enableFlag {
+	if !api.enableFlag || api.cacheDB == nil {
 		return nil, ErrRealtimeNotEnabled
 	}
 
@@ -40,7 +40,7 @@ func (api *RealtimeAPIImpl) GetTransactionReceipt(ctx context.Context, hash comm
 // GetInternalTransactions implements realtime_getInternalTransactions.
 // Returns the internal transactions of a transaction given the transaction's hash.
 func (api *RealtimeAPIImpl) GetInternalTransactions(ctx context.Context, hash common.Hash) ([]*zktypes.InnerTx, error) {
-	if !api.enableFlag {
+	if !api.enableFlag || api.cacheDB == nil {
 		return nil, ErrRealtimeNotEnabled
 	}
 

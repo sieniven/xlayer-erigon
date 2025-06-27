@@ -63,7 +63,8 @@ func (bm *BlockInfoMap) Clear() {
 	}
 }
 
-func (bm *BlockInfoMap) DumpToFile(cacheDumpPath string) error {
+// -------------- Debug operations --------------
+func (bm *BlockInfoMap) DebugDumpToFile(cacheDumpPath string) error {
 	bm.mu.RLock()
 	defer bm.mu.RUnlock()
 
