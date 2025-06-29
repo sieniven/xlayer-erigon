@@ -52,7 +52,7 @@ run-new:
 	$(DOCKER_COMPOSE) up -d xlayer-agglayer-prover
 	$(DOCKER_COMPOSE) up -d xlayer-agglayer
 	mkdir -p data/aggkit
-	chmod 777 data -R
+	chmod -R 777 data 
 	$(DOCKER_COMPOSE) up -d xlayer-aggkit
 	
 .PHONY: stop

@@ -63,6 +63,16 @@ services:
       - "--syncmode"
       - "full"
       - "--rpc.allow-unprotected-txs"
+      - "--miner.gaslimit"
+      - "100000000"
+      - "--rpc.txfeecap"
+      - "0"
+      - "--rpc.gascap"
+      - "100000000"
+      - "--txpool.globalslots"
+      - "20000"
+      - "--txpool.globalqueue"
+      - "10000"
 
   xlayer-bridge-db:
     container_name: xlayer-bridge-db
@@ -160,7 +170,7 @@ services:
 
   xlayer-aggkit:
     container_name: xlayer-aggkit
-    image: zjg555543/aggkit:upstream-v0.4.0-beta1
+    image: aggkit:local
     restart: on-failure
     volumes:
       - ./data/aggkit:/tmp
@@ -194,7 +204,13 @@ services:
   xlayer-agglayer-prover:
     container_name: xlayer-agglayer-prover
     image: zjg555543/agglayer:upstream-v0.3.3
-    # image: zjg555543/agglayer:upstream-v0.3.0-rc.16
+    environment:
+      - NETWORK_RPC_URL=https://rpc.production.succinct.xyz
+      - RUST_BACKTRACE=1
+      - SP1_PRIVATE_KEY=
+      - NETWORK_PRIVATE_KEY=
+      - SP1_PROVER=network
+      # - RUST_LOG=debug
     volumes:
       - ./config/agglayer-prover-config.toml:/etc/zkevm/agglayer-prover-config.toml
     ports:

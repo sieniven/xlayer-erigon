@@ -41,7 +41,7 @@ L2URLs = ["http://xlayer-rpc:8545"]
 # Time interval for synchronization iterations (e.g., every 5 seconds)
 SyncInterval = "1s"
 # Number of blocks to read in each synchronization operation if the service is not synced and if there is enough data.
-SyncChunkSize = 100
+SyncChunkSize = 50
 # Forces the SyncChunkSize for L2 networks. The chunck size won't be higher than the value specified but if there is not enough events in the network, the reorg protection can be affected.
 ForceL2SyncChunk = true
 
@@ -86,7 +86,7 @@ MaxPageLimit = 20000
 # L1 bridge genesis block.
 [NetworkConfig]
 # Block number where the L1 bridge smart contract was deployed. The bridge needs to compute the merkle tree based on events from that block.
-GenBlockNumber = 100
+GenBlockNumber = 50
 # Address of the Polygon bridge smc
 PolygonBridgeAddress = "0x3a277Fa4E78cc1266F32E26c467F99A8eAEfF7c3"
 # Address of the Global exit root smc

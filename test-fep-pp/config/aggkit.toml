@@ -51,13 +51,13 @@ CheckStatusCertificateInterval = "1s"
 Mode="PessimisticProof"
 UseAgglayerTLS = false
 MaxCertSize = 0
-UpgradeEndBlock = 0
-LossCertType = 0
+MaxL2BlockNumber = 0
+StopOnFinishedSendingAllCertificates = false
 
 [AggSender.MaxSubmitCertificateRate]
 NumRequests = 20
 Interval = "1m"
-BlockFinality = "LatestBlock"
+BlockFinality = "FinalizedBlock"
 SaveCertificatesToFilesPath = "/tmp/certificates"
 KeepCertificatesHistory = true
 [AggOracle]
@@ -74,30 +74,30 @@ PrivateKeys = [{Path = "/etc/aggkit/aggoracle.keystore", Password = ""}]
 L1ChainID = "1337"
 
 [BridgeL1Sync]
-BlockFinality = "LatestBlock"                                                           
+BlockFinality = "FinalizedBlock"
 
 [BridgeL2Sync]
 BridgeAddr = "0x3a277Fa4E78cc1266F32E26c467F99A8eAEfF7c3"
 
 DBPath = "/tmp/bridgel2sync.sqlite"
-BlockFinality = "LatestBlock"
+BlockFinality = "FinalizedBlock"
 
 SyncBlockChunkSize = 1000
 
 [ReorgDetectorL1]
 DBPath = "/tmp/reorgdetectorl1.sqlite"
-FinalizedBlock="LatestBlock"
+FinalizedBlock="FinalizedBlock"
 
 [ReorgDetectorL2]
 DBPath = "/tmp/reorgdetectorl2.sqlite"
-FinalizedBlock="LatestBlock"
+FinalizedBlock="FinalizedBlock"
 
 [L1InfoTreeSync]
 InitialBlock = "36"
-BlockFinality = "LatestBlock"
+BlockFinality = "FinalizedBlock"
 
 [LastGERSync]
-BlockFinality = "LatestBlock"                                                                                 
+BlockFinality = "FinalizedBlock"
                                                                                  
 [ClaimSponsor]
 DBPath = "/tmp/claimsponsor.sqlite"

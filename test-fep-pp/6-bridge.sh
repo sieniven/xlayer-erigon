@@ -133,9 +133,9 @@ end_time=$(date +%s)
 total_elapsed=$((end_time - start_time))
 echo "GER updated to $GER on L1, took $total_elapsed seconds"
 
-
+sleep 30
 echo "Getting deposit count and network ID from bridge service..."
-result=$(curl -s "$BRIDGE_SERVICE1/bridges/$ACCOUNT?limit=100&offset=0" | \
+result=$(curl -s "$BRIDGE_SERVICE1/bridges/$ACCOUNT?limit=20000&offset=0" | \
    jq -r '.deposits[] | select(.ready_for_claim == true and .claim_tx_hash == "" and .tx_hash=="'$TX_HASH'")')                                                                  
 DEPOSIT_CNT=$(echo "$result" | jq -r '.deposit_cnt')
 NETWORK_ID=$(echo "$result" | jq -r '.network_id')

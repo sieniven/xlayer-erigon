@@ -17,6 +17,7 @@ PWD_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(dirname "$PWD_DIR")"
 
 make stop
+make build-docker
 
 sed_inplace() {
   if [[ "$OSTYPE" == "darwin"* ]]; then
@@ -32,7 +33,8 @@ docker rm $(docker ps -aq) || true
 
 echo "Starting xlayer-mock-l1-network..."
 docker-compose up -d xlayer-mock-l1-network
-sleep 5
+echo "Sleep 20s for xlayer-mock-l1-network to pruduct blocks"
+sleep 20
 
 git checkout docker-compose.yml
 git checkout config/test.erigon.seq.config.yaml
@@ -204,5 +206,6 @@ echo "Initialization script completed!"
 cd "$PWD_DIR"
 
 make run-old
-sleep 3
-./6-bridge.sh 
+echo "Sleep for xlayer-mock-l1-network to pruduct blocks"
+sleep 20
+./6-bridge.sh

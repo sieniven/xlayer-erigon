@@ -16,7 +16,7 @@ grpc-port = 4443
 readrpc-port = 4444
 admin-port = 4446
 host = "0.0.0.0"
-request-timeout = 180
+request-timeout = 300
 # size is define in bytes e.g. 100 * 1024 * 1024
 # same for `max_response_body_size`
 # default value is equal to 10MB
@@ -57,10 +57,10 @@ node-url = "http://xlayer-mock-l1-network:8545"
 ws-node-url = "ws://xlayer-mock-l1-network:8546"
 rollup-manager-contract = "0x2d42E2899662EFf08b13eeb65b154b904C7a1c8a"
 polygon-zkevm-global-exit-root-v2-contract = "0xB8cedD4B9eF683f0887C44a6E4312dC7A6e2fcdB"
-rpc-timeout = 45
+rpc-timeout = 450
 
 [l2]
-rpc-timeout = 45
+rpc-timeout = 450
 
 [telemetry]
 prometheus-addr = "0.0.0.0:9092"
@@ -76,11 +76,11 @@ send-tx = "unlimited"
 [rate-limiting.network]
 
 [epoch.block-clock]
-epoch-duration = 6
-genesis-block = 0
+epoch-duration = 300
+genesis-block = 10
 
 [shutdown]
-runtime-timeout = 5
+runtime-timeout = 300
 
 [certificate-orchestrator]
 input-backpressure-buffer-size = 1000
@@ -92,5 +92,5 @@ db-path = "/etc/zkevm/storage"
 
 [storage.backup]
 path = "/etc/zkevm/backups"
-state-max-backup-count = 100
-pending-max-backup-count = 100
+state-max-backup-count = 20000
+pending-max-backup-count = 20000

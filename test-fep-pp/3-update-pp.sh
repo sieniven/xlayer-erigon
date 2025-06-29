@@ -10,29 +10,31 @@ sed_inplace() {
   fi
 }
 
-if [ -f .env ]; then
-    source .env
-    if [ "$PROVER_TYPE" != "mock" ] && [ "$PROVER_TYPE" != "true" ]; then
-      echo "Error: Invalid ProverType '$1'. Only 'mock' or 'true' are allowed."
-      exit 1
-    fi
-else
-    echo "Error: .env file not found"
-    exit 1
-fi
+source .env
 
 echo "Using ProverType: $PROVER_TYPE"
 
 CONFIG_FILE_1="./config/agglayer-config.toml"
 CONFIG_FILE_2="./config/agglayer-prover-config.toml"
+CONFIG_FILE_3="./docker-compose.yml"
 CONTRACT_JSON="./artifacts/contracts/mocks/VerifierRollupHelperMock.sol/VerifierRollupHelperMock.json"
-if [ "$PROVER_TYPE" == "true" ]; then
+if [ "$PROVER_TYPE" == "mock" ]; then
+    sed_inplace "s|mock-verifier *= *false|mock-verifier = true|g" "$CONFIG_FILE_1"
+    sed_inplace "s|\[primary-prover\.cpu-prover\]|\[primary-prover.mock-prover\]|g" "$CONFIG_FILE_2"
+
+elif [ "$PROVER_TYPE" == "cpu" ]; then
     CONTRACT_JSON="./artifacts/contracts/verifiers/v5.0.0/SP1VerifierPlonk.sol/SP1VerifierPlonk.json"
     sed_inplace "s|mock-verifier *= *true|mock-verifier = false|g" "$CONFIG_FILE_1"
     sed_inplace "s|\[primary-prover\.mock-prover\]|\[primary-prover.cpu-prover\]|g" "$CONFIG_FILE_2"
+elif [ "$PROVER_TYPE" == "network" ]; then
+    CONTRACT_JSON="./artifacts/contracts/verifiers/v5.0.0/SP1VerifierPlonk.sol/SP1VerifierPlonk.json"
+    sed_inplace "s|mock-verifier *= *true|mock-verifier = false|g" "$CONFIG_FILE_1"
+    sed_inplace "s|\[primary-prover\.mock-prover\]|\[primary-prover.network-prover\]|g" "$CONFIG_FILE_2"
+    sed_inplace "s|- SP1_PRIVATE_KEY=.*|- SP1_PRIVATE_KEY=${PROVER_SP1_KEY}|g" "$CONFIG_FILE_3"
+    sed_inplace "s|- NETWORK_PRIVATE_KEY=.*|- NETWORK_PRIVATE_KEY=${PROVER_SP1_KEY}|g" "$CONFIG_FILE_3"
 else
-    sed_inplace "s|mock-verifier *= *false|mock-verifier = true|g" "$CONFIG_FILE_1"
-    sed_inplace "s|\[primary-prover\.cpu-prover\]|\[primary-prover.mock-prover\]|g" "$CONFIG_FILE_2"
+    echo "Unknown PROVER_TYPE: $PROVER_TYPE"
+    exit 1
 fi
 
 DEPLOYER_ADDRESS="0x8f8E2d6cF621f30e9a11309D6A56A876281Fd534"
@@ -102,7 +104,8 @@ while [ "$current_block" -ge 0 ]; do
         echo "Block $current_block is consolidated"
         if [ "$FORCE_STOP_BLOCK" == "true" ]; then
           CDK_CONFIG_FILE="config/aggkit.toml"
-          sed_inplace "s|UpgradeEndBlock = 0|UpgradeEndBlock = $current_block|g" "$CDK_CONFIG_FILE"
+          sed_inplace "s|MaxL2BlockNumber = 0|MaxL2BlockNumber = $current_block|g" "$CDK_CONFIG_FILE"
+          sed_inplace "s|StopOnFinishedSendingAllCertificates = false|StopOnFinishedSendingAllCertificates = true|g" "$CDK_CONFIG_FILE"
         fi
         break
     else
