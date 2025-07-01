@@ -11,10 +11,11 @@ import (
 	"github.com/holiman/uint256"
 	ethereum "github.com/ledgerwatch/erigon"
 	"github.com/ledgerwatch/erigon-lib/common"
+	ethTypes "github.com/ledgerwatch/erigon/core/types"
 	"github.com/ledgerwatch/erigon/crypto"
 	"github.com/ledgerwatch/erigon/ethclient"
 	"github.com/ledgerwatch/erigon/rpc"
-	kafkaTypes "github.com/ledgerwatch/erigon/zk/realtime/kafka/types"
+	"github.com/ledgerwatch/erigon/turbo/jsonrpc"
 	types "github.com/ledgerwatch/erigon/zk/rpcdaemon"
 	"github.com/ledgerwatch/erigon/zkevm/encoding"
 	"github.com/ledgerwatch/erigon/zkevm/log"
@@ -245,23 +246,60 @@ func TestRealtimeBenchmarkERC20Transfer(t *testing.T) {
 	fmt.Printf("Avg eth state erc20 tx transfer confirmation duration: %s\n", avgEthBalanceDuration)
 }
 
-func TestRealtimeBenchmarkTransactionSubscription(t *testing.T) {
-	if testing.Short() {
-		t.Skip()
-	}
-
-	blockNumber := setupRealtimeTestEnvironment(t)
-
-	t.Run("RealtimeGetBlockTransactionCountByNumber", func(t *testing.T) {
-		transactionCount, err := RealtimeGetBlockTransactionCountByNumber(blockNumber)
-		require.NoError(t, err)
-		log.Infof("RealtimeGetBlockTransactionCountByNumber result: %d", transactionCount)
-	})
-
+func TestRealtimeBenchmarNewHeadsSubscription(t *testing.T) {
 	ctx := context.Background()
 	logger := logger.New()
+	wsClient, err := rpc.Dial(DefaultL2NetworkWSURL, logger)
+	require.NoError(t, err)
+
+	// Benchmark variables
+	var totalSubTimeDiff time.Duration
+
+	realtimeMsgCh := make(chan jsonrpc.RealtimeResult)
+	realtimeSub, err := wsClient.Subscribe(ctx, "realtime", realtimeMsgCh, "realtime", map[string]bool{"NewHeads": true, "TransactionExtraInfo": false, "TransactionReceipt": false, "TransactionInnerTxs": false})
+	require.NoError(t, err)
+	defer realtimeSub.Unsubscribe()
+
+	ethMsgCh := make(chan ethTypes.Header)
+	ethSub, err := wsClient.Subscribe(ctx, "eth", ethMsgCh, "newHeads")
+	require.NoError(t, err)
+	defer ethSub.Unsubscribe()
+
+	// Benchmark realtime vs eth subscibe new block headers
+	heights := make(map[int64]time.Time)
+	count := 0
+	for count < Iterations {
+		select {
+		case msg := <-realtimeMsgCh:
+			if msg.Header != nil {
+				fmt.Printf("Realtime subscription message: %+v\n", msg)
+				height := msg.Header.Number.Int64()
+				heights[height] = time.Now()
+			}
+		case msg := <-ethMsgCh:
+			fmt.Printf("Eth subscription message: %+v\n", msg)
+			height := msg.Number.Int64()
+			if _, ok := heights[height]; ok {
+				timeDiff := time.Since(heights[height])
+				totalSubTimeDiff += timeDiff
+				count++
+				fmt.Printf("Count: %v\n", count)
+			}
+		case err := <-realtimeSub.Err():
+			t.Fatal(err)
+		}
+	}
+
+	avgTimeDiff := time.Duration(int64(totalSubTimeDiff) / int64(Iterations))
+	fmt.Printf("Avg realtime subscription newHeads is faster than eth subscription newHeads by: %s\n", avgTimeDiff)
+}
+
+func TestRealtimeBenchmarNewTransactionSubscription(t *testing.T) {
+	ctx := context.Background()
 	client, err := ethclient.Dial(DefaultL2NetworkURL)
 	require.NoError(t, err)
+
+	logger := logger.New()
 	wsClient, err := rpc.Dial(DefaultL2NetworkWSURL, logger)
 	require.NoError(t, err)
 
@@ -269,17 +307,16 @@ func TestRealtimeBenchmarkTransactionSubscription(t *testing.T) {
 	testAddress := common.HexToAddress("0x1234567890123456789012345678901234567890")
 
 	// Benchmark variables
-	var totalsubDuration time.Duration
+	var totalRealtimeDuration time.Duration
 
-	txCh := make(chan kafkaTypes.TransactionMessage)
-	sub, err := wsClient.Subscribe(ctx, "realtime", txCh, "realtimeTransactions", true)
+	realtimeMsgCh := make(chan jsonrpc.RealtimeResult)
+	realtimeSub, err := wsClient.Subscribe(ctx, "realtime", realtimeMsgCh, "realtime", map[string]bool{"NewHeads": false, "TransactionExtraInfo": false, "TransactionReceipt": false, "TransactionInnerTxs": false})
 	require.NoError(t, err)
-	defer sub.Unsubscribe()
+	defer realtimeSub.Unsubscribe()
 
-	// Benchmark subscibe realtime transaction
 	for i := 0; i < Iterations; i++ {
 		// Send tx
-		nativeTransferTx(t, ctx, client, uint256.NewInt(encoding.Gwei), testAddress.String())
+		signedTx := nativeTransferTx(t, ctx, client, uint256.NewInt(encoding.Gwei), testAddress.String())
 
 		g, _ := errgroup.WithContext(ctx)
 		var subDuration time.Duration
@@ -288,14 +325,18 @@ func TestRealtimeBenchmarkTransactionSubscription(t *testing.T) {
 		g.Go(func() error {
 			startTime := time.Now()
 
-			select {
-			case <-txCh:
-				subDuration = time.Since(startTime)
-				return nil
-			case err := <-sub.Err():
-				return err
-			case <-time.After(DefaultTimeoutTxToBeMined):
-				return fmt.Errorf("realtime subscription timeout")
+			for {
+				select {
+				case msg := <-realtimeMsgCh:
+					if msg.TxHash == signedTx.Hash().String() {
+						subDuration = time.Since(startTime)
+						return nil
+					}
+				case err := <-realtimeSub.Err():
+					return err
+				case <-time.After(DefaultTimeoutTxToBeMined):
+					return fmt.Errorf("realtime subscription timeout")
+				}
 			}
 		})
 
@@ -303,16 +344,16 @@ func TestRealtimeBenchmarkTransactionSubscription(t *testing.T) {
 		err = g.Wait()
 		require.NoError(t, err)
 
-		totalsubDuration += subDuration
+		totalRealtimeDuration += subDuration
 
 		fmt.Printf("Iteration %v:\n", i)
 		fmt.Printf("Realtime transaction subscription duration: %s\n", subDuration)
 	}
 
-	avgsubDuration := time.Duration(int64(totalsubDuration) / int64(Iterations))
+	avgDuration := time.Duration(int64(totalRealtimeDuration) / int64(Iterations))
 
 	// Log out metrics
-	fmt.Printf("Avg realtime transaction subscription duration: %s\n", avgsubDuration)
+	fmt.Printf("Avg realtime transaction subscription duration: %s\n", avgDuration)
 }
 
 func TestRealtimeBenchmarkLogSubscription(t *testing.T) {
