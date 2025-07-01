@@ -377,6 +377,11 @@ var (
 		Usage: "Kafka sync client id",
 		Value: "",
 	}
+	RealtimeKafkaSyncGroupID = cli.StringFlag{
+		Name:  "realtime.kafka-sync-group-id",
+		Usage: "Kafka sync group id",
+		Value: "",
+	}
 	RealtimeCacheDumpPath = cli.StringFlag{
 		Name:  "realtime.cache-dump-path",
 		Usage: "Cache dump path",

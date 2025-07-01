@@ -2,6 +2,7 @@ package cli
 
 import (
 	"fmt"
+	"os"
 	"strings"
 	"time"
 
@@ -14,6 +15,8 @@ import (
 	"github.com/ledgerwatch/erigon/zk/realtime/kafka"
 	"github.com/urfave/cli/v2"
 )
+
+const EnvKafkaConsumerGroupID = "REALTIME_KAFKA_CONSUMER_GROUP_ID"
 
 func ApplyFlagsForEthXLayerConfig(ctx *cli.Context, cfg *ethconfig.Config) {
 	sequencerBlockSealTime := cfg.Zk.SequencerBlockSealTime
@@ -28,6 +31,13 @@ func ApplyFlagsForEthXLayerConfig(ctx *cli.Context, cfg *ethconfig.Config) {
 	err = vm.SetBatchCounterLimitPercentage(sequencerBatchCounterPercentage)
 	if err != nil {
 		panic(fmt.Sprintf("Got error: %v, sequencer-batch-counter-percentage: %d", err, sequencerBatchCounterPercentage))
+	}
+
+	// For realtime. Get GroupID from flag
+	groupID := ctx.String(utils.RealtimeKafkaSyncGroupID.Name)
+	if envGroupID := os.Getenv(EnvKafkaConsumerGroupID); envGroupID != "" {
+		// Override consumer group id if env variable is set
+		groupID = envGroupID
 	}
 
 	cfg.XLayer = ethconfig.XLayerConfig{
@@ -73,6 +83,7 @@ func ApplyFlagsForEthXLayerConfig(ctx *cli.Context, cfg *ethconfig.Config) {
 				TxTopic:          ctx.String(utils.RealtimeKafkaSyncTxTopic.Name),
 				ErrorTopic:       ctx.String(utils.RealtimeKafkaSyncErrorTopic.Name),
 				ClientID:         ctx.String(utils.RealtimeKafkaSyncClientID.Name),
+				GroupID:          groupID,
 			},
 		},
 	}

@@ -372,5 +372,6 @@ var DefaultFlags = []cli.Flag{
 	&utils.RealtimeKafkaSyncTxTopic,
 	&utils.RealtimeKafkaSyncErrorTopic,
 	&utils.RealtimeKafkaSyncClientID,
+	&utils.RealtimeKafkaSyncGroupID,
 	&utils.RealtimeCacheDumpPath,
 }

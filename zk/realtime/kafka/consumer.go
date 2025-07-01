@@ -19,11 +19,11 @@ func NewKafkaConsumer(config KafkaConfig) (*KafkaConsumer, error) {
 	saramaConfig := sarama.NewConfig()
 	saramaConfig.Version = DEFAULT_VERSION
 	saramaConfig.ClientID = config.ClientID
-	saramaConfig.Consumer.Offsets.Initial = sarama.OffsetOldest
-	saramaConfig.Consumer.Offsets.AutoCommit.Enable = true
+	saramaConfig.Consumer.Offsets.Initial = sarama.OffsetNewest
+	saramaConfig.Consumer.Offsets.AutoCommit.Enable = false
 
 	// Create consumer group
-	consumerGroup, err := sarama.NewConsumerGroup(config.BootstrapServers, config.ClientID, saramaConfig)
+	consumerGroup, err := sarama.NewConsumerGroup(config.BootstrapServers, config.GroupID, saramaConfig)
 	if err != nil {
 		return nil, fmt.Errorf("error creating Kafka consumer: %v", err)
 	}
