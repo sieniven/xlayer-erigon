@@ -450,7 +450,7 @@ func migrateGenesis(chaindata, input, output string) error {
 		return tx.ForEach(kv.PlainState, nil, func(k, v []byte) error {
 			if len(k) == 20 {
 				count++
-				keys = append(keys, "0x"+common.Bytes2Hex(k))
+				keys = append(keys, common.Bytes2Hex(k))
 			}
 			return nil
 		})
@@ -479,7 +479,7 @@ func migrateGenesis(chaindata, input, output string) error {
 	defer cc.Close()
 	for _, acc_hex := range keys {
 		acc_addr := libcommon.HexToAddress(acc_hex)
-		log.Debug("acc_addr: %s\n", acc_addr)
+		log.Debug("acc_addr: %s\n", acc_hex)
 		if _, exists := jsonData[acc_hex]; exists {
 			// Fixme: if xlayer account conflict with target node(such as op-geth), use which as new regenesis account?
 			a, err := plainStateReader.ReadAccountData(acc_addr)
@@ -1676,13 +1676,13 @@ func checkStateroot(chaindata, input string, incremental, debug bool) error {
 	codeChanges := make(map[libcommon.Address]string)
 	storageChanges := make(map[libcommon.Address]map[string]string)
 
-	fmt.Printf("begin decode")
+	fmt.Printf("begin decode\n")
 	for acc, value := range jsonData {
-		acc_bytes, err := hexutil.Decode(acc)
+		accBytes := common.FromHex(acc)
 		if err != nil {
 			panic("acc decoding error")
 		}
-		address := libcommon.BytesToAddress(acc_bytes)
+		address := libcommon.BytesToAddress(accBytes)
 		acc := accounts.NewAccount()
 		balance, err := uint256.FromHex(value.Balance)
 		if err != nil {
@@ -1766,7 +1766,7 @@ func checkStateroot(chaindata, input string, incremental, debug bool) error {
 		}
 	}
 
-	fmt.Printf("begin SetStorage")
+	fmt.Printf("begin SetStorage\n")
 	_, _, err = smtBatch.SetStorage(ctx, "", accChanges, codeChanges, storageChanges)
 	smtBatchRootHash, _ := smtBatch.Db.GetLastRoot()
 	fmt.Printf("smtBatchRootHash: %x\n", smtBatchRootHash)
