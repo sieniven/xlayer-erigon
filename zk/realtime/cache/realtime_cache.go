@@ -25,7 +25,7 @@ const (
 	DefaultStateCacheSize = 1_000_000
 
 	// Sync threshold config
-	PendingBlocksCacheSizeThreshold = 10
+	PendingBlocksCacheSizeThreshold = 20
 )
 
 type PendingBlockContext struct {
