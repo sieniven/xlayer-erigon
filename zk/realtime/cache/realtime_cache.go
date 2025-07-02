@@ -256,7 +256,9 @@ func (cache *RealtimeCache) tryCloseBlock(pendingBlockContext *PendingBlockConte
 	items := cache.pendingBlocks.Items()
 	for i, item := range items {
 		if item.blockNum == pendingBlockContext.blockNum {
-			cache.pendingBlocks.SetItems(append(items[:i], items[i+1:]...))
+			// Blocks have to be closed in order of the previous highest confirm height. Thus it is safe to
+			// remove older pending block entries as we can assume they are stale and will never be closed.
+			cache.pendingBlocks.SetItems(items[i+1:])
 			cache.pendingBlocks.Sort()
 			break
 		}
