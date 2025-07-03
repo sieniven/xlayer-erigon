@@ -104,6 +104,11 @@ func ListenTxKafkaConsumer(
 		case <-ctx.Done():
 			return
 		case finishHeight := <-finishChan:
+			if finishHeight < realtimeCache.GetExecutionHeight() {
+				// Chain rollback. Reset realtime cache
+				resetFlag.Store(true)
+				logger.Debug("[Realtime] Chain rollback detected, resetting realtime cache", "finishHeight", finishHeight)
+			}
 			realtimeCache.PutExecutionHeight(finishHeight)
 			logger.Debug("[Realtime] Received finish signal from execution", "finishHeight", finishHeight)
 		case blockMsg := <-blockMsgsChan:
