@@ -58,7 +58,7 @@ func NewPlainStateCache(ctx context.Context, db kv.RoDB, size int) (*PlainStateC
 	}, nil
 }
 
-func (cache *PlainStateCache) InitSnapshotReader() error {
+func (cache *PlainStateCache) TryInitSnapshotReader() error {
 	cache.cacheLock.Lock()
 	defer cache.cacheLock.Unlock()
 
