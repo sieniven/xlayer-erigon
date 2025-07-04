@@ -3,6 +3,7 @@ package cache
 import (
 	"context"
 	"fmt"
+	"strings"
 	"sync/atomic"
 
 	"github.com/ledgerwatch/erigon-lib/kv"
@@ -25,7 +26,7 @@ const (
 	DefaultStateCacheSize = 1_000_000
 
 	// Sync threshold config
-	PendingBlocksCacheSizeThreshold = 20
+	PendingBlocksCacheSizeThreshold = 1
 )
 
 type PendingBlockContext struct {
@@ -37,6 +38,21 @@ type PendingBlockContext struct {
 	txCount int64
 	// pendingTxs is the queue of pending txs to be processed in the current pending block
 	pendingTxs *realtimeTypes.OrderedList[*kafkaTypes.TransactionMessage]
+}
+
+// String returns a formatted string representation of the PendingBlockContext
+func (context *PendingBlockContext) String() string {
+	pendingTxsInfo := "[]"
+	if context.pendingTxs.Size() > 0 {
+		txHashes := make([]string, 0, context.pendingTxs.Size())
+		for _, txMsg := range context.pendingTxs.Items() {
+			txHashes = append(txHashes, fmt.Sprintf("{ hash: %s, txIndex: %d }", txMsg.Hash, txMsg.Receipt.TransactionIndex))
+		}
+		pendingTxsInfo = fmt.Sprintf("[%s]", strings.Join(txHashes, ", "))
+	}
+
+	return fmt.Sprintf("{ blockNum: %d, nextTxIndex: %d, txCount: %d, pendingTxs: %s }",
+		context.blockNum, context.nextTxIndex, context.txCount, pendingTxsInfo)
 }
 
 func NewPendingBlockContextList(size int) *realtimeTypes.OrderedList[*PendingBlockContext] {
@@ -219,7 +235,20 @@ func (cache *RealtimeCache) tryApplyBlockTxMsgs(blockContext *PendingBlockContex
 
 func (cache *RealtimeCache) tryCreateNewPendingBlockContext(blockNum uint64) error {
 	if cache.pendingBlocks.Size() > PendingBlocksCacheSizeThreshold {
-		return fmt.Errorf("too many pending blocks, failed to process block msg and tx msgs. Pending blocks: %d", cache.pendingBlocks.Size())
+		// Find the pending block context that is blocking, and log out the block context
+		var blockedContext *PendingBlockContext
+		nextHeight := cache.GetHighestConfirmHeight() + 1
+		for _, context := range cache.pendingBlocks.Items() {
+			if context.blockNum == nextHeight {
+				blockedContext = context
+				break
+			}
+		}
+		if blockedContext != nil {
+			return fmt.Errorf("too many pending blocks, block took too long to close. Pending blocks queue size: %d, block context: %s", cache.pendingBlocks.Size(), blockedContext.String())
+		}
+		// We should never reach here
+		return fmt.Errorf("too many pending blocks, realtime cache state corrupted. Pending blocks queue size: %d", cache.pendingBlocks.Size())
 	}
 
 	// Create new pending block context
