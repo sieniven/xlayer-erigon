@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/ledgerwatch/erigon/cl/phase1/core/state/lru"
+	lru "github.com/hashicorp/golang-lru/v2"
 	kafkaTypes "github.com/ledgerwatch/erigon/zk/realtime/kafka/types"
 	realtimeTypes "github.com/ledgerwatch/erigon/zk/realtime/types"
 	"github.com/ledgerwatch/erigon/zkevm/log"
@@ -56,7 +56,7 @@ type BlockMessageCache struct {
 }
 
 func NewBlockMessageCache(maxCacheSize int) (*BlockMessageCache, error) {
-	cache, err := lru.New[uint64, *kafkaTypes.BlockMessage]("block_message_cache", maxCacheSize)
+	cache, err := lru.New[uint64, *kafkaTypes.BlockMessage](maxCacheSize)
 	if err != nil {
 		return nil, err
 	}
@@ -132,7 +132,7 @@ type TransactionMessageCache struct {
 }
 
 func NewTransactionMessageCache(maxCacheSize int) (*TransactionMessageCache, error) {
-	cache, err := lru.New[uint64, *realtimeTypes.OrderedList[*kafkaTypes.TransactionMessage]]("tx_message_cache", maxCacheSize)
+	cache, err := lru.New[uint64, *realtimeTypes.OrderedList[*kafkaTypes.TransactionMessage]](maxCacheSize)
 	if err != nil {
 		return nil, err
 	}
