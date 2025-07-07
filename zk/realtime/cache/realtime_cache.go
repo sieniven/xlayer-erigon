@@ -139,15 +139,14 @@ func (cache *RealtimeCache) PutHighestPendingHeight(blockNum uint64) {
 	}
 }
 
-func (cache *RealtimeCache) TryInitSnapshotReader() (uint64, error) {
-	err := cache.State.TryInitSnapshotReader()
+func (cache *RealtimeCache) TryInitStateCache(executionHeight uint64) error {
+	err := cache.State.TryInitCache(executionHeight)
 	if err != nil {
-		return 0, err
+		return err
 	}
 
-	snapshotHeight := cache.State.GetSnapshotHeight()
-	cache.PutHighestConfirmHeight(snapshotHeight)
-	return snapshotHeight, nil
+	cache.PutHighestConfirmHeight(executionHeight)
+	return nil
 }
 
 func (cache *RealtimeCache) TryApplyBlockMsg(blockNum uint64, blockMsg *kafkaTypes.BlockMessage) error {

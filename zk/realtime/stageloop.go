@@ -203,7 +203,7 @@ func realtimeLoop(ctx context.Context, logger log.Logger, realtimeCache *cache.R
 			nextHeight := pendingHeight + 1
 			if pendingHeight == 0 {
 				// First block msg after cache init
-				nextHeight = realtimeCache.State.GetSnapshotHeight() + 1
+				nextHeight = realtimeCache.State.GetInitHeight() + 1
 			}
 
 			// Get next block msg and tx msgs
@@ -252,22 +252,22 @@ func tryInitRealtimeCache(realtimeCache *cache.RealtimeCache, logger log.Logger)
 
 	if lowestKafkaHeight > executionHeight {
 		// The current execution height is behind kafka cache height. We will wait for the execution
-		// height to catch up to kafka cache height before re-initializing the snapshot reader.
+		// height to catch up to kafka cache height before re-initializing the state cache.
 		logger.Info("[Realtime] Init realtime cache failed, waiting for execution height to catch up to kafka cache height", "lowestKafkaHeight", lowestKafkaHeight, "executionHeight", executionHeight)
 		return false
 	}
 
 	realtimeCache.Clear()
-	snapshotHeight, err := realtimeCache.TryInitSnapshotReader()
+	err := realtimeCache.TryInitStateCache(executionHeight)
 	if err != nil {
-		logger.Error("[Realtime] Failed to initialize snapshot reader", "error", err)
+		logger.Error("[Realtime] Failed to initialize state cache", "error", err)
 		return false
 	}
 
-	// Flush all kafka data less than or equal to snapshot reader height
-	kafkaCache.Flush(snapshotHeight)
+	// Flush all kafka data less than or equal to state cache height
+	kafkaCache.Flush(executionHeight)
 	readyFlag.Store(true)
-	logger.Info("[Realtime] Realtime cache initialized", "snapshotHeight", snapshotHeight)
+	logger.Info("[Realtime] Realtime cache initialized", "executionHeight", executionHeight)
 
 	return true
 }
