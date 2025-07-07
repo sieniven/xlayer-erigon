@@ -2,6 +2,7 @@ package test
 
 import (
 	"context"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"math/big"
@@ -69,13 +70,17 @@ func RealtimeGetRawTransactionByHash(txHash common.Hash) ([]byte, error) {
 		return nil, fmt.Errorf("%d - %s", response.Error.Code, response.Error.Message)
 	}
 
-	var result []byte
-	err = json.Unmarshal(response.Result, &result)
+	var hexResult string
+	err = json.Unmarshal(response.Result, &hexResult)
 	if err != nil {
 		return nil, err
 	}
 
-	return result, nil
+	if len(hexResult) > 2 && (hexResult[:2] == "0x" || hexResult[:2] == "0X") {
+		hexResult = hexResult[2:]
+	}
+
+	return hex.DecodeString(hexResult)
 }
 
 // RealtimeGetTransactionReceipt returns the receipt of a transaction by transaction hash in real-time
