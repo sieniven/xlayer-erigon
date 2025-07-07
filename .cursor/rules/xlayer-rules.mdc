@@ -1,5 +1,5 @@
 ---
-description: General rule for X Layer node development expertise across the project
+description: General rule for X Layer node development expertise
 globs: **/*
 alwaysApply: true
 ---

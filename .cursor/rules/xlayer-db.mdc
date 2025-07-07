@@ -1,5 +1,5 @@
 ---
-description: Database cursor rules for X Layer Erigon node database (mdbx) and its interfaces
+description: Database cursor rules for X Layer Erigon node database
 
 globs:
 
