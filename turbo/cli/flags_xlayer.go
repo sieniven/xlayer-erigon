@@ -11,8 +11,10 @@ import (
 	"github.com/ledgerwatch/erigon/eth/ethconfig"
 	"github.com/ledgerwatch/erigon/node/nodecfg"
 	"github.com/ledgerwatch/erigon/smt/pkg/blockinfo"
+	"github.com/ledgerwatch/erigon/zk/nacos"
 	"github.com/ledgerwatch/erigon/zk/realtime"
 	"github.com/ledgerwatch/erigon/zk/realtime/kafka"
+	"github.com/ledgerwatch/log/v3"
 	"github.com/urfave/cli/v2"
 )
 
@@ -90,6 +92,7 @@ func ApplyFlagsForEthXLayerConfig(ctx *cli.Context, cfg *ethconfig.Config) {
 	if cfg.XLayer.BlockInfoConcurrent {
 		blockinfo.SetUseBlockInfoTree(true)
 	}
+	SetVerificationConfigs(ctx, cfg)
 
 	// For X Layer, pre run
 	utils.SetPreRunList(ctx, cfg)
@@ -106,4 +109,24 @@ func ApplyFlagsForEthXLayerConfig(ctx *cli.Context, cfg *ethconfig.Config) {
 func ApplyFlagsForNodeXLayerConfig(ctx *cli.Context, cfg *nodecfg.Config) {
 	cfg.Http.HttpApiKeys = ctx.String(utils.HTTPApiKeysFlag.Name)
 	cfg.Http.MethodRateLimit = ctx.String(utils.MethodRateLimitFlag.Name)
+}
+
+func SetVerificationConfigs(ctx *cli.Context, cfg *ethconfig.Config) {
+	cfg.XLayer.AnalysisGroupVerification.BatchDelay = ctx.Uint64(utils.VerificationBatchDelay.Name)
+	cfg.XLayer.AnalysisGroupVerification.SkipAPI = ctx.Bool(utils.SkipAnalysisGroupAPI.Name)
+	cfg.XLayer.AnalysisGroupVerification.APIPath = ctx.String(utils.AnalysisGroupAPIPath.Name)
+
+	// Set AnalysisGroupServiceName
+	if ctx.IsSet(utils.AnalysisGroupServiceName.Name) {
+		serviceName := ctx.String(utils.AnalysisGroupServiceName.Name)
+
+		if cfg.XLayer.AnalysisGroupVerification.SkipAPI {
+			log.Warn("skip analysis group api but service name is set", "service name", serviceName)
+		}
+		var err error
+		cfg.XLayer.AnalysisGroupVerification.NacosClient, err = nacos.NewNacosClient(ctx.String(utils.AnalysisGroupNacosUrls.Name), ctx.String(utils.AnalysisGroupNacosNamespace.Name), serviceName)
+		if err != nil && !cfg.XLayer.AnalysisGroupVerification.SkipAPI {
+			panic(fmt.Sprintf("failed to create nacos client for analysis group: %s", err))
+		}
+	}
 }
