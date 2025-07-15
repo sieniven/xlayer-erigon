@@ -8,13 +8,13 @@ set -eu
 # Configuration
 # =============================================================================
 BRIDGE_ADDRESS="0x4B24266C13AFEf2bb60e2C69A4C08A482d81e3CA"
-ACCOUNT="0x8f8E2d6cF621f30e9a11309D6A56A876281Fd534" 
-PRIVATE_KEY="0x815405dddb0e2a99b12af775fd2929e526704e1d1aea6a0b4e74dc33e2f7fcd2"
-BRIDGE_VALUE_BIG="1000000000000000000"  # 1 ETH in wei
-BRIDGE_VALUE_SMALL="100000000000000000"  # 0.1 ETH in wei
+ACCOUNT="0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266" 
+PRIVATE_KEY="0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"
+BRIDGE_VALUE_BIG="1000000000000000000"  # 1 OKB in wei
+BRIDGE_VALUE_SMALL="100000000000000000"  # 0.1 OKB in wei
 
-L1_ETH_ADDRESS="0x0000000000000000000000000000000000000000"
-L2_WETH="0x95076baf95000f2e67b2f88998a26d82140308ca"
+L1_WOKB="0x5FbDB2315678afecb367f032d93F642f64180aa3"
+L2_OKB="0x0000000000000000000000000000000000000000"
 
 # =============================================================================
 # RPC Endpoint Configuration
@@ -39,16 +39,27 @@ echo "Initial GER on L1: $GER"
 # =============================================================================
 
 # Check balance before bridging
-L2_BALANCE_BEFORE_BRIDGE=$(cast call "$L2_WETH" "balanceOf(address)(uint256)" "$ACCOUNT" --rpc-url "$L2RPC" | awk '{print $1}')
+L2_BALANCE_BEFORE_BRIDGE=$(cast balance "$ACCOUNT" --rpc-url "$L2RPC")
+
+# First approve the bridge contract to spend our WOKB tokens
+echo "Approving bridge contract to spend WOKB tokens..."
+cast send \
+    --legacy \
+    --rpc-url $L1RPC \
+    --private-key $PRIVATE_KEY \
+    $L1_WOKB \
+    'function approve(address spender, uint256 amount) returns(bool)' \
+    $BRIDGE_ADDRESS $BRIDGE_VALUE_BIG
+
+echo "Approval successful. Now bridging assets..."
 
 cast send \
     --legacy \
     --rpc-url $L1RPC \
     --private-key $PRIVATE_KEY \
-    --value $BRIDGE_VALUE_BIG \
     $BRIDGE_ADDRESS \
     'function bridgeAsset(uint32 destinationNetwork, address destinationAddress, uint256 amount, address token, bool forceUpdateGlobalExitRoot, bytes permitData) returns()' \
-    1 $ACCOUNT $BRIDGE_VALUE_BIG $L1_ETH_ADDRESS true 0x
+    1 $ACCOUNT $BRIDGE_VALUE_BIG $L1_WOKB true 0x
 
 # Wait for GER update on L1
 echo "Waiting for GER to be updated on L1..."
@@ -80,8 +91,7 @@ echo "GER synced to L2, took $total_elapsed seconds"
 echo "Waiting for assets to be claimed by sponsor..."
 start_time=$(date +%s)
 while true; do
-    balance=$(cast call "$L2_WETH" "balanceOf(address)(uint256)" "$ACCOUNT" --rpc-url "$L2RPC" | awk '{print $1}')
-    balance=${balance:-0}
+    balance=$(cast balance "$ACCOUNT" --rpc-url "$L2RPC")
     increment=$(echo "$balance - $L2_BALANCE_BEFORE_BRIDGE" | bc)
     echo "Current balance on L2: $balance (increment: $increment)"
     if [ "$increment" -gt 0 ]; then
@@ -112,9 +122,10 @@ TX_HASH=$(cast send \
     --private-key $PRIVATE_KEY \
     --rpc-url $L2RPC \
     --json \
+    --value $BRIDGE_VALUE_SMALL \
     $BRIDGE_ADDRESS \
     'function bridgeAsset(uint32 destinationNetwork, address destinationAddress, uint256 amount, address token, bool forceUpdateGlobalExitRoot, bytes permitData) returns()' \
-    0 $ACCOUNT $BRIDGE_VALUE_SMALL $L2_WETH true "0x" \
+    0 $ACCOUNT $BRIDGE_VALUE_SMALL $L2_OKB true "0x" \
     | jq -r ' .transactionHash')
 echo "Bridge transaction hash: $TX_HASH"
 
@@ -166,13 +177,13 @@ echo "Rollup Exit Root: $RER"
 
 # Claim assets on L1
 echo "Claiming assets on L1..."
-L1_BALANCE_BEFORE_CLAIM=$(cast balance "$ACCOUNT" --rpc-url "$L1RPC")
+L1_BALANCE_BEFORE_CLAIM=$(cast call "$L1_WOKB" "balanceOf(address)(uint256)" "$ACCOUNT" --rpc-url "$L1RPC" | awk '{print $1}')
 cmd="cast send --legacy --rpc-url $L1RPC --private-key $PRIVATE_KEY $BRIDGE_ADDRESS 'claimAsset(bytes32[32],bytes32[32],uint256,bytes32,bytes32,uint32,address,uint32,address,uint256,bytes)' $MERKLE_PROOF $ROLLUP_MERKLE_PROOF $GLOBAL_INDEX $MER $RER $ORINGIN_NETWORK $ORINGIN_ADDRESS $DESTINATION_NETWORK $ACCOUNT $IN_AMOUNT $METADATA"
 
 echo "Warning!!!!!!!!!! Claim asset on L1, Executing: $cmd"  
 eval "$cmd"
 
-L1_BALANCE_AFTER_CLAIM=$(cast balance "$ACCOUNT" --rpc-url "$L1RPC")
+L1_BALANCE_AFTER_CLAIM=$(cast call "$L1_WOKB" "balanceOf(address)(uint256)" "$ACCOUNT" --rpc-url "$L1RPC" | awk '{print $1}')
 echo "Balance on L1:"
 echo "  Before claiming: $L1_BALANCE_BEFORE_CLAIM"
 echo "  After claiming: $L1_BALANCE_AFTER_CLAIM"
