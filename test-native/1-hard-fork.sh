@@ -31,6 +31,7 @@ else
 fi
 
 sed_inplace "s/zkevm.native-issue-address: \"\"/zkevm.native-issue-address: \"$NATIVE_ISSUE_ADDRESS\"/g" config/test.erigon.seq.config.yaml
+sed_inplace "s/zkevm.native-issue-address: \"\"/zkevm.native-issue-address: \"$NATIVE_ISSUE_ADDRESS\"/g" config/test.erigon.rpc.config.yaml
 
 CURRENT_BLOCK=$(cast block latest --rpc-url $L2_RPC | grep number | awk '{print $2}')
 echo "Current block number: $CURRENT_BLOCK"
@@ -42,8 +43,11 @@ echo "Contract address: $NATIVE_ISSUE_ADDRESS, + fork v1 block number: $FORK_V1_
 
 
 docker-compose stop xlayer-seq
+docker-compose stop xlayer-rpc
 sleep 10
 docker-compose up -d xlayer-seq
+sleep 10
+docker-compose up -d xlayer-rpc
 
 source .env
 
