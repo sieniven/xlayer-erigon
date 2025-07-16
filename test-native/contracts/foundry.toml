@@ -6,4 +6,4 @@ libs = ["lib"]
 solc_version = "0.8.19"
 
 [rpc_endpoints]
-local = "http://127.0.0.1:8124" 
+local = "http://127.0.0.1:8123" 
