@@ -2,6 +2,7 @@
 set -e
 set -x
 
+source .env
 PWD_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(dirname "$PWD_DIR")"
 
@@ -9,6 +10,8 @@ make stop
 make build-docker
 git checkout config/test.erigon.seq.config.yaml
 git checkout config/test.erigon.rpc.config.yaml
+git checkout config/agglayer-config.toml
+git checkout config/agglayer-prover-config.toml
 
 sed_inplace() {
   if [[ "$OSTYPE" == "darwin"* ]]; then
@@ -35,6 +38,23 @@ RICH_PRIVATE_KEY="0x4bbbf85ce3377467afe5d46f804f221813b2bb87f24d81f60f1fcdbf7cbf
 SEQ_ADDRESS="0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266"
 SEQ_PRIVATE_KEY="0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"
 TOKEN_ADDRESS="0x5FbDB2315678afecb367f032d93F642f64180aa3"
+
+echo "Using ProverType: $PROVER_TYPE"
+
+CONFIG_FILE_1="./config/agglayer-config.toml"
+CONFIG_FILE_2="./config/agglayer-prover-config.toml"
+verifier_type="false"
+if [ "$PROVER_TYPE" == "mock" ]; then
+    sed_inplace "s|mock-verifier *= *false|mock-verifier = true|g" "$CONFIG_FILE_1"
+    sed_inplace "s|\[primary-prover\.cpu-prover\]|\[primary-prover.mock-prover\]|g" "$CONFIG_FILE_2"
+elif [ "$PROVER_TYPE" == "cpu" ]; then
+    sed_inplace "s|mock-verifier *= *true|mock-verifier = false|g" "$CONFIG_FILE_1"
+    sed_inplace "s|\[primary-prover\.mock-prover\]|\[primary-prover.cpu-prover\]|g" "$CONFIG_FILE_2"
+    verifier_type="true"
+else
+    echo "Unknown PROVER_TYPE: $PROVER_TYPE"
+    exit 1
+fi
 
 echo "Sending funds to deployer..."
 cast send -f $RICH_ADDRESS --private-key $RICH_PRIVATE_KEY --value 3ether --legacy $DEPLOYER_ADDRESS
@@ -72,7 +92,7 @@ cat > create_rollup_parameters.json << EOF
     "maxPriorityFeePerGas": "",
     "multiplierGas": "",
     "networkName": "zkevm",
-    "realVerifier": false,
+    "realVerifier": $verifier_type,
     "trustedSequencer": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
     "trustedSequencerURL": "http://xlayer-seq:8545",
     "trustedAggregator":"0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
@@ -104,7 +124,7 @@ cat > deploy_parameters.json << EOF
     "test": true,
     "ppVKey": "0x00d6e4bdab9cac75a50d58262bb4e60b3107a6b61131ccdff649576c624b6fb7",
     "ppVKeySelector": "0x00000001",
-    "realVerifier": false,
+    "realVerifier": $verifier_type,
     "defaultAdminAddress": "$DEPLOYER_ADDRESS",
     "aggchainDefaultVKeyRoleAddress": "$DEPLOYER_ADDRESS",
     "addRouteRoleAddress": "$DEPLOYER_ADDRESS",
@@ -205,26 +225,6 @@ sed_inplace "s|\"rollupCreationBlockNumber\": [0-9]*|\"rollupCreationBlockNumber
 sed_inplace "s|\"rollupManagerCreationBlockNumber\": [0-9]*|\"rollupManagerCreationBlockNumber\": $L1_FIRST_BLOCK|" "$GENESIS_CONFIG_FILE"
 AGGLAYER_CONFIG_FILE="./test-native/config/agglayer-config.toml"
 sed_inplace "s|polygon-zkevm-global-exit-root-v2-contract = \"[^\"]*\"|polygon-zkevm-global-exit-root-v2-contract = \"$GLOBAL_EXIT_ROOT_ADDRESS\"|" "$AGGLAYER_CONFIG_FILE"
-
-# cd $PWD_DIR
-# if [ ! -d "./cdk" ]; then
-#   echo "Cloning contract repository..."
-#   git clone -b v0.5.4-rc1 https://github.com/0xPolygon/cdk.git
-# fi
-
-# cd ./cdk
-# make build-docker
-# cd -
-
-# if [ ! -d "./agglayer" ]; then
-#   echo "Cloning contract repository..."
-#   git clone -b v0.3.0-rc.16 https://github.com/agglayer/agglayer.git
-# fi
-
-# cd ./agglayer
-# docker build -t agglayer .
-
-# echo "Initialization script completed!"
 
 cd $PWD_DIR
 
