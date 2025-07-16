@@ -59,13 +59,13 @@ func ComputeTxEnv_ZkEvm(ctx context.Context, engine consensus.EngineReader, bloc
 
 	vmConfig := vm.NewTraceVmConfig()
 	vmConfig.Debug = false
-	blockContext, _, ger, l1BlockHash, err := core.PrepareBlockTxExecution(cfg, &vmConfig, core.GetHashFn(header, getHeader), nil, engine.(consensus.Engine), stagedsync.NewChainReaderImpl(cfg, dbtx, nil, log.New()), block, statedb, hermezReader, block.GasLimit())
+	blockContext, _, ger, l1BlockHash, err := core.PrepareBlockTxExecution(cfg, &vmConfig, core.GetHashFn(header, getHeader), nil, engine.(consensus.Engine), stagedsync.NewChainReaderImpl(cfg, dbtx, nil, log.New()), block, statedb, hermezReader, block.GasLimit(), nil)
 	if err != nil {
 		return TxEnv{}, err
 	}
 
 	// Recompute transactions up to the target index.
-	signer := types.MakeSigner(cfg, block.NumberU64(), 0)
+	signer := types.MakeSigner(cfg, blockContext.BlockNumber, 0)
 	if historyV3 {
 		rules := cfg.Rules(blockContext.BlockNumber, blockContext.Time)
 		txn := block.Transactions()[txIndex]

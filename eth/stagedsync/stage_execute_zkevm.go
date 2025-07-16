@@ -461,7 +461,7 @@ func executeBlockZk(
 	vmConfig.Tracer = callTracer
 
 	getHashFn := core.GetHashFn(block.Header(), getHeader)
-	if execRs, err = core.ExecuteBlockEphemerallyZk(cfg.chainConfig, &vmConfig, getHashFn, cfg.engine, block, stateReader, stateWriter, ChainReaderImpl{config: cfg.chainConfig, tx: tx, blockReader: cfg.blockReader}, getTracer, roHermezDb, prevBlockRoot); err != nil {
+	if execRs, err = core.ExecuteBlockEphemerallyZk(cfg.chainConfig, &vmConfig, getHashFn, cfg.engine, block, stateReader, stateWriter, ChainReaderImpl{config: cfg.chainConfig, tx: tx, blockReader: cfg.blockReader}, getTracer, roHermezDb, prevBlockRoot, &cfg.zk.XLayer); err != nil {
 		return nil, fmt.Errorf("ExecuteBlockEphemerallyZk: %w", err)
 	}
 

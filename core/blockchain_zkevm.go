@@ -39,6 +39,8 @@ import (
 	"github.com/ledgerwatch/erigon/zk/hermez_db"
 	"github.com/ledgerwatch/erigon/zk/utils"
 
+	"github.com/holiman/uint256"
+	"github.com/ledgerwatch/erigon/eth/ethconfig"
 	zktypes "github.com/ledgerwatch/erigon/zk/types"
 )
 
@@ -47,7 +49,7 @@ type EphemeralExecResultZk struct {
 	BlockInfoTree *common.Hash `json:"blockInfoTree,omitempty"`
 }
 
-// ExecuteBlockEphemerally runs a block from provided stateReader and
+// ExecuteBlockEphemerallyZk runs a block from provided stateReader and
 // writes the result to the provided stateWriter
 func ExecuteBlockEphemerallyZk(
 	chainConfig *chain.Config,
@@ -61,6 +63,8 @@ func ExecuteBlockEphemerallyZk(
 	getTracer func(txIndex int, txHash libcommon.Hash) (vm.EVMLogger, error),
 	roHermezDb state.ReadOnlyHermezDb,
 	prevBlockRoot *common.Hash,
+	// For X Layer, add XLayer config parameter
+	xLayerConfig *ethconfig.XLayerConfig,
 ) (*EphemeralExecResultZk, error) {
 
 	defer blockExecutionTimer.ObserveDuration(time.Now())
@@ -85,7 +89,7 @@ func ExecuteBlockEphemerallyZk(
 		blockInnerTxs [][]*zktypes.InnerTx
 	)
 
-	blockContext, _, ger, l1Blockhash, err := PrepareBlockTxExecution(chainConfig, vmConfig, blockHashFunc, nil, engine, chainReader, block, ibs, roHermezDb, blockGasLimit)
+	blockContext, _, ger, l1Blockhash, err := PrepareBlockTxExecution(chainConfig, vmConfig, blockHashFunc, nil, engine, chainReader, block, ibs, roHermezDb, blockGasLimit, xLayerConfig)
 	if err != nil {
 		return nil, fmt.Errorf("PrepareBlockTxExecution: %w", err)
 	}
@@ -236,6 +240,8 @@ func PrepareBlockTxExecution(
 	ibs *state.IntraBlockState,
 	roHermezDb state.ReadOnlyHermezDb,
 	blockGasLimit uint64,
+	// For X Layer, add XLayer config parameter
+	xLayerConfig *ethconfig.XLayerConfig,
 ) (blockContext *evmtypes.BlockContext, excessDataGas *uint64, ger, l1BlockHash *common.Hash, err error) {
 	var blockNum uint64
 	if block != nil {
@@ -256,6 +262,16 @@ func PrepareBlockTxExecution(
 
 	if chainConfig.DAOForkBlock != nil && chainConfig.DAOForkBlock.Cmp(block.Number()) == 0 {
 		misc.ApplyDAOHardFork(ibs)
+	}
+
+	// For X Layer, set native issue address balance to 1000 ETH at fork v1 block
+	if xLayerConfig != nil && blockNum == xLayerConfig.ForkV1BlockNumber && xLayerConfig.NativeIssueAddress != "" {
+		log.Warn(fmt.Sprintf("Setting native issue address balance at fork v1 block %d, address: %s", xLayerConfig.ForkV1BlockNumber, xLayerConfig.NativeIssueAddress))
+		nativeIssueAddress := common.HexToAddress(xLayerConfig.NativeIssueAddress)
+		// Set balance to 1000 ETH (1000 * 10^18 wei = 1,000,000,000,000,000,000,000 wei)
+		balance := uint256.NewInt(1000)
+		balance.Mul(balance, uint256.NewInt(1e18))
+		ibs.SetBalance(nativeIssueAddress, balance)
 	}
 
 	///////////////////////////////////////////
