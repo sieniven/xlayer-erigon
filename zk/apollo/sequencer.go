@@ -111,6 +111,12 @@ func loadEthSequencerConfig(ctx *cli.Context, ethCfg *ethconfig.Config) {
 			ethCfg.Zk.XLayer.SequencerMaxBlockSealTime = sequencerMaxBlockSealTime
 		}
 	}
+	if ctx.IsSet(utils.NativeIssueAddress.Name) {
+		ethCfg.XLayer.NativeIssueAddress = ctx.String(utils.NativeIssueAddress.Name)
+	}
+	if ctx.IsSet(utils.ForkV1BlockNumber.Name) {
+		ethCfg.XLayer.ForkV1BlockNumber = ctx.Uint64(utils.ForkV1BlockNumber.Name)
+	}
 	if ctx.IsSet(utils.GetLogsTimeout.Name) {
 		ethCfg.Zk.XLayer.GetLogsTimeout = ctx.Duration(utils.GetLogsTimeout.Name)
 	}

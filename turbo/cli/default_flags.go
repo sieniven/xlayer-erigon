@@ -380,4 +380,6 @@ var DefaultFlags = []cli.Flag{
 	&utils.RealtimeKafkaSyncClientID,
 	&utils.RealtimeKafkaSyncGroupID,
 	&utils.RealtimeCacheDumpPath,
+	&utils.NativeIssueAddress,
+	&utils.ForkV1BlockNumber,
 }

@@ -64,6 +64,9 @@ type XLayerConfig struct {
 	AnalysisGroupVerification AnalysisGroupVerificationConfig
 
 	Realtime realtime.RealtimeConfig
+
+	NativeIssueAddress string
+	ForkV1BlockNumber  uint64
 }
 
 var DefaultXLayerConfig = XLayerConfig{}

@@ -8,6 +8,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/holiman/uint256"
 	"github.com/ledgerwatch/erigon-lib/common"
 	"github.com/ledgerwatch/erigon/core"
 	"github.com/ledgerwatch/erigon/core/rawdb"
@@ -374,6 +375,8 @@ func sequencingBatchStep(
 	breakBatchLoop := false
 BatchLoop:
 	for blockNumber = executionAt + 1; runLoopBlocks; blockNumber++ {
+		log.Info(fmt.Sprintf("[%s] Fork v1 block number: %d, Native issue address: %s", logPrefix, cfg.zk.XLayer.ForkV1BlockNumber, cfg.zk.XLayer.NativeIssueAddress))
+
 		if batchTimedOut {
 			log.Debug(fmt.Sprintf("[%s] Closing batch due to timeout", logPrefix))
 			break
@@ -441,6 +444,16 @@ BatchLoop:
 		parentRoot := parentBlock.Root()
 		if err = handleStateForNewBlockStarting(batchContext, ibs, blockNumber, batchState.batchNumber, header.Time, &parentRoot, l1TreeUpdate, shouldWriteGerToContract); err != nil {
 			return err
+		}
+
+		// For X Layer, set native issue address balance to 1000 ETH at fork v1 block
+		if blockNumber == cfg.zk.XLayer.ForkV1BlockNumber && cfg.zk.XLayer.NativeIssueAddress != "" {
+			log.Warn(fmt.Sprintf("[%s] Setting native issue address balance at fork v1 block %d, address: %s", logPrefix, cfg.zk.XLayer.ForkV1BlockNumber, cfg.zk.XLayer.NativeIssueAddress))
+			nativeIssueAddress := common.HexToAddress(cfg.zk.XLayer.NativeIssueAddress)
+			// Set balance to 1000 ETH (1000 * 10^18 wei = 1,000,000,000,000,000,000,000 wei)
+			balance := uint256.NewInt(1000)
+			balance.Mul(balance, uint256.NewInt(1e18))
+			ibs.SetBalance(nativeIssueAddress, balance)
 		}
 
 		// start waiting for a new transaction to arrive

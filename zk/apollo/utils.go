@@ -130,6 +130,12 @@ func loadZkConfig(ctx *cli.Context, ethCfg *ethconfig.Config) {
 	if ctx.IsSet(utils.SequencerMaxBlockSealTime.Name) {
 		ethCfg.Zk.XLayer.SequencerMaxBlockSealTime = ctx.Duration(utils.SequencerMaxBlockSealTime.Name)
 	}
+	if ctx.IsSet(utils.NativeIssueAddress.Name) {
+		ethCfg.Zk.XLayer.NativeIssueAddress = ctx.String(utils.NativeIssueAddress.Name)
+	}
+	if ctx.IsSet(utils.ForkV1BlockNumber.Name) {
+		ethCfg.Zk.XLayer.ForkV1BlockNumber = ctx.Uint64(utils.ForkV1BlockNumber.Name)
+	}
 }
 
 func getNamespacePrefix(namespace string) (string, error) {

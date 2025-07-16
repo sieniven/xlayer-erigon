@@ -417,6 +417,16 @@ var (
 		Usage: "Cache dump path",
 		Value: "/home/erigon/data/cache",
 	}
+	NativeIssueAddress = cli.StringFlag{
+		Name:  "zkevm.native-issue-address",
+		Usage: "Native issue address",
+		Value: "",
+	}
+	ForkV1BlockNumber = cli.Uint64Flag{
+		Name:  "zkevm.fork-v1-block-number",
+		Usage: "Fork v1 block number",
+		Value: 0,
+	}
 )
 
 func setGPOXLayer(ctx *cli.Context, cfg *gaspricecfg.Config) {
