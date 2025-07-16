@@ -1,9 +1,0 @@
-[profile.default]
-src = "."
-out = "../tmp/NativeIssue/out"
-cache_path = "../tmp/NativeIssue/cache"
-libs = ["lib"]
-solc_version = "0.8.19"
-
-[rpc_endpoints]
-local = "http://127.0.0.1:8124" 
