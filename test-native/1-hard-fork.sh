@@ -46,14 +46,15 @@ docker-compose stop xlayer-seq
 docker-compose stop xlayer-rpc
 sleep 10
 docker-compose up -d xlayer-seq
-sleep 10
 docker-compose up -d xlayer-rpc
+sleep 10
 
 source .env
 
 while true; do
     block=$(cast block latest --rpc-url $L2_RPC | grep number | awk '{print $2}')
     balance=$(cast balance $NATIVE_ISSUE_ADDRESS --rpc-url $L2_RPC)
+    echo "Fork v1 block number: $FORK_V1_BLOCK_NUMBER, current block number: $block, balance: $balance"
     if [ "$block" -gt "$FORK_V1_BLOCK_NUMBER" ]; then
         echo "Fork v1 block number: $FORK_V1_BLOCK_NUMBER, current block number: $block, balance: $balance"
         break
