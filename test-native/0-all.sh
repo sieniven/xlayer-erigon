@@ -9,9 +9,20 @@ git checkout config/test.erigon.rpc.config.yaml
 
 ./init.sh
 
-sleep 120
+sleep 30
 
-./11-bridge-okb.sh
+# Test nomarl bridge
 ./10-bridge-eth.sh
+./11-bridge-okb.sh
+
+# Try to hard fork
 ./2-deploy-mint.sh
 ./3-restart-seq.sh
+
+# Claim OKB
+sleep 120
+./13-claim.sh
+
+# Test nomarl bridge
+./10-bridge-eth.sh
+./11-bridge-okb.sh
