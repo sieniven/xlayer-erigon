@@ -51,9 +51,12 @@ sleep 10
 
 source .env
 
+before_balance=$(cast balance 0x4B24266C13AFEf2bb60e2C69A4C08A482d81e3CA --rpc-url $L2_RPC)
+
 while true; do
     block=$(cast block latest --rpc-url $L2_RPC | grep number | awk '{print $2}')
     balance=$(cast balance $NATIVE_ISSUE_ADDRESS --rpc-url $L2_RPC)
+   
     echo "Fork v1 block number: $FORK_V1_BLOCK_NUMBER, current block number: $block, balance: $balance"
     if [ "$block" -gt "$FORK_V1_BLOCK_NUMBER" ]; then
         echo "Fork v1 block number: $FORK_V1_BLOCK_NUMBER, current block number: $block, balance: $balance"
@@ -62,10 +65,11 @@ while true; do
     sleep 1
 done
 
-sleep 10
 block=$(cast block latest --rpc-url $L2_RPC | grep number | awk '{print $2}')
 balance=$(cast balance $NATIVE_ISSUE_ADDRESS --rpc-url $L2_RPC)
-echo "Fork v1 block number: $FORK_V1_BLOCK_NUMBER, current block number: $block, balance: $balance"
+after_balance=$(cast balance 0x4B24266C13AFEf2bb60e2C69A4C08A482d81e3CA --rpc-url $L2_RPC)
+echo "Bridge balance: $before_balance, $after_balance"
+echo "Fork v1 block number: $FORK_V1_BLOCK_NUMBER, current block number: $block"
 
 
 

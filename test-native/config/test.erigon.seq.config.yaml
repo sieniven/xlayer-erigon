@@ -126,5 +126,5 @@ realtime.kafka-sync-block-topic: xlayer-header
 realtime.kafka-sync-error-topic: xlayer-error
 realtime.kafka-sync-client-id: "xlayer-producer"
 
-zkevm.native-issue-address: "0x0165878A594ca255338adfa4d48449f69242Eb8F"
-zkevm.fork-v1-block-number: 143
+zkevm.native-issue-address: ""
+zkevm.fork-v1-block-number: 0
