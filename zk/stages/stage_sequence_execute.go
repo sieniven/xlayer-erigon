@@ -375,8 +375,6 @@ func sequencingBatchStep(
 	breakBatchLoop := false
 BatchLoop:
 	for blockNumber = executionAt + 1; runLoopBlocks; blockNumber++ {
-		log.Info(fmt.Sprintf("[%s] Fork v1 block number: %d, Native issue address: %s", logPrefix, cfg.zk.XLayer.ForkV1BlockNumber, cfg.zk.XLayer.NativeIssueAddress))
-
 		if batchTimedOut {
 			log.Debug(fmt.Sprintf("[%s] Closing batch due to timeout", logPrefix))
 			break
