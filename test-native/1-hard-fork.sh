@@ -36,5 +36,32 @@ CURRENT_BLOCK=$(cast block latest --rpc-url $L2_RPC | grep number | awk '{print 
 echo "Current block number: $CURRENT_BLOCK"
 FORK_V1_BLOCK_NUMBER=$(($CURRENT_BLOCK + 20))
 sed_inplace "s/zkevm.fork-v1-block-number: [0-9]*/zkevm.fork-v1-block-number: $FORK_V1_BLOCK_NUMBER/g" config/test.erigon.seq.config.yaml
+sed_inplace "s/zkevm.fork-v1-block-number: [0-9]*/zkevm.fork-v1-block-number: $FORK_V1_BLOCK_NUMBER/g" config/test.erigon.rpc.config.yaml
 
 echo "Contract address: $NATIVE_ISSUE_ADDRESS, + fork v1 block number: $FORK_V1_BLOCK_NUMBER"
+
+
+docker-compose stop xlayer-seq
+sleep 10
+docker-compose up -d xlayer-seq
+
+source .env
+
+while true; do
+    block=$(cast block latest --rpc-url $L2_RPC | grep number | awk '{print $2}')
+    balance=$(cast balance $NATIVE_ISSUE_ADDRESS --rpc-url $L2_RPC)
+    if [ "$block" -gt "$FORK_V1_BLOCK_NUMBER" ]; then
+        echo "Fork v1 block number: $FORK_V1_BLOCK_NUMBER, current block number: $block, balance: $balance"
+        break
+    fi
+    sleep 1
+done
+
+
+
+
+
+
+
+
+

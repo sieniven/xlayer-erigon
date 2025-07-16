@@ -16,8 +16,7 @@ sleep 30
 ./11-bridge-okb.sh
 
 # Try to hard fork
-./2-deploy-mint.sh
-./3-restart-seq.sh
+./1-hard-fork.sh
 
 # Claim OKB
 sleep 120
