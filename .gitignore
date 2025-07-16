@@ -131,3 +131,4 @@ test/app
 bridge-config-artifact
 kurtosis-cli.tar.gz
 test-native-issue-okb/tmp
+test-native/tmp
