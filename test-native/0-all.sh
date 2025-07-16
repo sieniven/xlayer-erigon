@@ -15,11 +15,10 @@ sleep 30
 ./10-bridge-eth.sh
 ./11-bridge-okb.sh
 
-# Try to hard fork
+# Hard fork
 ./1-hard-fork.sh
 
 # Claim OKB
-sleep 120
 ./13-claim.sh
 
 # Test nomarl bridge

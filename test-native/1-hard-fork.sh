@@ -62,6 +62,10 @@ while true; do
     sleep 1
 done
 
+sleep 10
+block=$(cast block latest --rpc-url $L2_RPC | grep number | awk '{print $2}')
+balance=$(cast balance $NATIVE_ISSUE_ADDRESS --rpc-url $L2_RPC)
+echo "Fork v1 block number: $FORK_V1_BLOCK_NUMBER, current block number: $block, balance: $balance"
 
 
 
