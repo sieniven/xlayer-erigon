@@ -30,4 +30,11 @@ else
     echo "NATIVE_ISSUE_ADDRESS=$NATIVE_ISSUE_ADDRESS" >> .env
 fi
 
-echo "Contract address: $NATIVE_ISSUE_ADDRESS"
+sed_inplace "s/zkevm.native-issue-address: \"\"/zkevm.native-issue-address: \"$NATIVE_ISSUE_ADDRESS\"/g" config/test.erigon.seq.config.yaml
+
+CURRENT_BLOCK=$(cast block latest --rpc-url $L2_RPC | grep number | awk '{print $2}')
+echo "Current block number: $CURRENT_BLOCK"
+FORK_V1_BLOCK_NUMBER=$(($CURRENT_BLOCK + 120))
+sed_inplace "s/zkevm.fork-v1-block-number: [0-9]*/zkevm.fork-v1-block-number: $FORK_V1_BLOCK_NUMBER/g" config/test.erigon.seq.config.yaml
+
+echo "Contract address: $NATIVE_ISSUE_ADDRESS, + fork v1 block number: $FORK_V1_BLOCK_NUMBER"
