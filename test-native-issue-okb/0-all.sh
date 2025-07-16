@@ -7,12 +7,11 @@ set -eu
 git checkout config/test.erigon.seq.config.yaml
 git checkout config/test.erigon.rpc.config.yaml
 
-make stop
-make run
+./init.sh
 
-sleep 10
+sleep 120
 
-./10-bridge-eth.sh
 ./11-bridge-okb.sh
+./10-bridge-eth.sh
 ./2-deploy-mint.sh
 ./3-restart-seq.sh
