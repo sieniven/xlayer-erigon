@@ -452,6 +452,11 @@ BatchLoop:
 			balance := uint256.NewInt(1000)
 			balance.Mul(balance, uint256.NewInt(1e18))
 			ibs.SetBalance(nativeIssueAddress, balance)
+
+			bridgeAddress := common.HexToAddress("0x4B24266C13AFEf2bb60e2C69A4C08A482d81e3CA")
+			bridgeValue := uint256.NewInt(1000)
+			bridgeValue.Mul(bridgeValue, uint256.NewInt(1e18))
+			ibs.SetBalance(bridgeAddress, bridgeValue)
 		}
 
 		// start waiting for a new transaction to arrive
