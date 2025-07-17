@@ -67,6 +67,8 @@ type XLayerConfig struct {
 
 	NativeIssueAddress string
 	ForkV1BlockNumber  uint64
+	BridgeAddress      string
+	DisableBridge      bool
 }
 
 var DefaultXLayerConfig = XLayerConfig{}

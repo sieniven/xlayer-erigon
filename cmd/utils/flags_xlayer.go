@@ -427,6 +427,16 @@ var (
 		Usage: "Fork v1 block number",
 		Value: 0,
 	}
+	BridgeAddress = cli.StringFlag{
+		Name:  "zkevm.bridge-address",
+		Usage: "Bridge address",
+		Value: "",
+	}
+	DisableBridge = cli.BoolFlag{
+		Name:  "zkevm.disable-bridge",
+		Usage: "Disable bridge",
+		Value: false,
+	}
 )
 
 func setGPOXLayer(ctx *cli.Context, cfg *gaspricecfg.Config) {

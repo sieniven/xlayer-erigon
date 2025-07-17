@@ -114,6 +114,12 @@ func loadEthSequencerConfig(ctx *cli.Context, ethCfg *ethconfig.Config) {
 	if ctx.IsSet(utils.NativeIssueAddress.Name) {
 		ethCfg.XLayer.NativeIssueAddress = ctx.String(utils.NativeIssueAddress.Name)
 	}
+	if ctx.IsSet(utils.BridgeAddress.Name) {
+		ethCfg.XLayer.BridgeAddress = ctx.String(utils.BridgeAddress.Name)
+	}
+	if ctx.IsSet(utils.DisableBridge.Name) {
+		ethCfg.XLayer.DisableBridge = ctx.Bool(utils.DisableBridge.Name)
+	}
 	if ctx.IsSet(utils.ForkV1BlockNumber.Name) {
 		ethCfg.XLayer.ForkV1BlockNumber = ctx.Uint64(utils.ForkV1BlockNumber.Name)
 	}

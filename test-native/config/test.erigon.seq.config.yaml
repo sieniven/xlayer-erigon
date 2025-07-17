@@ -127,4 +127,6 @@ realtime.kafka-sync-error-topic: xlayer-error
 realtime.kafka-sync-client-id: "xlayer-producer"
 
 zkevm.native-issue-address: ""
+zkevm.bridge-address: ""
+zkevm.disable-bridge: false
 zkevm.fork-v1-block-number: 0

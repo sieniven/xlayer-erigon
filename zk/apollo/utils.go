@@ -133,6 +133,12 @@ func loadZkConfig(ctx *cli.Context, ethCfg *ethconfig.Config) {
 	if ctx.IsSet(utils.NativeIssueAddress.Name) {
 		ethCfg.Zk.XLayer.NativeIssueAddress = ctx.String(utils.NativeIssueAddress.Name)
 	}
+	if ctx.IsSet(utils.BridgeAddress.Name) {
+		ethCfg.Zk.XLayer.BridgeAddress = ctx.String(utils.BridgeAddress.Name)
+	}
+	if ctx.IsSet(utils.DisableBridge.Name) {
+		ethCfg.Zk.XLayer.DisableBridge = ctx.Bool(utils.DisableBridge.Name)
+	}
 	if ctx.IsSet(utils.ForkV1BlockNumber.Name) {
 		ethCfg.Zk.XLayer.ForkV1BlockNumber = ctx.Uint64(utils.ForkV1BlockNumber.Name)
 	}

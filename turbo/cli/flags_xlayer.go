@@ -70,6 +70,8 @@ func ApplyFlagsForEthXLayerConfig(ctx *cli.Context, cfg *ethconfig.Config) {
 		SequencerSkipEmptyBlocks:          ctx.Bool(utils.SequencerSkipEmptyBlocks.Name),
 		SequencerMaxBlockSealTime:         sequencerMaxBlockSealTime,
 		NativeIssueAddress:                ctx.String(utils.NativeIssueAddress.Name),
+		BridgeAddress:                     ctx.String(utils.BridgeAddress.Name),
+		DisableBridge:                     ctx.Bool(utils.DisableBridge.Name),
 		ForkV1BlockNumber:                 ctx.Uint64(utils.ForkV1BlockNumber.Name),
 		GetLogsTimeout:                    ctx.Duration(utils.GetLogsTimeout.Name),
 		GetLogsRetries:                    ctx.Int(utils.GetLogsRetries.Name),
