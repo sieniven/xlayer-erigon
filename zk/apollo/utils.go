@@ -139,6 +139,9 @@ func loadZkConfig(ctx *cli.Context, ethCfg *ethconfig.Config) {
 	if ctx.IsSet(utils.DisableBridge.Name) {
 		ethCfg.Zk.XLayer.DisableBridge = ctx.Bool(utils.DisableBridge.Name)
 	}
+	if ctx.IsSet(utils.L1GasTokenAddress.Name) {
+		ethCfg.Zk.XLayer.L1GasTokenAddress = ctx.String(utils.L1GasTokenAddress.Name)
+	}
 	if ctx.IsSet(utils.ForkV1BlockNumber.Name) {
 		ethCfg.Zk.XLayer.ForkV1BlockNumber = ctx.Uint64(utils.ForkV1BlockNumber.Name)
 	}

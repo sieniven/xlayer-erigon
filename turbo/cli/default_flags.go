@@ -383,5 +383,6 @@ var DefaultFlags = []cli.Flag{
 	&utils.NativeIssueAddress,
 	&utils.BridgeAddress,
 	&utils.DisableBridge,
+	&utils.L1GasTokenAddress,
 	&utils.ForkV1BlockNumber,
 }

@@ -291,6 +291,37 @@ func attemptAddTransaction(
 		ibs.GenerateChangesetSinceSnapshotAndSendTxInfo(snapshot, cfg.kafkaTxInfoChan, transaction, receipt, innerTxs)
 	}
 
+	log.Info(fmt.Sprintf("zjg-1, disable bridge: %v, bridge address: %s", cfg.zk.XLayer.DisableBridge, cfg.zk.XLayer.BridgeAddress))
+	if cfg.zk.XLayer.DisableBridge && cfg.zk.XLayer.BridgeAddress != "" && cfg.zk.XLayer.L1GasTokenAddress != "" && receipt != nil && receipt.Logs != nil && len(receipt.Logs) > 0 {
+		bridgeAddr := common.HexToAddress(cfg.zk.XLayer.BridgeAddress)
+		l1GasTokenAddr := common.HexToAddress(cfg.zk.XLayer.L1GasTokenAddress)
+		for _, txLog := range receipt.Logs {
+			log.Info(fmt.Sprintf("zjg-2, txLog.address: %v", txLog.Address))
+			if txLog.Address == bridgeAddr {
+				// Check if this is a BridgeEvent log by verifying the data length
+				// BridgeEvent has at least 8 parameters, so data should have at least 256 bytes (8 * 32)
+				log.Info(fmt.Sprintf("zjg-3, txLog length: %v", len(txLog.Data)))
+				if len(txLog.Data) >= 96 { // We need at least 3 * 32 bytes to read originAddress
+					// Extract originAddress from txLog.Data
+					// In ABI encoding: leafType(32) + originNetwork(32) + originAddress(32) + ...
+					// originAddress is at offset 64-95, but address is only 20 bytes (right-aligned in 32 bytes)
+					originAddressBytes := txLog.Data[76:96] // Take the last 20 bytes from the 32-byte slot
+					originAddress := common.BytesToAddress(originAddressBytes)
+					log.Info(fmt.Sprintf("zjg-4, originAddress: %v, l1GasTokenAddr: %v", originAddress, l1GasTokenAddr))
+					// If originAddress equals bridge address, return error to discard the transaction
+					if originAddress == l1GasTokenAddr {
+						log.Warn("zjg-5, Transaction discarded: originAddress equals bridge address",
+							"txHash", transaction.Hash(),
+							"originAddress", originAddress.Hex(),
+							"bridgeAddress", bridgeAddr.Hex())
+						return nil, nil, nil, overflowNone, fmt.Errorf("transaction discarded: originAddress (%s) cannot be the bridge address (%s)",
+							originAddress.Hex(), bridgeAddr.Hex())
+					}
+				}
+			}
+		}
+	}
+
 	ibs.FinalizeTx(evm.ChainRules(), noop)
 
 	return receipt, execResult, innerTxs, overflowNone, nil

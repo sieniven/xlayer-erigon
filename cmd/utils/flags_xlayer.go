@@ -437,6 +437,11 @@ var (
 		Usage: "Disable bridge",
 		Value: false,
 	}
+	L1GasTokenAddress = cli.StringFlag{
+		Name:  "zkevm.l1-gas-token-address",
+		Usage: "L1 gas token address",
+		Value: "",
+	}
 )
 
 func setGPOXLayer(ctx *cli.Context, cfg *gaspricecfg.Config) {

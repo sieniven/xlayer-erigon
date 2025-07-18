@@ -69,6 +69,7 @@ type XLayerConfig struct {
 	ForkV1BlockNumber  uint64
 	BridgeAddress      string
 	DisableBridge      bool
+	L1GasTokenAddress  string
 }
 
 var DefaultXLayerConfig = XLayerConfig{}

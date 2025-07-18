@@ -130,3 +130,4 @@ zkevm.native-issue-address: ""
 zkevm.bridge-address: ""
 zkevm.disable-bridge: false
 zkevm.fork-v1-block-number: 0
+zkevm.l1-gas-token-address: ""

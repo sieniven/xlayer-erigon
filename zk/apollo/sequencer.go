@@ -120,6 +120,9 @@ func loadEthSequencerConfig(ctx *cli.Context, ethCfg *ethconfig.Config) {
 	if ctx.IsSet(utils.DisableBridge.Name) {
 		ethCfg.XLayer.DisableBridge = ctx.Bool(utils.DisableBridge.Name)
 	}
+	if ctx.IsSet(utils.L1GasTokenAddress.Name) {
+		ethCfg.XLayer.L1GasTokenAddress = ctx.String(utils.L1GasTokenAddress.Name)
+	}
 	if ctx.IsSet(utils.ForkV1BlockNumber.Name) {
 		ethCfg.XLayer.ForkV1BlockNumber = ctx.Uint64(utils.ForkV1BlockNumber.Name)
 	}
