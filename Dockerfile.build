@@ -1,0 +1,117 @@
+# syntax = docker/dockerfile:1.2
+FROM online-registry-vpc.cn-hongkong.cr.aliyuncs.com/okbase/golang:1.24-alpine3.21-okg1-sec2025042 AS builder
+
+RUN apk --no-cache add build-base linux-headers git bash ca-certificates libstdc++
+
+WORKDIR /app
+ADD go.mod go.mod
+ADD go.sum go.sum
+ADD erigon-lib/go.mod erigon-lib/go.mod
+ADD erigon-lib/go.sum erigon-lib/go.sum
+
+RUN go mod download
+ADD . .
+
+RUN --mount=type=cache,target=/root/.cache \
+    --mount=type=cache,target=/tmp/go-build \
+    --mount=type=cache,target=/go/pkg/mod \
+    make BUILD_TAGS=nosqlite,noboltdb,nosilkworm all
+
+
+FROM online-registry-vpc.cn-hongkong.cr.aliyuncs.com/okbase/golang:1.24-alpine3.21-okg1-sec2025042 AS tools-builder
+RUN apk --no-cache add build-base linux-headers git bash ca-certificates libstdc++
+WORKDIR /app
+
+ADD Makefile Makefile
+ADD tools.go tools.go
+ADD go.mod go.mod
+ADD go.sum go.sum
+ADD erigon-lib/go.mod erigon-lib/go.mod
+ADD erigon-lib/go.sum erigon-lib/go.sum
+
+RUN mkdir -p /app/build/bin
+
+RUN --mount=type=cache,target=/root/.cache \
+    --mount=type=cache,target=/tmp/go-build \
+    --mount=type=cache,target=/go/pkg/mod \
+    make db-tools
+
+FROM online-registry.cn-hongkong.cr.aliyuncs.com/okbase/alpine:3.18.3-okg1
+
+# install required runtime libs, along with some helpers for debugging
+RUN apk add --no-cache ca-certificates libstdc++ tzdata
+RUN apk add --no-cache curl jq bind-tools
+RUN apk add --no-cache make
+RUN apk add --no-cache perl perl-utils
+RUN apk add --no-cache build-base git \
+    && git clone GitHub - okx/vmtouch: Portable file system cache diagnostics and control \
+    && cd vmtouch \
+    && make \
+    && make install \
+    && cd .. && rm -rf vmtouch \
+    && apk del build-base git
+CMD ["vmtouch", "-h"]
+
+# Setup user and group
+#
+# from the perspective of the container, uid=1000, gid=1000 is a sensible choice
+# (mimicking Ubuntu Server), but if caller creates a .env (example in repo root),
+# these defaults will get overridden when make calls docker-compose
+
+# copy compiled artifacts from builder
+## first do the mdbx ones - since these wont change as often
+
+## then give each binary its own layer
+COPY --from=tools-builder /app/build/bin/mdbx_chk /app/mdbx_chk
+COPY --from=tools-builder /app/build/bin/mdbx_copy /app/mdbx_copy
+COPY --from=tools-builder /app/build/bin/mdbx_drop /app/mdbx_drop
+COPY --from=tools-builder /app/build/bin/mdbx_dump /app/mdbx_dump
+COPY --from=tools-builder /app/build/bin/mdbx_load /app/mdbx_load
+COPY --from=tools-builder /app/build/bin/mdbx_stat /app/mdbx_stat
+
+## then give each binary its own layer
+COPY --from=builder /app/build/bin/downloader /app/downloader
+COPY --from=builder /app/build/bin/cdk-erigon /app/cdk-erigon
+COPY --from=builder /app/build/bin/evm /app/evm
+COPY --from=builder /app/build/bin/hack /app/hack
+COPY --from=builder /app/build/bin/integration /app/integration
+COPY --from=builder /app/build/bin/observer /app/observer
+COPY --from=builder /app/build/bin/pics /app/pics
+COPY --from=builder /app/build/bin/rpcdaemon /app/rpcdaemon
+COPY --from=builder /app/build/bin/rpctest /app/rpctest
+COPY --from=builder /app/build/bin/sentinel /app/sentinel
+COPY --from=builder /app/build/bin/sentry /app/sentry
+COPY --from=builder /app/build/bin/state /app/state
+COPY --from=builder /app/build/bin/txpool /app/txpool
+COPY --from=builder /app/build/bin/verkle /app/verkle
+COPY --from=builder /app/build/bin/acl /app/acl
+COPY --from=builder /app/build/bin/smt-db-split /app/smt-db-split
+
+#COPY --from=builder /app/.xlayer /app/
+
+EXPOSE 8545 \
+       8551 \
+       8546 \
+       30303 \
+       30303/udp \
+       42069 \
+       42069/udp \
+       8080 \
+       9090 \
+       6060
+
+# image-spec/annotations.md at main · opencontainers/image-spec
+ARG BUILD_DATE
+ARG VCS_REF
+ARG VERSION
+LABEL org.label-schema.build-date=$BUILD_DATE \
+      org.label-schema.description="Erigon ZKEVM Client" \
+      org.label-schema.name="ZKEVM Erigon" \
+      org.label-schema.schema-version="1.0" \
+      org.label-schema.url="https://torquem.ch" \
+      org.label-schema.vcs-ref=$VCS_REF \
+      org.label-schema.vcs-url="GitHub - 0xPolygonHermez/cdk-erigon: Ethereum implementation on the efficiency frontier" \
+      org.label-schema.vendor="Torquem" \
+      org.label-schema.version=$VERSION
+
+ENTRYPOINT ["cdk-erigon"]
