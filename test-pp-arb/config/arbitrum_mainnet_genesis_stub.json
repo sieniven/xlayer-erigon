@@ -1,0 +1,12 @@
+{
+    "nonce": "0x0",
+    "timestamp": "0x0",
+    "extraData": "0x",
+    "gasLimit": "0x0",
+    "difficulty": "0x1",
+    "alloc": {
+        "8f8e2d6cf621f30e9a11309d6a56a876281fd534": {
+            "balance": "123000000000000000000000"
+        }
+    }
+}
