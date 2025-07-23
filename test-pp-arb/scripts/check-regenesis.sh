@@ -17,7 +17,7 @@ RESULT_FILE="check-regenesis-result-$TIME_STAMP.txt"
 function clone_repos {
     git clone -b dumi --recurse-submodules https://github.com/liudi4046/nitro-testnode.git $ARB_DIR
     git clone -b dumi/regenesis-pp https://github.com/okx/xlayer-erigon.git $XLAYER_ERIGON_DIR
-    git clone -b main git@github.com:okx/SA-Benchmark.git $SA_BENCH_DIR
+    git clone -b dumi/senddet git@github.com:okx/SA-Benchmark.git $SA_BENCH_DIR
 }
 
 clone_repos
@@ -73,29 +73,55 @@ cd ..
 mv genesis.json state1.json
 cd $ROOT_DIR
 
-# 5. Start nitro-testnode
+# 5. Re-start xlayer-erigon and send deterministic tx
+cd $XLAYER_ERIGON_DIR/test && make min-run
+cd $ROOT_DIR
+sleep 5
+cd $SA_BENCH_DIR
+git checkout dumi/senddet
+yarn run senduop:local
+sleep 5
+cd $ROOT_DIR
+cd $XLAYER_ERIGON_DIR/test && mv data saved_data && make stop && mv saved_data data
+cd ..
+./test-pp-arb/scripts/gen-arb-testnet-genesis.sh
+mv genesis.json state2.json
+cd $ROOT_DIR
+
+# 6. Start nitro-testnode
 cd $ARB_DIR && ./test-node.bash --init-force --detach
 sleep 5
 cd $ROOT_DIR
 
-# 6. Run state-check 1
+# 7. Run state-check state0
 cd $XLAYER_ERIGON_DIR
 make state-check
-./build/bin/state-check -dump-state-file state0.json -rpc-url http://localhost:8547 > $RESULT_FILE 2>&1
+./build/bin/state-check -dump-state-file state0.json -rpc-url http://localhost:8547 -progress-bar=false> $RESULT_FILE 2>&1
 
-# 7. Run state-check 2
+# 8. Run state-check state1
 cast send 0xa03666Fb51Aa9aD2DE70e0434072A007b3C91A9E --value 200000 \
 --private-key 0x815405dddb0e2a99b12af775fd2929e526704e1d1aea6a0b4e74dc33e2f7fcd2 \
 --legacy --gas-price 100000000 \
 --rpc-url http://localhost:8547
 sleep 3
-./build/bin/state-check -dump-state-file state1.json -rpc-url http://localhost:8547 >> $RESULT_FILE 2>&1
-mv $RESULT_FILE ../../
+./build/bin/state-check -dump-state-file state1.json -rpc-url http://localhost:8547 -progress-bar=false >> $RESULT_FILE 2>&1
+cd $ROOT_DIR
 
-stop_all
+# 9. Run state-check state2
+cd $SA_BENCH_DIR
+yarn run senduop:deterministic
+sleep 3
+cd $ROOT_DIR
+cd $XLAYER_ERIGON_DIR
+make state-check
+./build/bin/state-check -dump-state-file state2.json -rpc-url http://localhost:8547 -progress-bar=false >> $RESULT_FILE 2>&1
+mv $RESULT_FILE ../../
+cd $ROOT_DIR
+
+# stop_all
 
 # 8. Print result
-cd $ROOT_DIR
-echo -e "\n\n\n"
-cat ../$RESULT_FILE
-echo -e "\n\n\n"
+# cd $ROOT_DIR
+# echo -e "\n\n\n"
+# cat ../$RESULT_FILE
+# echo -e "\n\n\n"
