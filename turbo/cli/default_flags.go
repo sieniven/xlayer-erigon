@@ -378,4 +378,5 @@ var DefaultFlags = []cli.Flag{
 
 	&utils.TraceLogPath,
 	&utils.EnableTraceLog,
+	&utils.PessimisticForkNumber,
 }
