@@ -20,6 +20,7 @@ var (
 	dumpStateFile  = flag.String("dump-state-file", "", "dump state JSON file")
 	ignoreListFile = flag.String("ignore-list-file", "", "ignore accounts or contract addresses in the JSON file")
 	rpcURL         = flag.String("rpc-url", "", "rpc url")
+	progressBar    = flag.Bool("progress-bar", true, "show progress bar")
 )
 
 // AccountState represents the structure of account data in the state dump
@@ -88,7 +89,7 @@ func verifyAccountState(address string, accountData AccountState, client *ethcli
 		}
 
 		// 4. Verify storage slots
-		for storageKey, expectedValue := range accountData.Storage {
+		for storageKey, valueDump := range accountData.Storage {
 			// Parse storage key
 			key := common.HexToHash(storageKey)
 
@@ -98,10 +99,10 @@ func verifyAccountState(address string, accountData AccountState, client *ethcli
 				return fmt.Errorf("address: %s storage is invalid for key %s: %v", address, storageKey, err)
 			}
 
-			actualValue := "0x" + hex.EncodeToString(storageValue)
+			valueRPC := "0x" + hex.EncodeToString(storageValue)
 
-			if actualValue != expectedValue {
-				return fmt.Errorf("address: %s storage not match for key %s", address, storageKey)
+			if valueRPC != valueDump {
+				return fmt.Errorf("address: %s storage not match for key %s: %s (RPC) != %s (dump)", address, storageKey, valueRPC, valueDump)
 			}
 		}
 	}
@@ -160,7 +161,10 @@ func checkState(dumpStateFile, rpcURL, ignoreListFile string) error {
 
 	// Verify each account
 	ok := true
-	bar := progressbar.NewOptions(len(stateDump), progressbar.OptionSetPredictTime(true))
+	var bar *progressbar.ProgressBar
+	if *progressBar {
+		bar = progressbar.NewOptions(len(stateDump), progressbar.OptionSetPredictTime(true))
+	}
 	for address, accountData := range stateDump {
 		if slices.Contains(ignoreList, address) {
 			fmt.Printf("\nIgnoring address: %s\n", address)
@@ -170,9 +174,13 @@ func checkState(dumpStateFile, rpcURL, ignoreListFile string) error {
 			fmt.Printf("\nverification failed: %v\n", err)
 			ok = false
 		}
-		bar.Add(1)
+		if *progressBar {
+			bar.Add(1)
+		}
 	}
-	bar.Finish()
+	if *progressBar {
+		bar.Finish()
+	}
 	fmt.Println()
 
 	if !ok {
