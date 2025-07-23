@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"math/big"
 	"os"
-	"runtime"
 	"slices"
 	"strings"
 
@@ -39,41 +38,41 @@ func verifyAccountState(address string, accountData AccountState, client *ethcli
 	addr := common.HexToAddress(address)
 
 	// 1. Verify balance
-	balance, err := client.BalanceAt(ctx, addr, nil)
+	balanceRPC, err := client.BalanceAt(ctx, addr, nil)
 	if err != nil {
 		return fmt.Errorf("address: %s balance is invalid: %v", address, err)
 	}
 
-	var expectedBalance *big.Int
+	var balanceDump *big.Int
 	var ok bool
 	if strings.HasPrefix(accountData.Balance, "0x") {
 		balanceStr := strings.TrimPrefix(accountData.Balance, "0x")
-		expectedBalance, ok = new(big.Int).SetString(balanceStr, 16)
+		balanceDump, ok = new(big.Int).SetString(balanceStr, 16)
 	} else {
-		expectedBalance, ok = new(big.Int).SetString(accountData.Balance, 10)
+		balanceDump, ok = new(big.Int).SetString(accountData.Balance, 10)
 	}
 	if !ok {
 		return fmt.Errorf("address: %s invalid balance format in dump: %s", address, accountData.Balance)
 	}
 
-	if balance.ToBig().Cmp(expectedBalance) != 0 {
-		return fmt.Errorf("address: %s balances do not match: %s != %s", address, balance.ToBig().String(), expectedBalance.String())
+	if balanceRPC.ToBig().Cmp(balanceDump) != 0 {
+		return fmt.Errorf("address: %s balances do not match: %s (RPC) != %s (dump)", address, balanceRPC.ToBig().String(), balanceDump.String())
 	}
 
 	// 2. Verify nonce
-	nonce, err := client.NonceAt(ctx, addr, nil)
+	nonceRPC, err := client.NonceAt(ctx, addr, nil)
 	if err != nil {
 		return fmt.Errorf("address: %s nonce is invalid: %v", address, err)
 	}
 
 	nonceStr := strings.TrimPrefix(accountData.Nonce, "0x")
-	expectedNonce, ok := new(big.Int).SetString(nonceStr, 16)
+	nonceDump, ok := new(big.Int).SetString(nonceStr, 16)
 	if !ok {
 		return fmt.Errorf("address: %s invalid nonce format in dump: %s", address, accountData.Nonce)
 	}
 
-	if new(big.Int).SetUint64(nonce).Cmp(expectedNonce) != 0 {
-		return fmt.Errorf("address: %s nonce not match: %v != %s", address, nonce, expectedNonce.String())
+	if new(big.Int).SetUint64(nonceRPC).Cmp(nonceDump) != 0 {
+		return fmt.Errorf("address: %s nonce not match: %v (RPC) != %s (dump)", address, nonceRPC, nonceDump.String())
 	}
 
 	// 3. Verify code (if not empty)
@@ -149,8 +148,8 @@ func checkState(dumpStateFile, rpcURL, ignoreListFile string) error {
 	fmt.Println("Finish loading state dump file.")
 
 	// Log CPU information
-	cpus := runtime.NumCPU()
-	fmt.Printf("CPUs available: %d\n", cpus)
+	// cpus := runtime.NumCPU()
+	// fmt.Printf("CPUs available: %d\n", cpus)
 
 	// Connect to Ethereum client
 	client, err := ethclient.Dial(rpcURL)
