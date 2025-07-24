@@ -47,7 +47,7 @@ func ListenTxKafkaProducer(
 		case blockInfo := <-blockInfoChan:
 			currHeight = blockInfo.Header.Number.Uint64()
 			err = txKafkaProducer.SendKafkaBlockInfo(ctx, blockInfo.Header, blockInfo.TxCount)
-			logger.Debug("[Realtime] Sent block info message", "blockNum", blockInfo.Header.Number, "txCount", blockInfo.TxCount)
+			log.Debug("[Realtime] Sent block info message", "blockNum", blockInfo.Header.Number, "txCount", blockInfo.TxCount)
 		case txInfo := <-txInfoChan:
 			currHeight = txInfo.BlockNumber
 			if currHeight <= 1 {
@@ -55,7 +55,7 @@ func ListenTxKafkaProducer(
 			}
 			changeset := state.CollectChangeset(txInfo.Entries)
 			err = txKafkaProducer.SendKafkaTransaction(ctx, txInfo.BlockNumber, txInfo.Tx, txInfo.Receipt, txInfo.InnerTxs, changeset)
-			logger.Debug(fmt.Sprintf("[Realtime] Sent tx message for block number %d with txHash %x", txInfo.BlockNumber, txInfo.Tx.Hash()))
+			log.Debug(fmt.Sprintf("[Realtime] Sent tx message for block number %d with txHash %x", txInfo.BlockNumber, txInfo.Tx.Hash()))
 		}
 
 		if err != nil {
