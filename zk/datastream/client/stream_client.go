@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"net"
 	"reflect"
+	"strings"
 	"sync/atomic"
 	"time"
 
@@ -458,8 +459,19 @@ func (c *StreamClient) ReadAllEntriesToChannel() (err error) {
 		return err
 	}
 
-	if err = c.readAllEntriesToChannel(); err != nil {
-		return err
+	blockNum := uint64(0)
+	for {
+		blockNum, err = c.readAllEntriesToChannel(blockNum)
+		if err != nil {
+			if strings.Contains(err.Error(), "i/o timeout") {
+				// Handle timeout error specifically
+				log.Warn("[Datastream client] I/O timeout detected, sleeping and retrying...")
+				time.Sleep(10 * time.Second)
+				continue
+			}
+			return err
+		}
+		break
 	}
 
 	return nil
@@ -467,29 +479,33 @@ func (c *StreamClient) ReadAllEntriesToChannel() (err error) {
 
 // reads entries to the end of the stream
 // at end will wait for new entries to arrive
-func (c *StreamClient) readAllEntriesToChannel() (err error) {
+func (c *StreamClient) readAllEntriesToChannel(lastBlockNum uint64) (blockNum uint64, err error) {
 	c.stopReadingToChannel.Store(false)
 
 	var bookmark *types.BookmarkProto
-	progress := c.progress.Load()
-	if progress == 0 {
-		bookmark = types.NewBookmarkProto(0, datastream.BookmarkType_BOOKMARK_TYPE_BATCH)
+	if lastBlockNum == 0 {
+		progress := c.progress.Load()
+		if progress == 0 {
+			bookmark = types.NewBookmarkProto(0, datastream.BookmarkType_BOOKMARK_TYPE_BATCH)
+		} else {
+			bookmark = types.NewBookmarkProto(progress+1, datastream.BookmarkType_BOOKMARK_TYPE_L2_BLOCK)
+		}
 	} else {
-		bookmark = types.NewBookmarkProto(progress+1, datastream.BookmarkType_BOOKMARK_TYPE_L2_BLOCK)
+		bookmark = types.NewBookmarkProto(lastBlockNum, datastream.BookmarkType_BOOKMARK_TYPE_L2_BLOCK)
 	}
 
 	protoBookmark, err := bookmark.Marshal()
 	if err != nil {
-		return err
+		return 0, err
 	}
 
 	// send start command
 	if _, err := c.initiateDownloadBookmark(protoBookmark); err != nil {
-		return fmt.Errorf("initiateDownloadBookmark: %w", err)
+		return 0, fmt.Errorf("initiateDownloadBookmark: %w", err)
 	}
 
-	if err := c.readAllFullL2BlocksToChannel(); err != nil {
-		return fmt.Errorf("readAllFullL2BlocksToChannel: %w", err)
+	if lastBlockNum, err := c.readAllFullL2BlocksToChannel(); err != nil {
+		return lastBlockNum, fmt.Errorf("readAllFullL2BlocksToChannel: %w", err)
 	}
 
 	return
@@ -522,7 +538,7 @@ func (c *StreamClient) afterStartCommand() (*types.ResultEntry, error) {
 
 // reads all entries from the server and sends them to a channel
 // sends the parsed FullL2Blocks with transactions to a channel
-func (c *StreamClient) readAllFullL2BlocksToChannel() (err error) {
+func (c *StreamClient) readAllFullL2BlocksToChannel() (blockNum uint64, err error) {
 	log.Info("[Datastream client] reading full L2 blocks to channel", "header_totalEntries", c.header.TotalEntries)
 
 	readNewProto := true
@@ -533,7 +549,7 @@ LOOP:
 		select {
 		default:
 		case <-c.ctx.Done():
-			return fmt.Errorf("context done - stopping")
+			return blockNum, fmt.Errorf("context done - stopping")
 		}
 
 		if c.stopReadingToChannel.Load() {
@@ -542,16 +558,16 @@ LOOP:
 
 		err = c.resetReadTimeout()
 		if err != nil {
-			return err
+			return blockNum, err
 		}
 
 		if readNewProto {
 			if parsedProto, entryNum, err = ReadParsedProto(c); err != nil {
 				// For X Layer, fix ds receive issue
 				if err == ErrReachedEntryNumberLimit {
-					return c.trySendStopSignal()
+					return blockNum, c.trySendStopSignal()
 				}
-				return err
+				return blockNum, err
 			}
 			readNewProto = false
 		}
@@ -566,10 +582,11 @@ LOOP:
 		case *types.GerUpdate:
 		case *types.BatchEnd:
 		case *types.FullL2Block:
+			blockNum = parsedProto.L2BlockNumber
 			parsedProto.ForkId = c.currentFork
 			log.Trace("[Datastream client] writing block to channel", "blockNumber", parsedProto.L2BlockNumber, "batchNumber", parsedProto.BatchNumber)
 		default:
-			return fmt.Errorf("unexpected entry type: %v", parsedProto)
+			return blockNum, fmt.Errorf("unexpected entry type: %v", parsedProto)
 		}
 		select {
 		case c.entryChan <- parsedProto:
@@ -583,13 +600,13 @@ LOOP:
 
 			// For X Layer, fix ds receive issue
 			if err := c.trySendStopSignal(); err != nil {
-				return err
+				return blockNum, err
 			}
 			break LOOP
 		}
 	}
 
-	return nil
+	return blockNum, nil
 }
 
 // For X Layer, fix ds receive issue
