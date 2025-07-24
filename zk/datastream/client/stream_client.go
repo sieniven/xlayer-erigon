@@ -466,7 +466,11 @@ func (c *StreamClient) ReadAllEntriesToChannel() (err error) {
 			if strings.Contains(err.Error(), "i/o timeout") {
 				// Handle timeout error specifically
 				log.Warn("[Datastream client] I/O timeout detected, sleeping and retrying...")
-				time.Sleep(10 * time.Second)
+				time.Sleep(5 * time.Second)
+				if err := c.tryReConnect(); err != nil {
+					return err
+				}
+				c.lastError = nil
 				continue
 			}
 			return err
