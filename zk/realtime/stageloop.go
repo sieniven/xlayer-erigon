@@ -27,13 +27,13 @@ var (
 	kafkaCache *cache.KafkaCache
 )
 
-func ListenTxKafkaProducer(
+func ListenKafkaProducer(
 	ctx context.Context,
-	txKafkaProducer *kafka.KafkaProducer,
+	kafkaProducer *kafka.KafkaProducer,
 	blockInfoChan chan *realtimeTypes.BlockInfo,
 	txInfoChan chan *state.TxInfo) {
 	if !sequencer.IsSequencer() {
-		log.Info("[Realtime] TxKafkaProducer is disabled on non-sequencer, skipping")
+		log.Info("[Realtime] KafkaProducer is disabled on non-sequencer, skipping")
 		return
 	}
 
@@ -46,7 +46,7 @@ func ListenTxKafkaProducer(
 			return
 		case blockInfo := <-blockInfoChan:
 			currHeight = blockInfo.Header.Number.Uint64()
-			err = txKafkaProducer.SendKafkaBlockInfo(ctx, blockInfo.Header, blockInfo.TxCount)
+			err = kafkaProducer.SendKafkaBlockInfo(blockInfo.Header, blockInfo.TxCount)
 			log.Debug(fmt.Sprintf("[Realtime] Sent block info message for block number %d with txCount %d", blockInfo.Header.Number, blockInfo.TxCount))
 		case txInfo := <-txInfoChan:
 			currHeight = txInfo.BlockNumber
@@ -54,13 +54,13 @@ func ListenTxKafkaProducer(
 				continue
 			}
 			changeset := state.CollectChangeset(txInfo.Entries)
-			err = txKafkaProducer.SendKafkaTransaction(ctx, txInfo.BlockNumber, txInfo.Tx, txInfo.Receipt, txInfo.InnerTxs, changeset)
+			err = kafkaProducer.SendKafkaTransaction(txInfo.BlockNumber, txInfo.Tx, txInfo.Receipt, txInfo.InnerTxs, changeset)
 			log.Debug(fmt.Sprintf("[Realtime] Sent tx message for block number %d with txHash %x", txInfo.BlockNumber, txInfo.Tx.Hash()))
 		}
 
 		if err != nil {
 			log.Error(fmt.Sprintf("[Realtime] Failed to send kafka message, trigger error message. error: %v, currHeight: %d", err, currHeight))
-			err = txKafkaProducer.SendKafkaErrorTrigger(ctx, currHeight)
+			err = kafkaProducer.SendKafkaErrorTrigger(currHeight)
 			if err != nil {
 				log.Error(fmt.Sprintf("[Realtime] Failed to send error trigger message. error: %v, currHeight: %d", err, currHeight))
 			}
@@ -69,14 +69,14 @@ func ListenTxKafkaProducer(
 	}
 }
 
-func ListenTxKafkaConsumer(
+func ListenKafkaConsumer(
 	ctx context.Context,
-	txKafkaConsumer *kafka.KafkaConsumer,
+	kafkaConsumer *kafka.KafkaConsumer,
 	realtimeCache *cache.RealtimeCache,
 	finishChan chan uint64,
 	subService *realtimeSub.RealtimeSubscription) {
 	if sequencer.IsSequencer() {
-		log.Info("[Realtime] TxKafkaConsumer is disabled on sequencer, skipping")
+		log.Info("[Realtime] KafkaConsumer is disabled on sequencer, skipping")
 		return
 	}
 
@@ -95,7 +95,7 @@ func ListenTxKafkaConsumer(
 	errorChan := make(chan error, 1)
 
 	// Start the kafka consumer
-	go txKafkaConsumer.ConsumeKafka(ctx, blockMsgsChan, txMsgsChan, errorMsgsChan, errorChan)
+	go kafkaConsumer.ConsumeKafka(ctx, blockMsgsChan, txMsgsChan, errorMsgsChan, errorChan)
 
 	// Start realtime loop
 	go realtimeLoop(ctx, realtimeCache)

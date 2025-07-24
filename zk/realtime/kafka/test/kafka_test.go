@@ -110,19 +110,19 @@ func TestKafka(t *testing.T) {
 	assert.NilError(t, err)
 
 	for i := 0; i < 10; i++ {
-		err = producer.SendKafkaTransaction(context.Background(), uint64(i), rightvrsTx, rightvrsTxReceipt, rightvrsTxInnerTxs, rightvrsTxChangeset)
+		err = producer.SendKafkaTransaction(uint64(i), rightvrsTx, rightvrsTxReceipt, rightvrsTxInnerTxs, rightvrsTxChangeset)
 		assert.NilError(t, err)
 
-		err = producer.SendKafkaBlockInfo(context.Background(), blockHeader, 10)
+		err = producer.SendKafkaBlockInfo(blockHeader, 10)
 		assert.NilError(t, err)
 
-		err = producer.SendKafkaErrorTrigger(context.Background(), uint64(i))
+		err = producer.SendKafkaErrorTrigger(uint64(i))
 		assert.NilError(t, err)
 	}
 
 	accessListTx.SetSender(testFromAddr)
 	for i := 10; i < 20; i++ {
-		err = producer.SendKafkaTransaction(context.Background(), uint64(i), accessListTx, rightvrsTxReceipt, rightvrsTxInnerTxs, rightvrsTxChangeset)
+		err = producer.SendKafkaTransaction(uint64(i), accessListTx, rightvrsTxReceipt, rightvrsTxInnerTxs, rightvrsTxChangeset)
 
 		assert.NilError(t, err)
 	}
