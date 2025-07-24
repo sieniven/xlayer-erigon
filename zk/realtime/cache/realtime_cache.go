@@ -276,6 +276,7 @@ func (cache *RealtimeCache) tryCreateNewPendingBlockContext(blockNum uint64) err
 	cache.pendingBlocks.Add(newPendingBlockContext)
 	cache.pendingBlocks.Sort()
 	cache.PutHighestPendingHeight(blockNum)
+	log.Debug(fmt.Sprintf("[Realtime] Opened block %d, pending blocks queue size: %d", blockNum, cache.pendingBlocks.Size()))
 
 	return nil
 }
