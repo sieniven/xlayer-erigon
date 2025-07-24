@@ -38,7 +38,7 @@ func TestRealtimeBenchmarkNativeTransfer(t *testing.T) {
 	t.Run("RealtimeGetBlockTransactionCountByNumber", func(t *testing.T) {
 		transactionCount, err := RealtimeGetBlockTransactionCountByNumber(blockNumber)
 		require.NoError(t, err)
-		log.Infof("RealtimeGetBlockTransactionCountByNumber result: %d", transactionCount)
+		log.Info(fmt.Sprintf("RealtimeGetBlockTransactionCountByNumber result: %d", transactionCount))
 	})
 
 	ctx := context.Background()
@@ -142,7 +142,7 @@ func TestRealtimeBenchmarkERC20Transfer(t *testing.T) {
 	t.Run("RealtimeGetBlockTransactionCountByNumber", func(t *testing.T) {
 		transactionCount, err := RealtimeGetBlockTransactionCountByNumber(blockNumber)
 		require.NoError(t, err)
-		log.Infof("RealtimeGetBlockTransactionCountByNumber result: %d", transactionCount)
+		log.Info(fmt.Sprintf("RealtimeGetBlockTransactionCountByNumber result: %d", transactionCount))
 	})
 
 	ctx := context.Background()
@@ -366,7 +366,7 @@ func TestRealtimeBenchmarkLogSubscription(t *testing.T) {
 	t.Run("RealtimeGetBlockTransactionCountByNumber", func(t *testing.T) {
 		transactionCount, err := RealtimeGetBlockTransactionCountByNumber(blockNumber)
 		require.NoError(t, err)
-		log.Infof("RealtimeGetBlockTransactionCountByNumber result: %d", transactionCount)
+		log.Info(fmt.Sprintf("RealtimeGetBlockTransactionCountByNumber result: %d", transactionCount))
 	})
 
 	ctx := context.Background()

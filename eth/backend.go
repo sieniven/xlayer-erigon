@@ -2096,8 +2096,8 @@ func (s *Ethereum) Start() error {
 
 		// For X Layer, realtime
 		if s.config.Zk.XLayer.Realtime.Enable && s.kafkaEnabled {
-			go realtime.ListenTxKafkaConsumer(s.sentryCtx, s.kafkaConsumer, s.logger, s.realtimeCache, s.finishChan, s.realtimeSub)
-			go realtime.ListenTxKafkaProducer(s.sentryCtx, s.kafkaProducer, s.logger, s.blockInfoChan, s.txInfoChan)
+			go realtime.ListenTxKafkaConsumer(s.sentryCtx, s.kafkaConsumer, s.realtimeCache, s.finishChan, s.realtimeSub)
+			go realtime.ListenTxKafkaProducer(s.sentryCtx, s.kafkaProducer, s.blockInfoChan, s.txInfoChan)
 		}
 	}
 
