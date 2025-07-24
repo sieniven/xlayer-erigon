@@ -123,12 +123,6 @@ func ListenKafkaConsumer(
 				log.Debug(fmt.Sprintf("[Realtime] Ignoring block message from previous block. blockNum: %d", header.Number))
 				continue
 			}
-			if header.Number.Uint64() <= realtimeCache.GetHighestConfirmHeight() {
-				// If we receive a new block msg that is already confirmed, we reset the realtime cache
-				// as the realtime cache is potentially corrupted
-				log.Debug(fmt.Sprintf("[Realtime] Received block message with block height already confirmed, resetting realtime cache. blockNum: %d", header.Number))
-				resetFlag.Store(true)
-			}
 			kafkaCache.BlockMsgCache.Add(&blockMsg)
 			if subService != nil {
 				// Publish block to subscriptions
@@ -144,12 +138,6 @@ func ListenKafkaConsumer(
 				// Ignore txs from previous blocks
 				log.Debug(fmt.Sprintf("[Realtime] Ignoring transaction message from previous block. blockNum: %d", txMsg.BlockNumber))
 				continue
-			}
-			if txMsg.BlockNumber <= realtimeCache.GetHighestConfirmHeight() {
-				// If we receive a new tx msg that is already confirmed, we reset the realtime cache
-				// as the realtime cache is potentially corrupted
-				log.Debug(fmt.Sprintf("[Realtime] Received transaction message with block height already confirmed, resetting realtime cache. blockNum: %d", txMsg.BlockNumber))
-				resetFlag.Store(true)
 			}
 			kafkaCache.TxMsgCache.Add(&txMsg)
 			if subService != nil {
