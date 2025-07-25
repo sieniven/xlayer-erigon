@@ -137,6 +137,7 @@ import (
 	"github.com/ledgerwatch/erigon/zk/realtime"
 	realtimeCache "github.com/ledgerwatch/erigon/zk/realtime/cache"
 	realtimeKafka "github.com/ledgerwatch/erigon/zk/realtime/kafka"
+	"github.com/ledgerwatch/erigon/zk/realtime/realtimeapi"
 	realtimeSub "github.com/ledgerwatch/erigon/zk/realtime/subscription"
 	realtimeTypes "github.com/ledgerwatch/erigon/zk/realtime/types"
 	zkStages "github.com/ledgerwatch/erigon/zk/stages"
@@ -1456,7 +1457,7 @@ func (s *Ethereum) Init(stack *node.Node, config *ethconfig.Config, chainConfig 
 
 	var gpCache *jsonrpc.GasPriceCache
 	// For X Layer, split db
-	s.apiList, gpCache = jsonrpc.APIList(chainKv, s.smtDB, ethRpcClient, txPoolRpcClient, s.txPool2, miningRpcClient, ff, stateCache, blockReader, s.agg, &httpRpcCfg, s.engine, config, s.l1Syncer, s.logger, dataStreamServer, s.gasTracker, s.stagedSync.GetCache(), config.Zk.XLayer.Realtime.Enable && s.kafkaEnabled, s.realtimeCache, s.realtimeSub)
+	s.apiList, gpCache = jsonrpc.APIList(chainKv, s.smtDB, ethRpcClient, txPoolRpcClient, s.txPool2, miningRpcClient, ff, stateCache, blockReader, s.agg, &httpRpcCfg, s.engine, config, s.l1Syncer, s.logger, dataStreamServer, s.gasTracker, s.stagedSync.GetCache(), config.Zk.XLayer.Realtime.Enable && s.kafkaEnabled, s.realtimeCache, s.realtimeSub, realtimeapi.NewRealtimeAPI)
 
 	// For X Layer
 	if s.txPool2 != nil && gpCache != nil {

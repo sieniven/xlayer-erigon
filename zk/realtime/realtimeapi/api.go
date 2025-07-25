@@ -1,4 +1,4 @@
-package jsonrpc
+package realtimeapi
 
 import (
 	"fmt"
@@ -7,38 +7,47 @@ import (
 	libcommon "github.com/ledgerwatch/erigon-lib/common"
 	"github.com/ledgerwatch/erigon/core/types"
 	"github.com/ledgerwatch/erigon/rpc"
+	"github.com/ledgerwatch/erigon/turbo/jsonrpc"
 	realtimeCache "github.com/ledgerwatch/erigon/zk/realtime/cache"
 	"github.com/ledgerwatch/erigon/zk/realtime/subscription"
 )
 
 var (
-	mockBlockHash                   = libcommon.BytesToHash([]byte{1})
-	ErrRealtimeNotEnabled           = fmt.Errorf("realtime is not enabled")
-	ErrRealtimeConfirmBlockNotFound = fmt.Errorf("realtime confirm block not found")
+	mockBlockHash         = libcommon.BytesToHash([]byte{1})
+	ErrRealtimeNotEnabled = fmt.Errorf("realtime is not enabled")
 )
 
 // RealtimeAPIImpl is implementation of the RealtimeAPI interface
 type RealtimeAPIImpl struct {
+	jsonrpc.APIImpl
 	cacheDB    *realtimeCache.RealtimeCache
 	subService *subscription.RealtimeSubscription
-	ethApi     *APIImpl
 	enableFlag bool
 }
 
-// NewRealtimeAPI returns RealtimeAPIImpl instance
-func NewRealtimeAPI(
+// NewRealtimeAPIImpl returns RealtimeAPIImpl instance
+func NewRealtimeAPIImpl(
+	base *jsonrpc.APIImpl,
 	cacheDB *realtimeCache.RealtimeCache,
 	subService *subscription.RealtimeSubscription,
-	base *APIImpl,
 	enableFlag bool,
 ) *RealtimeAPIImpl {
 
 	return &RealtimeAPIImpl{
+		APIImpl:    *base,
 		cacheDB:    cacheDB,
 		subService: subService,
-		ethApi:     base,
 		enableFlag: enableFlag,
 	}
+}
+
+func NewRealtimeAPI(
+	base *jsonrpc.APIImpl,
+	cacheDB *realtimeCache.RealtimeCache,
+	subService *subscription.RealtimeSubscription,
+	enableFlag bool,
+) interface{} {
+	return NewRealtimeAPIImpl(base, cacheDB, subService, enableFlag)
 }
 
 func (api *RealtimeAPIImpl) getBlockNumber(blockNr rpc.BlockNumber) (uint64, bool, error) {
@@ -81,8 +90,8 @@ func (api *RealtimeAPIImpl) getBlockNumber(blockNr rpc.BlockNumber) (uint64, boo
 // newRPCTransaction_realtime returns a transaction that will serialize to the RPC
 // representation, with the given location metadata set (if available).
 // Note that realtime API do not support blockHash.
-func newRPCTransaction_realtime(tx types.Transaction, blockNumber uint64, index uint64, baseFee *big.Int) *RPCTransaction {
-	result := NewRPCTransaction(tx, mockBlockHash, blockNumber, index, baseFee)
+func newRPCTransaction_realtime(tx types.Transaction, blockNumber uint64, index uint64, baseFee *big.Int) *jsonrpc.RPCTransaction {
+	result := jsonrpc.NewRPCTransaction(tx, mockBlockHash, blockNumber, index, baseFee)
 	result.BlockHash = &libcommon.Hash{}
 	return result
 }

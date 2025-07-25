@@ -20,7 +20,6 @@ import (
 	"github.com/ledgerwatch/erigon/turbo/services"
 	"github.com/ledgerwatch/erigon/zk/datastream/server"
 	realtimeCache "github.com/ledgerwatch/erigon/zk/realtime/cache"
-	"github.com/ledgerwatch/erigon/zk/realtime/realtimeapi"
 	realtimeSub "github.com/ledgerwatch/erigon/zk/realtime/subscription"
 	"github.com/ledgerwatch/erigon/zk/sequencer"
 	"github.com/ledgerwatch/erigon/zk/syncer"
@@ -38,6 +37,7 @@ func APIList(db kv.RoDB, dbsmt kv.RoDB, eth rpchelper.ApiBackend, txPool txpool.
 	realtimeEnabled bool,
 	realtimeCache *realtimeCache.RealtimeCache,
 	realtimeSub *realtimeSub.RealtimeSubscription,
+	NewRealtimeAPI func(base *APIImpl, cacheDB *realtimeCache.RealtimeCache, subService *realtimeSub.RealtimeSubscription, enableFlag bool) interface{},
 ) (list []rpc.API, gpCache *GasPriceCache) {
 	// non-sequencer nodes should forward on requests to the sequencer
 	rpcUrl := ""
@@ -82,8 +82,6 @@ func APIList(db kv.RoDB, dbsmt kv.RoDB, eth rpchelper.ApiBackend, txPool txpool.
 	overlayImpl := NewOverlayAPI(base, db, cfg.Gascap, cfg.OverlayGetLogsTimeout, cfg.OverlayReplayBlockTimeout, otsImpl)
 	// For X Layer, split db and ac
 	zkEvmImpl := NewZkEvmAPI(ethImpl, db, dbsmt, cfg.ReturnDataLimit, ethCfg, l1Syncer, rpcUrl, dataStreamServer, cache)
-	// For X Layer, realtime response
-	realtimeImpl := NewRealtimeAPI(realtimeCache, realtimeSub, ethImpl, realtimeEnabled)
 
 	if cfg.GraphQLEnabled {
 		list = append(list, rpc.API{
@@ -97,12 +95,21 @@ func APIList(db kv.RoDB, dbsmt kv.RoDB, eth rpchelper.ApiBackend, txPool txpool.
 	for _, enabledAPI := range cfg.API {
 		switch enabledAPI {
 		case "eth":
-			list = append(list, rpc.API{
-				Namespace: "eth",
-				Public:    true,
-				Service:   EthAPI(ethImpl),
-				Version:   "1.0",
-			})
+			if realtimeEnabled {
+				list = append(list, rpc.API{
+					Namespace: "eth",
+					Public:    true,
+					Service:   NewRealtimeAPI(ethImpl, realtimeCache, realtimeSub, realtimeEnabled),
+					Version:   "1.0",
+				})
+			} else {
+				list = append(list, rpc.API{
+					Namespace: "eth",
+					Public:    true,
+					Service:   EthAPI(ethImpl),
+					Version:   "1.0",
+				})
+			}
 		case "debug":
 			list = append(list, rpc.API{
 				Namespace: "debug",
@@ -187,17 +194,6 @@ func APIList(db kv.RoDB, dbsmt kv.RoDB, eth rpchelper.ApiBackend, txPool txpool.
 				Namespace: "zkevm",
 				Public:    true,
 				Service:   ZkEvmAPI(zkEvmImpl),
-				Version:   "1.0",
-			})
-		case "realtime":
-			if !ethCfg.Zk.XLayer.Realtime.Enable {
-				log.Warn("[Realtime] realtime api enabled but realtime backend is disabled. Failed init realtime api")
-				continue
-			}
-			list = append(list, rpc.API{
-				Namespace: "realtime",
-				Public:    true,
-				Service:   realtimeapi.RealtimeAPI(realtimeImpl),
 				Version:   "1.0",
 			})
 		case "clique":
