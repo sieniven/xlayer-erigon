@@ -10,15 +10,15 @@ sed_inplace() {
 }
 
 
-docker-compose stop xlayer-seq
-docker-compose stop xlayer-rpc
+docker compose stop xlayer-seq
+docker compose stop xlayer-rpc
 
-docker-compose stop xlayer-bridge-service
-docker-compose stop xlayer-bridge-ui
-docker-compose stop xlayer-agg-sender
+docker compose stop xlayer-bridge-service
+docker compose stop xlayer-bridge-ui
+docker compose stop xlayer-agg-sender
 
-docker-compose stop xlayer-agglayer
-docker-compose stop xlayer-agglayer-prover
+docker compose stop xlayer-agglayer
+docker compose stop xlayer-agglayer-prover
 
 LOG_OUTPUT=$(docker compose logs xlayer-seq 2>&1 | tail -100)
 echo "LOG_OUTPUT: $LOG_OUTPUT"
@@ -64,12 +64,12 @@ if [ ! -f "$EXPORT_DIR/prestate-proof-mt64.json.gz" ] || [ ! -f "$EXPORT_DIR/op-
     echo "Extracting prestate files from Docker image..."
     TEMP_CONTAINER="temp-prestate-extract"
     docker create --name "$TEMP_CONTAINER" "$OP_STACK_IMAGE_TAG"
-    
+
     docker cp "$TEMP_CONTAINER":/app/op-program/bin/op-program "$EXPORT_DIR/op-program" || echo "Warning: Could not copy op-program"
     docker cp "$TEMP_CONTAINER":/app/op-program/bin/prestate-proof-mt64.json "$EXPORT_DIR/prestate-proof-mt64.json" || echo "Warning: Could not copy prestate-proof-mt64.json"
-    
+
     docker rm -f "$TEMP_CONTAINER"
-    
+
     if [ -f "$EXPORT_DIR/prestate-proof-mt64.json" ]; then
         gzip -c "$EXPORT_DIR/prestate-proof-mt64.json" > "$EXPORT_DIR/prestate-proof-mt64.json.gz"
         echo "✅ Created prestate-proof-mt64.json.gz"
@@ -80,14 +80,14 @@ fi
 if [ -f "$EXPORT_DIR/prestate-proof-mt64.json.gz" ]; then
     ACTUAL_HASH=$(sha256sum "$EXPORT_DIR/prestate-proof-mt64.json.gz" | awk '{print $1}')
     DEVNET_L1_JSON="$PWD_DIR/config-op/devnetL1.json"
-    
+
     if [ -f "$DEVNET_L1_JSON" ]; then
         CONFIGURED_HASH=$(jq -r '.faultGameAbsolutePrestate' "$DEVNET_L1_JSON" | sed 's/0x//')
         if [ "$ACTUAL_HASH" != "$CONFIGURED_HASH" ]; then
             echo "⚠️  Updating prestate hash in devnetL1.json for contract deployment"
             echo "   Old: 0x$CONFIGURED_HASH"
             echo "   New: 0x$ACTUAL_HASH"
-            
+
             jq --arg hash "0x$ACTUAL_HASH" '.faultGameAbsolutePrestate = $hash' "$DEVNET_L1_JSON" > "${DEVNET_L1_JSON}.tmp" && mv "${DEVNET_L1_JSON}.tmp" "$DEVNET_L1_JSON"
             echo "✅ Updated faultGameAbsolutePrestate for contract deployment"
         else
@@ -196,7 +196,7 @@ cd $ROOT_DIR
 go install ./cmd/hack/
 cd $PWD_DIR
 cp ./config-op/genesis.json ./config-op/genesis-op-raw.json
-hack -action migrateGenesis -chaindata ./data/seq/chaindata/ -input ./config-op/genesis-op-raw.json   -output ./config-op/genesis.json
+hack -action migrateGenesis -chaindata ./data/seq/chaindata/ -input ./config-op/genesis-op-raw.json -output ./config-op/genesis.json
 
 # FORK_BLOCK_HEX=$(printf "0x%x" "$FORK_BLOCK")
 # cp ./config-op/genesis.json ./config-op/genesis-op-before-number.json
