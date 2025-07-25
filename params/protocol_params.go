@@ -173,6 +173,9 @@ const (
 
 	// PIP-27: secp256r1 elliptic curve signature verifier gas price
 	P256VerifyGas uint64 = 3450
+
+	// For X Layer forkId14PP, GAS_MINT precompile (gas token minting)
+	GasMintGas uint64 = 1
 )
 
 // EIP-4788: Beacon block root in the EVM

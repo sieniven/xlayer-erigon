@@ -96,6 +96,21 @@ var PrecompiledContractsForkID13Durian = map[libcommon.Address]PrecompiledContra
 	libcommon.BytesToAddress([]byte{8}):          &bn256PairingIstanbul_zkevm{enabled: true},
 	libcommon.BytesToAddress([]byte{9}):          &blake2F_zkevm{enabled: false},
 	libcommon.BytesToAddress([]byte{0x01, 0x00}): &p256Verify_zkevm{enabled: true},
+	libcommon.BytesToAddress([]byte{0xbb, 0xbb}): &gasMint_zkevm{enabled: true},
+}
+
+var PrecompiledContractsForkID14PP = map[libcommon.Address]PrecompiledContract_zkEvm{
+	libcommon.BytesToAddress([]byte{1}):          &ecrecover_zkevm{enabled: true},
+	libcommon.BytesToAddress([]byte{2}):          &sha256hash_zkevm{enabled: true},
+	libcommon.BytesToAddress([]byte{3}):          &ripemd160hash_zkevm{enabled: false},
+	libcommon.BytesToAddress([]byte{4}):          &dataCopy_zkevm{enabled: true},
+	libcommon.BytesToAddress([]byte{5}):          &bigModExp_zkevm{enabled: true, eip2565: true},
+	libcommon.BytesToAddress([]byte{6}):          &bn256AddIstanbul_zkevm{enabled: true},
+	libcommon.BytesToAddress([]byte{7}):          &bn256ScalarMulIstanbul_zkevm{enabled: true},
+	libcommon.BytesToAddress([]byte{8}):          &bn256PairingIstanbul_zkevm{enabled: true},
+	libcommon.BytesToAddress([]byte{9}):          &blake2F_zkevm{enabled: false},
+	libcommon.BytesToAddress([]byte{0x01, 0x00}): &p256Verify_zkevm{enabled: true},
+	libcommon.BytesToAddress([]byte{0xbb, 0xbb}): &gasMint_zkevm{enabled: true},
 }
 
 // ECRECOVER implemented as a native contract.
@@ -1284,4 +1299,79 @@ func (c *p256Verify_zkevm) Run(input []byte) ([]byte, error) {
 		// Signature is invalid
 		return nil, nil
 	}
+}
+
+// For X Layer forkId14PP, GAS_MINT precompile (gas token minting)
+type gasMint_zkevm struct {
+	enabled bool
+	cc      *CounterCollector
+}
+
+func (c *gasMint_zkevm) SetCounterCollector(cc *CounterCollector) {
+	c.cc = cc
+}
+
+func (c *gasMint_zkevm) SetOutputLength(outLength int) {
+}
+
+// RequiredGas returns the gas required to execute the precompiled contract
+func (c *gasMint_zkevm) RequiredGas(input []byte) uint64 {
+	if !c.enabled {
+		return 0
+	}
+
+	// Gas cost for minting operation
+	return params.GasMintGas
+}
+
+// Run executes the precompiled contract with given input bytes
+// Input format: 20 bytes (to address) + 32 bytes (amount uint256) = 52 bytes total
+func (c *gasMint_zkevm) Run(input []byte) ([]byte, error) {
+	if !c.enabled {
+		return nil, ErrUnsupportedPrecompile
+	}
+
+	// Required input length is 52 bytes (20 bytes address + 32 bytes amount)
+	const gasMintInputLength = 52
+
+	// Check the input length
+	if len(input) != gasMintInputLength {
+		// Input length is invalid, return error
+		return nil, fmt.Errorf("invalid input length: expected %d bytes, got %d bytes", gasMintInputLength, len(input))
+	}
+
+	// Extract the to address (first 20 bytes) and amount (last 32 bytes)
+	toAddress := libcommon.BytesToAddress(input[0:20])
+	amount := new(big.Int).SetBytes(input[20:52])
+
+	// Validate that amount is not zero
+	if amount.Sign() <= 0 {
+		return nil, fmt.Errorf("invalid amount: must be positive")
+	}
+
+	// The actual minting logic needs to be implemented at the EVM level
+	// This precompiled contract validates input parameters, the actual state modification (balance increase)
+	// should be handled at the place where this precompiled contract is called
+	// May need to add special logic in the EVM interpreter to handle the return value and modify StateDB
+
+	// Increment counters if available
+	if c.cc != nil {
+		// Can add counter for gas mint operations
+		// c.cc.preGasMint(toAddress, amount) // Add this counter method if needed
+	}
+
+	// Return success indicator and related data
+	// Return format: 1 byte success flag(1) + 20 bytes target address + 32 bytes amount
+	result := make([]byte, 53) // 1 + 20 + 32 = 53 bytes
+
+	// First part: success flag (1 byte)
+	result[0] = 1
+
+	// Second part: target address (20 bytes)
+	copy(result[1:21], toAddress.Bytes())
+
+	// Third part: amount (32 bytes)
+	copy(result[21:53], common.LeftPadBytes(amount.Bytes(), 32))
+
+	return result, nil
 }

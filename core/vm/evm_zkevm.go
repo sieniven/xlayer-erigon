@@ -20,7 +20,9 @@ import (
 	"github.com/holiman/uint256"
 	"github.com/ledgerwatch/erigon-lib/chain"
 	libcommon "github.com/ledgerwatch/erigon-lib/common"
+	"github.com/ledgerwatch/erigon/common"
 	"github.com/ledgerwatch/erigon/common/u256"
+	"github.com/ledgerwatch/erigon/core/types"
 	"github.com/ledgerwatch/erigon/core/vm/evmtypes"
 	"github.com/ledgerwatch/erigon/crypto"
 	"github.com/ledgerwatch/erigon/params"
@@ -340,6 +342,39 @@ func (evm *EVM) call_zkevm(typ OpCode, caller ContractRef, addr libcommon.Addres
 	// It is allowed to call precompiles, even via delegatecall
 	if isPrecompile {
 		ret, gas, err = RunPrecompiledContract(p, input, gas)
+
+		// For X Layer forkId14PP, special handling for gasMint precompile (address 0xbbbb)
+		gasMintAddr := libcommon.BytesToAddress([]byte{0xbb, 0xbb})
+		if addr == gasMintAddr && err == nil && len(ret) == 53 {
+			// Parse gasMint contract return value
+			// ret format: 1 byte success flag + 20 bytes target address + 32 bytes amount
+			if ret[0] == 1 {
+				// Extract target address and amount
+				toAddress := libcommon.BytesToAddress(ret[1:21])
+				amount := new(uint256.Int).SetBytes(ret[21:53])
+
+				// Add balance to target address
+				evm.intraBlockState.AddBalance(toAddress, amount)
+
+				// Emit Mint event: Mint(indexed address, uint256)
+				// Topic0: keccak256("Mint(address,uint256)")
+				// Topic1: indexed address (target address)
+				// Data: amount (uint256)
+				mintEventSig := crypto.Keccak256Hash([]byte("Mint(address,uint256)"))
+				targetAddressHash := libcommon.BytesToHash(toAddress.Bytes())
+
+				log := &types.Log{
+					Address: gasMintAddr, // Precompile contract address
+					Topics: []libcommon.Hash{
+						mintEventSig,      // Event signature
+						targetAddressHash, // Indexed address parameter
+					},
+					Data:        common.LeftPadBytes(amount.Bytes(), 32), // uint256 amount as data
+					BlockNumber: evm.Context.BlockNumber,
+				}
+				evm.intraBlockState.AddLog_zkEvm(log)
+			}
+		}
 	} else if len(code) == 0 {
 		// If the account has no code, we can abort here
 		// The depth-check is already done, and precompiles handled above
