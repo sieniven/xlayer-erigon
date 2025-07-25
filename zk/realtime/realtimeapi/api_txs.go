@@ -23,7 +23,7 @@ func (api *RealtimeAPIImpl) GetTransactionByHash(ctx context.Context, txnHash co
 	if !ok {
 		return api.APIImpl.GetTransactionByHash(ctx, txnHash, includeExtraInfo)
 	}
-	header, _, ok := api.cacheDB.Stateless.GetHeader(blockNum)
+	header, _, blockhash, ok := api.cacheDB.Stateless.GetHeader(blockNum)
 	if !ok {
 		return api.APIImpl.GetTransactionByHash(ctx, txnHash, includeExtraInfo)
 	}
@@ -41,7 +41,7 @@ func (api *RealtimeAPIImpl) GetTransactionByHash(ctx context.Context, txnHash co
 		return api.APIImpl.GetTransactionByHash(ctx, txnHash, includeExtraInfo)
 	}
 
-	return newRPCTransaction_realtime(txn, blockNum, txnIndex, header.BaseFee), nil
+	return newRPCTransaction_realtime(txn, blockhash, blockNum, txnIndex, header.BaseFee), nil
 }
 
 // GetRawTransactionByHash implements realtime_getRawTransactionByHash.

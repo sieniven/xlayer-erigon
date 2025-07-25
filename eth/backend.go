@@ -262,7 +262,7 @@ type Ethereum struct {
 	realtimeCache *realtimeCache.RealtimeCache
 	blockInfoChan chan *realtimeTypes.BlockInfo
 	txInfoChan    chan *state.TxInfo
-	finishChan    chan uint64
+	finishChan    chan realtimeTypes.FinishedEntry
 	realtimeSub   *realtimeSub.RealtimeSubscription
 }
 
@@ -1311,7 +1311,7 @@ func New(ctx context.Context, stack *node.Node, config *ethconfig.Config, logger
 						return nil, err
 					}
 
-					backend.finishChan = make(chan uint64)
+					backend.finishChan = make(chan realtimeTypes.FinishedEntry)
 
 					if cfg.Zk.XLayer.Realtime.EnableSubscribe {
 						backend.realtimeSub = realtimeSub.NewRealtimeSubscription()

@@ -4,12 +4,14 @@ import (
 	"path/filepath"
 	"sync"
 
+	libcommon "github.com/ledgerwatch/erigon-lib/common"
 	ethTypes "github.com/ledgerwatch/erigon/core/types"
 )
 
 type BlockInfo struct {
 	Header  *ethTypes.Header
 	TxCount int64
+	Hash    libcommon.Hash
 }
 
 type BlockInfoMap struct {
@@ -23,14 +25,14 @@ func NewBlockInfoMap(size int) *BlockInfoMap {
 	}
 }
 
-func (bm *BlockInfoMap) Get(blockNum uint64) (*ethTypes.Header, int64, bool) {
+func (bm *BlockInfoMap) Get(blockNum uint64) (*ethTypes.Header, int64, libcommon.Hash, bool) {
 	bm.mu.RLock()
 	defer bm.mu.RUnlock()
 	blockInfo, exists := bm.blockInfos[blockNum]
 	if exists {
-		return blockInfo.Header, blockInfo.TxCount, true
+		return blockInfo.Header, blockInfo.TxCount, blockInfo.Hash, true
 	}
-	return nil, 0, exists
+	return nil, 0, libcommon.Hash{}, exists
 }
 
 func (bm *BlockInfoMap) PutHeader(blockNum uint64, header *ethTypes.Header, prevTxCount int64) {
@@ -39,6 +41,7 @@ func (bm *BlockInfoMap) PutHeader(blockNum uint64, header *ethTypes.Header, prev
 	bm.blockInfos[blockNum] = &BlockInfo{
 		Header:  header,
 		TxCount: -1,
+		Hash:    libcommon.Hash{},
 	}
 
 	// Update previous block header tx count
@@ -46,6 +49,14 @@ func (bm *BlockInfoMap) PutHeader(blockNum uint64, header *ethTypes.Header, prev
 	blockInfo, exists := bm.blockInfos[prevBlockNum]
 	if exists {
 		blockInfo.TxCount = prevTxCount
+	}
+}
+
+func (bm *BlockInfoMap) PutBlockHash(blockNum uint64, hash libcommon.Hash) {
+	bm.mu.Lock()
+	defer bm.mu.Unlock()
+	if blockInfo, exists := bm.blockInfos[blockNum]; exists {
+		blockInfo.Hash = hash
 	}
 }
 

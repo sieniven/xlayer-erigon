@@ -73,7 +73,7 @@ func ListenKafkaConsumer(
 	ctx context.Context,
 	kafkaConsumer *kafka.KafkaConsumer,
 	realtimeCache *cache.RealtimeCache,
-	finishChan chan uint64,
+	finishChan chan realtimeTypes.FinishedEntry,
 	subService *realtimeSub.RealtimeSubscription) {
 	if sequencer.IsSequencer() {
 		log.Info("[Realtime] KafkaConsumer is disabled on sequencer, skipping")
@@ -104,14 +104,14 @@ func ListenKafkaConsumer(
 		select {
 		case <-ctx.Done():
 			return
-		case finishHeight := <-finishChan:
-			if finishHeight < realtimeCache.GetExecutionHeight() {
+		case finishEntry := <-finishChan:
+			if finishEntry.Height < realtimeCache.GetExecutionHeight() {
 				// Chain rollback. Reset realtime cache
 				resetFlag.Store(true)
-				log.Debug(fmt.Sprintf("[Realtime] Chain rollback detected, resetting realtime cache. finishHeight: %d", finishHeight))
+				log.Debug(fmt.Sprintf("[Realtime] Chain rollback detected, resetting realtime cache. finishHeight: %d", finishEntry.Height))
 			}
-			realtimeCache.PutExecutionHeight(finishHeight)
-			log.Debug(fmt.Sprintf("[Realtime] Received finish signal from execution. finishHeight: %d", finishHeight))
+			realtimeCache.UpdateExecution(finishEntry)
+			log.Debug("[Realtime] Received finish signal from execution", "finishHeight", finishEntry.Height)
 		case blockMsg := <-blockMsgsChan:
 			header, _, err := blockMsg.GetBlockInfo()
 			if err != nil {

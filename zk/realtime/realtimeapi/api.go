@@ -13,7 +13,8 @@ import (
 )
 
 var (
-	mockBlockHash         = libcommon.BytesToHash([]byte{1})
+	MockBlockHash         = libcommon.BytesToHash([]byte{1})
+	EmptyBlockHash        = libcommon.Hash{}
 	ErrRealtimeNotEnabled = fmt.Errorf("realtime is not enabled")
 )
 
@@ -90,8 +91,13 @@ func (api *RealtimeAPIImpl) getBlockNumber(blockNr rpc.BlockNumber) (uint64, boo
 // newRPCTransaction_realtime returns a transaction that will serialize to the RPC
 // representation, with the given location metadata set (if available).
 // Note that realtime API do not support blockHash.
-func newRPCTransaction_realtime(tx types.Transaction, blockNumber uint64, index uint64, baseFee *big.Int) *jsonrpc.RPCTransaction {
-	result := jsonrpc.NewRPCTransaction(tx, mockBlockHash, blockNumber, index, baseFee)
-	result.BlockHash = &libcommon.Hash{}
+func newRPCTransaction_realtime(tx types.Transaction, txblockhash libcommon.Hash, blockNumber uint64, index uint64, baseFee *big.Int) *jsonrpc.RPCTransaction {
+	blockhash := txblockhash
+	if blockhash == EmptyBlockHash {
+		blockhash = MockBlockHash
+	}
+
+	result := jsonrpc.NewRPCTransaction(tx, blockhash, blockNumber, index, baseFee)
+	result.BlockHash = &txblockhash
 	return result
 }

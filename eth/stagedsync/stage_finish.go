@@ -21,6 +21,7 @@ import (
 	"github.com/ledgerwatch/erigon/turbo/engineapi/engine_helpers"
 	"github.com/ledgerwatch/erigon/turbo/services"
 	realtimeCache "github.com/ledgerwatch/erigon/zk/realtime/cache"
+	realtimeTypes "github.com/ledgerwatch/erigon/zk/realtime/types"
 	"github.com/ledgerwatch/log/v3"
 
 	"github.com/ledgerwatch/erigon/core/rawdb"
@@ -38,10 +39,10 @@ type FinishCfg struct {
 	realtimeCache                *realtimeCache.RealtimeCache
 	realtimeEnable               bool
 	realtimeCacheHeightThreshold uint64
-	realtimeFinishChan           chan uint64
+	realtimeFinishChan           chan realtimeTypes.FinishedEntry
 }
 
-func StageFinishCfg(db kv.RwDB, tmpDir string, forkValidator *engine_helpers.ForkValidator, realtimeCache *realtimeCache.RealtimeCache, realtimeEnable bool, realtimeCacheHeightThreshold uint64, realtimeFinishChan chan uint64) FinishCfg {
+func StageFinishCfg(db kv.RwDB, tmpDir string, forkValidator *engine_helpers.ForkValidator, realtimeCache *realtimeCache.RealtimeCache, realtimeEnable bool, realtimeCacheHeightThreshold uint64, realtimeFinishChan chan realtimeTypes.FinishedEntry) FinishCfg {
 	return FinishCfg{
 		db:            db,
 		tmpDir:        tmpDir,
@@ -83,7 +84,8 @@ func FinishForward(s *StageState, tx kv.RwTx, cfg FinishCfg, initialCycle bool) 
 		return nil
 	}
 
-	rawdb.WriteHeadBlockHash(tx, rawdb.ReadHeadHeaderHash(tx))
+	blockhash := rawdb.ReadHeadHeaderHash(tx)
+	rawdb.WriteHeadBlockHash(tx, blockhash)
 	err = s.Update(tx, executionAt)
 	if err != nil {
 		return err
@@ -106,7 +108,10 @@ func FinishForward(s *StageState, tx kv.RwTx, cfg FinishCfg, initialCycle bool) 
 
 	// For X Layer, realtime
 	if cfg.realtimeEnable && cfg.realtimeFinishChan != nil && cfg.realtimeCache != nil {
-		cfg.realtimeFinishChan <- executionAt
+		cfg.realtimeFinishChan <- realtimeTypes.FinishedEntry{
+			Height:    executionAt,
+			BlockHash: blockhash,
+		}
 		if executionAt > cfg.realtimeCacheHeightThreshold {
 			deleteHeight := executionAt - cfg.realtimeCacheHeightThreshold
 			cfg.realtimeCache.Stateless.DeleteBlock(deleteHeight)

@@ -19,9 +19,15 @@ func (api *RealtimeAPIImpl) GetTransactionReceipt(ctx context.Context, hash comm
 	if !ok {
 		return api.APIImpl.GetTransactionReceipt(ctx, hash)
 	}
-	header, _, ok := api.cacheDB.Stateless.GetHeader(receipt.BlockNumber.Uint64())
+	header, _, blockhash, ok := api.cacheDB.Stateless.GetHeader(receipt.BlockNumber.Uint64())
 	if !ok {
 		return api.APIImpl.GetTransactionReceipt(ctx, hash)
+	}
+	if blockhash != EmptyBlockHash {
+		receipt.BlockHash = blockhash
+		for _, log := range receipt.Logs {
+			log.BlockHash = blockhash
+		}
 	}
 
 	tx, err := api.APIImpl.GetDB().BeginRo(ctx)

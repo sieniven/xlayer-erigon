@@ -21,13 +21,13 @@ func (api *RealtimeAPIImpl) Call(ctx context.Context, args ethapi2.CallArgs, blo
 
 	if blockNrOrHash.BlockNumber != nil && *blockNrOrHash.BlockNumber == rpc.PendingBlockNumber {
 		// Realtime supported only for pending tags
-		return api.doCall(ctx, args, overrides)
+		return api.doRealtimeCall(ctx, args, overrides)
 	}
 
 	return api.APIImpl.Call(ctx, args, blockNrOrHash, overrides)
 }
 
-func (api *RealtimeAPIImpl) doCall(ctx context.Context, args ethapi2.CallArgs, overrides *ethapi2.StateOverrides) (hexutility.Bytes, error) {
+func (api *RealtimeAPIImpl) doRealtimeCall(ctx context.Context, args ethapi2.CallArgs, overrides *ethapi2.StateOverrides) (hexutility.Bytes, error) {
 	tx, err := api.APIImpl.GetDB().BeginRo(ctx)
 	if err != nil {
 		return nil, err
@@ -49,7 +49,7 @@ func (api *RealtimeAPIImpl) doCall(ctx context.Context, args ethapi2.CallArgs, o
 		return nil, err
 	}
 
-	header, _, ok := api.cacheDB.Stateless.GetHeader(blockNumber)
+	header, _, _, ok := api.cacheDB.Stateless.GetHeader(blockNumber)
 	if !ok {
 		return nil, fmt.Errorf("header not found for block number %d", blockNumber)
 	}

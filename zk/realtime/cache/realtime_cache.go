@@ -123,10 +123,11 @@ func (cache *RealtimeCache) GetExecutionHeight() uint64 {
 	return cache.highestExecutionHeight.Load()
 }
 
-func (cache *RealtimeCache) PutExecutionHeight(blockNum uint64) {
-	if blockNum > cache.highestExecutionHeight.Load() {
-		cache.highestExecutionHeight.Store(blockNum)
+func (cache *RealtimeCache) UpdateExecution(finishEntry realtimeTypes.FinishedEntry) {
+	if finishEntry.Height > cache.highestExecutionHeight.Load() {
+		cache.highestExecutionHeight.Store(finishEntry.Height)
 	}
+	cache.Stateless.PutBlockHash(finishEntry.Height, finishEntry.BlockHash)
 }
 
 func (cache *RealtimeCache) GetHighestPendingHeight() uint64 {

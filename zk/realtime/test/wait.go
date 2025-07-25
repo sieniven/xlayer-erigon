@@ -11,7 +11,6 @@ import (
 	"github.com/ledgerwatch/erigon/accounts/abi/bind"
 	"github.com/ledgerwatch/erigon/core/types"
 	"github.com/ledgerwatch/erigon/zk/realtime/rtclient"
-	"github.com/ledgerwatch/erigon/zkevm/log"
 )
 
 func WaitCallback(
@@ -136,7 +135,7 @@ func WaitTxToBeMined(parentCtx context.Context, client *rtclient.RealtimeClient,
 	if errors.Is(err, context.DeadlineExceeded) {
 		return err
 	} else if err != nil {
-		log.Error(fmt.Sprintf("error waiting tx %s to be mined: %v", tx.Hash(), err))
+		fmt.Printf("error waiting tx %s to be mined: %v\n", tx.Hash(), err)
 		return err
 	}
 	if receipt.Status == types.ReceiptStatusFailed {
@@ -160,7 +159,6 @@ func WaitTxToBeMined(parentCtx context.Context, client *rtclient.RealtimeClient,
 			return err
 		}
 
-		fmt.Printf("currNum: %d, receipt.BlockNumber: %d\n", currNum, receipt.BlockNumber.Uint64())
 		if currNum >= receipt.BlockNumber.Uint64() {
 			break
 		}

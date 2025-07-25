@@ -43,7 +43,7 @@ func NewDefaultZkStages(ctx context.Context,
 	infoTreeUpdater *l1infotree.Updater,
 	// For X Layer, realtime
 	realtimeCache *realtimeCache.RealtimeCache,
-	realtimeFinishChan chan uint64,
+	realtimeFinishChan chan realtimeTypes.FinishedEntry,
 ) []*stagedsync.Stage {
 	dirs := cfg.Dirs
 	blockWriter := blockio.NewBlockWriter(cfg.HistoryV3)
