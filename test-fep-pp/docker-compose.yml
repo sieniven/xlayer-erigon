@@ -57,7 +57,9 @@ services:
       - "0.0.0.0"
       - "--dev"
       - "--dev.period"
-      - "1"
+      - "12"
+      - "--dev.gaslimit"
+      - "100000000"
       - "--datadir"
       - "/geth_data"
       - "--syncmode"
@@ -93,7 +95,7 @@ services:
 
   xlayer-bridge-service:
     container_name: xlayer-bridge-service
-    image: hermeznetwork/zkevm-bridge-service:v0.6.0
+    image: zkevm-bridge-service:latest
     ports:
       - 8080:8080
       - 9090:9090

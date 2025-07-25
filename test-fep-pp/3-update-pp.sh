@@ -116,6 +116,9 @@ done
 
 make stop-old
 
+echo "!!!!!!!!!!!! Should wait for send bridge txs"
+./10-bridge-no-wait.sh
+
 cd ./xlayer-contracts
 
 BYTECODE=$(jq -r '.bytecode' "$CONTRACT_JSON")
@@ -161,24 +164,31 @@ rollupTypeCount=$((16#${hex#0x}))
 echo "$rollupTypeCount"
 cast call 0x2d42E2899662EFf08b13eeb65b154b904C7a1c8a "rollupTypeMap(uint32)(address,address,uint64,uint8,bool,bytes32)" $rollupTypeCount
 
-echo "Creating ./tools/initMigrationToPP/initMigrationToPP.json..."
-cat > ./tools/initMigrationToPP/initMigrationToPP.json << EOF
+echo "Creating ./tools/initMigration/initMigration.json..."
+cat > ./tools/initMigration/initMigration.json << EOF
 {
     "type": "EOA",
     "polygonRollupManagerAddress": "0x2d42E2899662EFf08b13eeb65b154b904C7a1c8a",
     "rollupID": 1,
     "newRollupTypeID": $rollupTypeCount,
     "timelockDelay": 0,
+    "upgradeData": "0x",
     "maxFeePerGas": "",
     "maxPriorityFeePerGas": "",
     "multiplierGas": ""
 }
 EOF
 
-echo "Before initMigrationToPP.ts"
+echo "Before initMigration.ts"
 cast call 0x2d42E2899662EFf08b13eeb65b154b904C7a1c8a "rollupIDToRollupData(uint32)(address,uint64,address,uint64,bytes32,uint64,uint64,uint64,uint64,uint64,uint64,uint8)" 1 
 
-npx hardhat run ./tools/initMigrationToPP/initMigrationToPP.ts --network localhost
+npx hardhat run ./tools/initMigration/initMigration.ts --network localhost
 
-echo "After initMigrationToPP.ts, rollupTypeID: 1"
+echo "After initMigration.ts, rollupTypeID: 1"
 cast call 0x2d42E2899662EFf08b13eeb65b154b904C7a1c8a "rollupIDToRollupData(uint32)(address,uint64,address,uint64,bytes32,uint64,uint64,uint64,uint64,uint64,uint64,uint8)" 1 
+
+
+echo "!!!!!!!!!!!! Should wait for send bridge txs"
+
+cd "$PWD_DIR"
+./10-bridge-no-wait.sh

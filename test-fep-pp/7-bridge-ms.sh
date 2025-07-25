@@ -135,7 +135,7 @@ echo "GER updated to $GER on L1, took $total_elapsed seconds"
 
 
 echo "Getting deposit count and network ID from bridge service..."
-sleep 30
+sleep 120
 result=$(curl -s "$BRIDGE_SERVICE1/bridges/$ACCOUNT?limit=8000&offset=0" | \
    jq -r '.deposits[] | select(.ready_for_claim == true and .claim_tx_hash == "" and .tx_hash=="'$TX_HASH'")')                                                                  
 DEPOSIT_CNT=$(echo "$result" | jq -r '.deposit_cnt')

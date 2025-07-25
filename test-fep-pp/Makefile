@@ -26,7 +26,7 @@ run-old: build-docker
 	$(DOCKER_COMPOSE) up -d xlayer-agg
 	$(DOCKER_COMPOSE) up -d xlayer-da
 
-	sleep 10
+	sleep 30
 	$(DOCKER_COMPOSE) up -d xlayer-bridge-service
 	$(DOCKER_COMPOSE) up -d xlayer-bridge-ui
 	$(INIT_BRIDGE_ACCOUNT)
@@ -50,9 +50,11 @@ run-new:
 	sleep 3
 
 	$(DOCKER_COMPOSE) up -d xlayer-agglayer-prover
+	sleep 10
 	$(DOCKER_COMPOSE) up -d xlayer-agglayer
 	mkdir -p data/aggkit
 	chmod -R 777 data 
+	sleep 10
 	$(DOCKER_COMPOSE) up -d xlayer-aggkit
 	
 .PHONY: stop

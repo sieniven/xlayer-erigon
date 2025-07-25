@@ -28,13 +28,10 @@ sed_inplace() {
 }
 
 echo "Cleaning all docker containers..."
-docker stop $(docker ps -aq) || true
-docker rm $(docker ps -aq) || true
-
 echo "Starting xlayer-mock-l1-network..."
 docker-compose up -d xlayer-mock-l1-network
-echo "Sleep 20s for xlayer-mock-l1-network to pruduct blocks"
-sleep 20
+echo "Sleep 10 for xlayer-mock-l1-network to pruduct blocks"
+sleep 10
 
 git checkout docker-compose.yml
 git checkout config/test.erigon.seq.config.yaml
@@ -43,6 +40,16 @@ git checkout config/aggkit.toml
 
 echo "Sending funds to deployer..."
 cast send -f $RICH_ADDRESS --private-key $RICH_PRIVATE_KEY --value 30ether --legacy $DEPLOYER_ADDRESS
+
+if [ ! -d "./xlayer-bridge-service" ]; then
+  echo "Cloning contract repository..."
+  git clone -b upstream/v0.6.1 https://github.com/okx/xlayer-bridge-service.git
+fi
+
+cd ./xlayer-bridge-service
+make build-docker
+
+cd ..
 
 if [ ! -d "./xlayer-contracts" ]; then
   echo "Cloning contract repository..."
@@ -206,6 +213,6 @@ echo "Initialization script completed!"
 cd "$PWD_DIR"
 
 make run-old
-echo "Sleep for xlayer-mock-l1-network to pruduct blocks"
-sleep 20
+echo "Sleep 10s for xlayer-mock-l1-network to pruduct blocks"
+sleep 10
 ./6-bridge.sh

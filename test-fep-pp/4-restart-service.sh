@@ -14,12 +14,12 @@ PWD_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 if [ ! -d "./xlayer-erigon" ]; then
   echo "Cloning contract repository..."
-  git clone -b yz/pp_finalized_block https://github.com/okx/xlayer-erigon.git
+  git clone -b zjg/merge-upstream-v2.61.23-dev-pp https://github.com/okx/xlayer-erigon.git
 fi
 
 cd ./xlayer-erigon
 echo "Cleaning and resting contract repository..."
-rm -rf *; git reset --hard; git pull;  git checkout yz/pp_finalized_block
+rm -rf *; git reset --hard; git pull;  git checkout zjg/merge-upstream-v2.61.23-dev-pp
 make build-docker
 
 cd $PWD_DIR
@@ -33,6 +33,11 @@ sed_inplace "s|zkevm.executor-mock: true| |g" "$DOCK_CONFIG_FILE"
 
 DOCK_CONFIG_FILE="./config/test.erigon.rpc.config.yaml"
 sed_inplace "s|zkevm.mock-witness-generation: true| |g" "$DOCK_CONFIG_FILE"
+echo "!!!!!!!!!!!! Should wait for send bridge txs"
+./10-bridge-no-wait.sh
 
 ./5-build-ckd-node.sh 0
 make run-new
+
+echo "!!!!!!!!!!!! Should wait for send bridge txs"
+./10-bridge-no-wait.sh

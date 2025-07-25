@@ -135,7 +135,7 @@ SyncModeOnlyEnabled = false
 		[Aggregator.Synchronizer.Synchronizer]
 			SyncInterval = "10s"
 			SyncChunkSize = 1000
-			GenesisBlockNumber = 123
+			GenesisBlockNumber = 1
 			SyncUpToBlock = "finalized"
 			BlockFinality = "finalized"
 			OverrideStorageCheck = false
@@ -173,7 +173,7 @@ RollupManagerAddr = "0x2d42E2899662EFf08b13eeb65b154b904C7a1c8a"
 SyncBlockChunkSize=10
 BlockFinality="LatestBlock"
 WaitForNewBlocksPeriod="100ms"
-InitialBlock= 123
+InitialBlock= 1
 
 # Only for AGGORACLE, RPC, AGGSENDER
 #[AggOracle]

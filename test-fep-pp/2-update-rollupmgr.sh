@@ -28,7 +28,7 @@ cd "./xlayer-contracts"
 
 git stash
 git pull
-git checkout zjg/v11.0.0-rc.0-v2; git pull
+git checkout zjg/v11.0.0-rc.0-v3; git pull
 git stash apply "$@" || true
 conflict_files=$(git diff --name-only --diff-filter=U)
 if [ -n "$conflict_files" ]; then
@@ -64,3 +64,8 @@ cast send --rpc-url "$L1_RPC_URL" --private-key "$DEPLOYER_PRIVATE_KEY" "$TIME_L
 
 sleep 5
 cast call --rpc-url "$L1_RPC_URL" $ROLLUP_MGR_ADDRESS 'ROLLUP_MANAGER_VERSION()(string)'
+
+echo "!!!!!!!!!!!! Should wait for send bridge txs"
+
+cd "$PWD_DIR"
+./10-bridge-no-wait.sh

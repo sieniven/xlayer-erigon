@@ -75,8 +75,8 @@ do
 done
 
 # Wait for assets to be claimed automatically by sponsor
-echo "Waiting 60s for assets to be claimed by sponsor..."
-sleep 6
+echo "Waiting 120s for assets to be claimed by sponsor..."
+sleep 120
 while true; do
     balance=$(cast call "$L2_WETH" "balanceOf(address)(uint256)" "$ACCOUNT" --rpc-url "$L2RPC" | awk '{print $1}')
     balance=${balance:-0}
@@ -141,15 +141,14 @@ while true; do
     echo "Current GER on L1: $GER, waiting for GER to be updated on L1..."
     sleep 10
 done
+
 sleep_time=$((input / 5))
 
-# Ensure sleep_time is at least 180
-if [ $sleep_time -lt 60 ]; then
-    sleep_time=60
+if [ $sleep_time -lt 180 ]; then
+    sleep_time=180
 fi
 
-echo "GER updated to $GER on L1, and sleep $sleep_time s for all txs"
-
+echo "GER updated to $GER on L1, and sleep $sleep_time seconds for all txs"
 sleep $sleep_time
 
 CURRENT_NONCE=$(cast nonce --rpc-url $L1RPC $ACCOUNT)
@@ -188,13 +187,5 @@ for TX_HASH in "${TX_HASH_ARRAY[@]}"; do
     fi
 done
 
-sleep_time=$((input / 5))
-
-# Ensure sleep_time is at least 60
-if [ $sleep_time -lt 60 ]; then
-    sleep_time=60
-fi
-
-echo "L1 claim, and sleep $sleep_time s for all txs"
-
+echo "L1 claim, and sleep $sleep_time seconds for all txs"
 sleep $sleep_time

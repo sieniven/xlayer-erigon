@@ -16,8 +16,6 @@ sed_inplace() {
 }
 
 echo "Cleaning all docker containers..."
-docker stop $(docker ps -aq) || true
-docker rm $(docker ps -aq) || true
 
 echo "Starting zkevm-mock-l1-network..."
 docker-compose up -d zkevm-mock-l1-network

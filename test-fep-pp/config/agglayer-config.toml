@@ -76,7 +76,7 @@ send-tx = "unlimited"
 [rate-limiting.network]
 
 [epoch.block-clock]
-epoch-duration = 300
+epoch-duration = 30
 genesis-block = 10
 
 [shutdown]
