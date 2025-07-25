@@ -84,7 +84,7 @@ run: stop build-docker
 	$(DOCKER_COMPOSE) up -d xlayer-bridge-ui
 	$(INIT_BRIDGE_ACCOUNT)
 	
-	$(DOCKER_COMPOSE) up -d xlayer-cdk-node
+	$(DOCKER_COMPOSE) up -d xlayer-aggkit
 
 .PHONY: run
 realtime-run: stop build-docker
@@ -112,7 +112,7 @@ realtime-run: stop build-docker
 	$(DOCKER_COMPOSE) up -d xlayer-bridge-ui
 	$(INIT_BRIDGE_ACCOUNT)
 	
-	$(DOCKER_COMPOSE) up -d xlayer-cdk-node
+	$(DOCKER_COMPOSE) up -d xlayer-aggkit
 
 .PHONY: run
 multi-run: run
