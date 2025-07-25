@@ -1,6 +1,7 @@
 package ethconfig
 
 import (
+	"github.com/ledgerwatch/erigon-lib/chain"
 	"time"
 
 	"github.com/c2h5oh/datasize"
@@ -96,6 +97,8 @@ type Zk struct {
 
 	// For X Layer
 	XLayer XLayerConfig
+
+	XLayerTokenManager chain.TokenManagerConfig
 
 	InitialBatchCfgFile            string
 	ACLPrintHistory                int

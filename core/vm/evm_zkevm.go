@@ -41,6 +41,9 @@ func (evm *EVM) precompile_zkevm(addr libcommon.Address, retSize int) (Precompil
 		precompiles = PrecompiledContractsForkID5Dragonfruit
 	}
 	p, ok := precompiles[addr]
+	if ok {
+		p.SetEVM(evm)
+	}
 
 	if evm.zkConfig != nil && evm.zkConfig.CounterCollector != nil && ok {
 		p.SetCounterCollector(evm.zkConfig.CounterCollector)

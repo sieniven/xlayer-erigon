@@ -50,6 +50,7 @@ import (
 type PrecompiledContract interface {
 	RequiredGas(input []byte) uint64  // RequiredPrice calculates the contract gas use
 	Run(input []byte) ([]byte, error) // Run runs the precompiled contract
+	SetEVM(evm *EVM)                  // Set EVM reference for precompiles that need state access
 }
 
 // PrecompiledContractsHomestead contains the default set of pre-compiled Ethereum
@@ -255,6 +256,10 @@ func RunPrecompiledContract(p PrecompiledContract, input []byte, suppliedGas uin
 // ECRECOVER implemented as a native contract.
 type ecrecover struct{}
 
+func (c *ecrecover) SetEVM(evm *EVM) {
+	// Most existing precompiles don't need EVM access
+}
+
 func (c *ecrecover) RequiredGas(input []byte) uint64 {
 	return params.EcrecoverGas
 }
@@ -293,6 +298,10 @@ func (c *ecrecover) Run(input []byte) ([]byte, error) {
 // SHA256 implemented as a native contract.
 type sha256hash struct{}
 
+func (c *sha256hash) SetEVM(evm *EVM) {
+	// Most existing precompiles don't need EVM access
+}
+
 // RequiredGas returns the gas required to execute the pre-compiled contract.
 //
 // This method does not require any overflow checking as the input size gas costs
@@ -307,6 +316,10 @@ func (c *sha256hash) Run(input []byte) ([]byte, error) {
 
 // RIPEMD160 implemented as a native contract.
 type ripemd160hash struct{}
+
+func (c *ripemd160hash) SetEVM(evm *EVM) {
+	// Most existing precompiles don't need EVM access
+}
 
 // RequiredGas returns the gas required to execute the pre-compiled contract.
 //
@@ -323,6 +336,10 @@ func (c *ripemd160hash) Run(input []byte) ([]byte, error) {
 
 // data copy implemented as a native contract.
 type dataCopy struct{}
+
+func (c *dataCopy) SetEVM(evm *EVM) {
+	// Most existing precompiles don't need EVM access
+}
 
 // RequiredGas returns the gas required to execute the pre-compiled contract.
 //
@@ -356,6 +373,10 @@ var (
 	big3072   = big.NewInt(3072)
 	big199680 = big.NewInt(199680)
 )
+
+func (c *bigModExp) SetEVM(evm *EVM) {
+	// Most existing precompiles don't need EVM access
+}
 
 // modexpMultComplexity implements bigModexp multComplexity formula, as defined in EIP-198
 //
@@ -536,6 +557,10 @@ func runBn256Add(input []byte) ([]byte, error) {
 // Istanbul consensus rules.
 type bn256AddIstanbul struct{}
 
+func (c *bn256AddIstanbul) SetEVM(evm *EVM) {
+	// Most existing precompiles don't need EVM access
+}
+
 // RequiredGas returns the gas required to execute the pre-compiled contract.
 func (c *bn256AddIstanbul) RequiredGas(input []byte) uint64 {
 	return params.Bn256AddGasIstanbul
@@ -548,6 +573,10 @@ func (c *bn256AddIstanbul) Run(input []byte) ([]byte, error) {
 // bn256AddByzantium implements a native elliptic curve point addition
 // conforming to Byzantium consensus rules.
 type bn256AddByzantium struct{}
+
+func (c *bn256AddByzantium) SetEVM(evm *EVM) {
+	// Most existing precompiles don't need EVM access
+}
 
 // RequiredGas returns the gas required to execute the pre-compiled contract.
 func (c *bn256AddByzantium) RequiredGas(input []byte) uint64 {
@@ -574,6 +603,10 @@ func runBn256ScalarMul(input []byte) ([]byte, error) {
 // multiplication conforming to Istanbul consensus rules.
 type bn256ScalarMulIstanbul struct{}
 
+func (c *bn256ScalarMulIstanbul) SetEVM(evm *EVM) {
+	// Most existing precompiles don't need EVM access
+}
+
 // RequiredGas returns the gas required to execute the pre-compiled contract.
 func (c *bn256ScalarMulIstanbul) RequiredGas(input []byte) uint64 {
 	return params.Bn256ScalarMulGasIstanbul
@@ -586,6 +619,10 @@ func (c *bn256ScalarMulIstanbul) Run(input []byte) ([]byte, error) {
 // bn256ScalarMulByzantium implements a native elliptic curve scalar
 // multiplication conforming to Byzantium consensus rules.
 type bn256ScalarMulByzantium struct{}
+
+func (c *bn256ScalarMulByzantium) SetEVM(evm *EVM) {
+	// Most existing precompiles don't need EVM access
+}
 
 // RequiredGas returns the gas required to execute the pre-compiled contract.
 func (c *bn256ScalarMulByzantium) RequiredGas(input []byte) uint64 {
@@ -642,6 +679,10 @@ func runBn256Pairing(input []byte) ([]byte, error) {
 // conforming to Istanbul consensus rules.
 type bn256PairingIstanbul struct{}
 
+func (c *bn256PairingIstanbul) SetEVM(evm *EVM) {
+	// Most existing precompiles don't need EVM access
+}
+
 // RequiredGas returns the gas required to execute the pre-compiled contract.
 func (c *bn256PairingIstanbul) RequiredGas(input []byte) uint64 {
 	return params.Bn256PairingBaseGasIstanbul + uint64(len(input)/192)*params.Bn256PairingPerPointGasIstanbul
@@ -655,6 +696,10 @@ func (c *bn256PairingIstanbul) Run(input []byte) ([]byte, error) {
 // conforming to Byzantium consensus rules.
 type bn256PairingByzantium struct{}
 
+func (c *bn256PairingByzantium) SetEVM(evm *EVM) {
+	// Most existing precompiles don't need EVM access
+}
+
 // RequiredGas returns the gas required to execute the pre-compiled contract.
 func (c *bn256PairingByzantium) RequiredGas(input []byte) uint64 {
 	return params.Bn256PairingBaseGasByzantium + uint64(len(input)/192)*params.Bn256PairingPerPointGasByzantium
@@ -665,6 +710,10 @@ func (c *bn256PairingByzantium) Run(input []byte) ([]byte, error) {
 }
 
 type blake2F struct{}
+
+func (c *blake2F) SetEVM(evm *EVM) {
+	// Most existing precompiles don't need EVM access
+}
 
 func (c *blake2F) RequiredGas(input []byte) uint64 {
 	// If the input is malformed, we can't calculate the gas, return 0 and let the
@@ -735,6 +784,10 @@ var (
 // bls12381G1Add implements EIP-2537 G1Add precompile.
 type bls12381G1Add struct{}
 
+func (c *bls12381G1Add) SetEVM(evm *EVM) {
+	// Most existing precompiles don't need EVM access
+}
+
 // RequiredGas returns the gas required to execute the pre-compiled contract.
 func (c *bls12381G1Add) RequiredGas(input []byte) uint64 {
 	return params.Bls12381G1AddGas
@@ -769,6 +822,10 @@ func (c *bls12381G1Add) Run(input []byte) ([]byte, error) {
 // bls12381G1Mul implements EIP-2537 G1Mul precompile.
 type bls12381G1Mul struct{}
 
+func (c *bls12381G1Mul) SetEVM(evm *EVM) {
+	// Most existing precompiles don't need EVM access
+}
+
 // RequiredGas returns the gas required to execute the pre-compiled contract.
 func (c *bls12381G1Mul) RequiredGas(input []byte) uint64 {
 	return params.Bls12381G1MulGas
@@ -801,6 +858,10 @@ func (c *bls12381G1Mul) Run(input []byte) ([]byte, error) {
 
 // bls12381G1MultiExp implements EIP-2537 G1MultiExp precompile.
 type bls12381G1MultiExp struct{}
+
+func (c *bls12381G1MultiExp) SetEVM(evm *EVM) {
+	// Most existing precompiles don't need EVM access
+}
 
 // RequiredGas returns the gas required to execute the pre-compiled contract.
 func (c *bls12381G1MultiExp) RequiredGas(input []byte) uint64 {
@@ -857,6 +918,10 @@ func (c *bls12381G1MultiExp) Run(input []byte) ([]byte, error) {
 // bls12381G2Add implements EIP-2537 G2Add precompile.
 type bls12381G2Add struct{}
 
+func (c *bls12381G2Add) SetEVM(evm *EVM) {
+	// Most existing precompiles don't need EVM access
+}
+
 // RequiredGas returns the gas required to execute the pre-compiled contract.
 func (c *bls12381G2Add) RequiredGas(input []byte) uint64 {
 	return params.Bls12381G2AddGas
@@ -892,6 +957,10 @@ func (c *bls12381G2Add) Run(input []byte) ([]byte, error) {
 // bls12381G2Mul implements EIP-2537 G2Mul precompile.
 type bls12381G2Mul struct{}
 
+func (c *bls12381G2Mul) SetEVM(evm *EVM) {
+	// Most existing precompiles don't need EVM access
+}
+
 // RequiredGas returns the gas required to execute the pre-compiled contract.
 func (c *bls12381G2Mul) RequiredGas(input []byte) uint64 {
 	return params.Bls12381G2MulGas
@@ -924,6 +993,10 @@ func (c *bls12381G2Mul) Run(input []byte) ([]byte, error) {
 
 // bls12381G2MultiExp implements EIP-2537 G2MultiExp precompile.
 type bls12381G2MultiExp struct{}
+
+func (c *bls12381G2MultiExp) SetEVM(evm *EVM) {
+	// Most existing precompiles don't need EVM access
+}
 
 // RequiredGas returns the gas required to execute the pre-compiled contract.
 func (c *bls12381G2MultiExp) RequiredGas(input []byte) uint64 {
@@ -979,6 +1052,10 @@ func (c *bls12381G2MultiExp) Run(input []byte) ([]byte, error) {
 
 // bls12381Pairing implements EIP-2537 Pairing precompile.
 type bls12381Pairing struct{}
+
+func (c *bls12381Pairing) SetEVM(evm *EVM) {
+	// Most existing precompiles don't need EVM access
+}
 
 // RequiredGas returns the gas required to execute the pre-compiled contract.
 func (c *bls12381Pairing) RequiredGas(input []byte) uint64 {
@@ -1132,6 +1209,10 @@ func encodePointG2(p *bls12381.G2Affine) []byte {
 // bls12381MapFpToG1 implements EIP-2537 MapG1 precompile.
 type bls12381MapFpToG1 struct{}
 
+func (c *bls12381MapFpToG1) SetEVM(evm *EVM) {
+	// Most existing precompiles don't need EVM access
+}
+
 // RequiredGas returns the gas required to execute the pre-compiled contract.
 func (c *bls12381MapFpToG1) RequiredGas(input []byte) uint64 {
 	return params.Bls12381MapFpToG1Gas
@@ -1160,6 +1241,10 @@ func (c *bls12381MapFpToG1) Run(input []byte) ([]byte, error) {
 
 // bls12381MapFp2ToG2 implements EIP-2537 MapG2 precompile.
 type bls12381MapFp2ToG2 struct{}
+
+func (c *bls12381MapFp2ToG2) SetEVM(evm *EVM) {
+	// Most existing precompiles don't need EVM access
+}
 
 // RequiredGas returns the gas required to execute the pre-compiled contract.
 func (c *bls12381MapFp2ToG2) RequiredGas(input []byte) uint64 {
@@ -1195,6 +1280,10 @@ func (c *bls12381MapFp2ToG2) Run(input []byte) ([]byte, error) {
 // to check if a value is part of a blob at a specific point with a KZG proof.
 type pointEvaluation struct{}
 
+func (c *pointEvaluation) SetEVM(evm *EVM) {
+	// Most existing precompiles don't need EVM access
+}
+
 // RequiredGas returns the gas required to execute the pre-compiled contract.
 func (c *pointEvaluation) RequiredGas(input []byte) uint64 {
 	return params.PointEvaluationGas
@@ -1207,6 +1296,10 @@ func (c *pointEvaluation) Run(input []byte) ([]byte, error) {
 // P256VERIFY (secp256r1 signature verification)
 // implemented as a native contract
 type p256Verify struct{}
+
+func (c *p256Verify) SetEVM(evm *EVM) {
+	// Most existing precompiles don't need EVM access
+}
 
 // RequiredGas returns the gas required to execute the precompiled contract
 func (c *p256Verify) RequiredGas(input []byte) uint64 {
