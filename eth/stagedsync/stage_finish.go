@@ -84,8 +84,7 @@ func FinishForward(s *StageState, tx kv.RwTx, cfg FinishCfg, initialCycle bool) 
 		return nil
 	}
 
-	blockhash := rawdb.ReadHeadHeaderHash(tx)
-	rawdb.WriteHeadBlockHash(tx, blockhash)
+	rawdb.WriteHeadBlockHash(tx, rawdb.ReadHeadHeaderHash(tx))
 	err = s.Update(tx, executionAt)
 	if err != nil {
 		return err
@@ -109,8 +108,7 @@ func FinishForward(s *StageState, tx kv.RwTx, cfg FinishCfg, initialCycle bool) 
 	// For X Layer, realtime
 	if cfg.realtimeEnable && cfg.realtimeFinishChan != nil && cfg.realtimeCache != nil {
 		cfg.realtimeFinishChan <- realtimeTypes.FinishedEntry{
-			Height:    executionAt,
-			BlockHash: blockhash,
+			Height: executionAt,
 		}
 		if executionAt > cfg.realtimeCacheHeightThreshold {
 			deleteHeight := executionAt - cfg.realtimeCacheHeightThreshold

@@ -29,6 +29,7 @@ import (
 
 var shouldCheckForExecutionAndDataStreamAlignment = true
 var prevBlockTxCount = int64(0)
+var prevBlockHash = common.Hash{}
 
 func SpawnSequencingStage(
 	s *stagedsync.StageState,
@@ -462,6 +463,7 @@ BatchLoop:
 			cfg.kafkaBlockInfoChan <- &realtimeTypes.BlockInfo{
 				Header:  header,
 				TxCount: prevBlockTxCount,
+				Hash:    prevBlockHash,
 			}
 		}
 
@@ -881,6 +883,7 @@ BatchLoop:
 		}
 
 		prevBlockTxCount = int64(len(batchState.blockState.builtBlockElements.transactions))
+		prevBlockHash = block.Hash()
 
 		// lets commit everything after updateStreamAndCheckRollback no matter of its result unless
 		// we're in L1 recovery where losing some blocks on restart doesn't matter

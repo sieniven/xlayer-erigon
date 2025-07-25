@@ -94,6 +94,7 @@ var (
 		AuRaStep:    13078,
 		AuRaSeal:    common.FromHex("0x75bda30f85541be059646e1acd3613fd100846e42308df2dad8ed79b9a9e91c9db994386599a683820a1394684d41fc139c4805684142e6b15a722a2e9cc51f7ee"),
 	}
+	testHash = libcommon.HexToHash("0x1234567890abcdef")
 )
 
 func TestKafka(t *testing.T) {
@@ -113,7 +114,7 @@ func TestKafka(t *testing.T) {
 		err = producer.SendKafkaTransaction(uint64(i), rightvrsTx, rightvrsTxReceipt, rightvrsTxInnerTxs, rightvrsTxChangeset)
 		assert.NilError(t, err)
 
-		err = producer.SendKafkaBlockInfo(blockHeader, 10)
+		err = producer.SendKafkaBlockInfo(blockHeader, int64(i), testHash)
 		assert.NilError(t, err)
 
 		err = producer.SendKafkaErrorTrigger(uint64(i))
@@ -171,9 +172,11 @@ func TestKafka(t *testing.T) {
 		case err := <-errorChan:
 			t.Fatalf("Received error from consumer: %v", err)
 		case rcvHeader := <-headersChan:
-			header, _, err := rcvHeader.GetBlockInfo()
+			header, count, prevBlockHash, err := rcvHeader.GetBlockInfo()
 			assert.NilError(t, err)
 			AssertHeader(t, blockHeader, header)
+			assert.Equal(t, count, int64(i))
+			assert.Equal(t, prevBlockHash, testHash)
 		}
 	}
 

@@ -162,7 +162,6 @@ func TestRealtimeRPC(t *testing.T) {
 		log.Info(fmt.Sprintf("RealtimeCall result for erc20 contract %s calling method balanceOf %s: %s", erc20Address, fromAddress, value))
 	})
 }
-
 func TestRealtimeStateIsConsistent(t *testing.T) {
 	if testing.Short() {
 		t.Skip()

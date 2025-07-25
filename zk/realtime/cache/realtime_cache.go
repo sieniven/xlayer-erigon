@@ -127,7 +127,6 @@ func (cache *RealtimeCache) UpdateExecution(finishEntry realtimeTypes.FinishedEn
 	if finishEntry.Height > cache.highestExecutionHeight.Load() {
 		cache.highestExecutionHeight.Store(finishEntry.Height)
 	}
-	cache.Stateless.PutBlockHash(finishEntry.Height, finishEntry.BlockHash)
 }
 
 func (cache *RealtimeCache) GetHighestPendingHeight() uint64 {
@@ -155,7 +154,7 @@ func (cache *RealtimeCache) TryApplyBlockMsg(blockNum uint64, blockMsg *kafkaTyp
 		return err
 	}
 
-	cache.Stateless.PutHeader(blockNum, blockMsg.Header, blockMsg.PrevBlockTxCount)
+	cache.Stateless.PutHeader(blockNum, blockMsg.Header, blockMsg.PrevBlockTxCount, blockMsg.PrevBlockHash)
 	return nil
 }
 

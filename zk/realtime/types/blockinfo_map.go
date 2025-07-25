@@ -35,7 +35,7 @@ func (bm *BlockInfoMap) Get(blockNum uint64) (*ethTypes.Header, int64, libcommon
 	return nil, 0, libcommon.Hash{}, exists
 }
 
-func (bm *BlockInfoMap) PutHeader(blockNum uint64, header *ethTypes.Header, prevTxCount int64) {
+func (bm *BlockInfoMap) PutHeader(blockNum uint64, header *ethTypes.Header, prevTxCount int64, prevBlockHash libcommon.Hash) {
 	bm.mu.Lock()
 	defer bm.mu.Unlock()
 	bm.blockInfos[blockNum] = &BlockInfo{
@@ -49,14 +49,7 @@ func (bm *BlockInfoMap) PutHeader(blockNum uint64, header *ethTypes.Header, prev
 	blockInfo, exists := bm.blockInfos[prevBlockNum]
 	if exists {
 		blockInfo.TxCount = prevTxCount
-	}
-}
-
-func (bm *BlockInfoMap) PutBlockHash(blockNum uint64, hash libcommon.Hash) {
-	bm.mu.Lock()
-	defer bm.mu.Unlock()
-	if blockInfo, exists := bm.blockInfos[blockNum]; exists {
-		blockInfo.Hash = hash
+		blockInfo.Hash = prevBlockHash
 	}
 }
 

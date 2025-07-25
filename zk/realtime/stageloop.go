@@ -46,7 +46,7 @@ func ListenKafkaProducer(
 			return
 		case blockInfo := <-blockInfoChan:
 			currHeight = blockInfo.Header.Number.Uint64()
-			err = kafkaProducer.SendKafkaBlockInfo(blockInfo.Header, blockInfo.TxCount)
+			err = kafkaProducer.SendKafkaBlockInfo(blockInfo.Header, blockInfo.TxCount, blockInfo.Hash)
 			log.Debug(fmt.Sprintf("[Realtime] Sent block info message for block number %d with txCount %d", blockInfo.Header.Number, blockInfo.TxCount))
 		case txInfo := <-txInfoChan:
 			currHeight = txInfo.BlockNumber
@@ -113,7 +113,7 @@ func ListenKafkaConsumer(
 			realtimeCache.UpdateExecution(finishEntry)
 			log.Debug("[Realtime] Received finish signal from execution", "finishHeight", finishEntry.Height)
 		case blockMsg := <-blockMsgsChan:
-			header, _, err := blockMsg.GetBlockInfo()
+			header, _, _, err := blockMsg.GetBlockInfo()
 			if err != nil {
 				log.Error(fmt.Sprintf("[Realtime] Failed to consume block message from kafka. error: %v", err))
 				continue
