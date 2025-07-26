@@ -84,6 +84,8 @@ run: stop build-docker
 	$(DOCKER_COMPOSE) up -d xlayer-bridge-ui
 	$(INIT_BRIDGE_ACCOUNT)
 	
+	mkdir -p data/aggkit
+	chmod -R 777 data 
 	$(DOCKER_COMPOSE) up -d xlayer-aggkit
 
 .PHONY: run
