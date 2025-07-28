@@ -1,0 +1,73 @@
+[Log]
+Environment = "production"
+Level = "info"
+
+[NetworkConfig.L1]
+URL = "https://rpc.ankr.com/eth_sepolia/578c95407e7831f0ac1ef79cacae294dc9bf8307121ca9fffaf1e556a5cca662"
+ChainID = 11155111
+RollupAddr = "0x7b1472be9a0115c3076b9f30e6bab91b13b3be6b"
+RollupManagerAddr = "0x32d33d5137a7cffb54c5bf8371172bcec5f310ff"
+POLTokenAddr = "0x6a7c3f4b0651d6da389ad1d11d962ea458cdca70"
+GlobalExitRootManagerAddr = "0xad1490c248c5d3cbae399fd529b79b42984277df"
+
+[Etherman]
+URL = "https://rpc.ankr.com/eth_sepolia/578c95407e7831f0ac1ef79cacae294dc9bf8307121ca9fffaf1e556a5cca662"
+ForkIDChunkSize = 0
+[Etherman.EthermanConfig]
+URL = "https://rpc.ankr.com/eth_sepolia/578c95407e7831f0ac1ef79cacae294dc9bf8307121ca9fffaf1e556a5cca662"
+MultiGasProvider = false
+L1ChainID = 11155111
+
+[Common]
+NetworkID = 39
+ContractVersions = "banana"
+IsValidiumMode = true
+[Common.L2RPC]
+URL = "https://testrpc.xlayer.tech/terigon"
+Mode = "basic"
+
+[AggSender]
+KeepCertificatesHistory = true
+EnableAssetSigner = false
+AggsenderPrivateKey = {Path = "/etc/aggkit/sequencer.keystore", Password = "testonly"}
+#EnableAssetSigner = false
+#AggsenderPrivateKey = { Method = "none" }
+AggLayerURL = "grpc-agglayer-test.polygon.technology:443"
+UseAgglayerTLS = true
+StoragePath = "/egsender/data/aggsender/aggsender.sqlite"
+BlockFinality = "FinalizedBlock"
+EpochNotificationPercentage = 0
+MaxRetriesStoreCertificate = 0 # 0 means infinitie
+DryRun = true
+EnableRPC = false
+Mode = "PessimisticProof"
+CheckStatusCertificateInterval = "1s"
+MaxSubmitCertificateRate = { NumRequests = 20, Interval = "1m" }
+GlobalExitRootL2Addr = "0xa40d5f56745a118d0906a34e69aec8c0db1cb8fa"
+RequireNoFEPBlockGap = false
+
+[ReorgDetectorL1] # needed by L1InfoTreeSync
+DBPath = "/egsender/data/aggsender/reorgdetectorl1.sqlite" 
+CheckReorgsInterval = "30s"
+FinalizedBlock = "FinalizedBlock"
+
+[ReorgDetectorL2] # needed by BridgeL2Sync
+DBPath = "/egsender/data/aggsender/reorgdetectorl2.sqlite"
+CheckReorgsInterval = "30s"
+FinalizedBlock = "FinalizedBlock"
+
+[L1InfoTreeSync]
+DBPath = "/egsender/data/aggsender/L1InfoTreeSync.sqlite"
+GlobalExitRootAddr = "0xad1490c248c5d3cbae399fd529b79b42984277df"
+RollupManagerAddr = "0x32d33d5137a7cffb54c5bf8371172bcec5f310ff"
+BlockFinality = "FinalizedBlock"
+URLRPCL1 = "https://rpc.ankr.com/eth_sepolia/578c95407e7831f0ac1ef79cacae294dc9bf8307121ca9fffaf1e556a5cca662"
+InitialBlock = 5158574
+#InitialBlock = 8517637
+
+[BridgeL2Sync]
+DBPath = "/egsender/data/aggsender/BridgeL2Sync.sqlite" 
+BlockFinality = "FinalizedBlock"
+InitialBlockNum = 1
+BridgeAddr = "0x528e26b25a34a4a5d0dbda1d57d318153d2ed582"
+SyncBlockChunkSize = 1000

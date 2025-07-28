@@ -123,3 +123,9 @@ L1ChainID = "195"
 ProfilingHost = "0.0.0.0"
 
 ProfilingPort = 6060
+
+[SqliteAPI]
+Enabled = true
+Host = "0.0.0.0"
+Port = 8080
+MaxRequestsPerIPAndSecond = 10

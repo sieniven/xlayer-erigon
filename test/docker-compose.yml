@@ -311,7 +311,7 @@ services:
 
   xlayer-aggkit:
     container_name: xlayer-aggkit
-    image: zjg555543/aggkit:v0.1.0-0800d8a
+    image: aggkit:local
     restart: on-failure
     volumes:
       - ./data/aggkit:/tmp
@@ -321,7 +321,23 @@ services:
       - ./config/test.genesis.config.json:/etc/aggkit/genesis.json
     ports:
       - 5576:5576
+      - 18080:8080
     command: ["run", "--cfg=/etc/aggkit/aggkit.toml", "--components=aggsender"]
+
+  xlayer-aggkit-testnet:
+    container_name: xlayer-aggkit-testnet
+    image: aggkit:local
+    restart: on-failure
+    volumes:
+      - ./data/aggkit-testnet:/egsender/data/aggsender/
+      - ./keystore/aggregator.keystore:/etc/aggkit/aggregator.keystore
+      - ./keystore/sequencer.keystore:/etc/aggkit/sequencer.keystore
+      - ./config/aggkit-testnet.toml:/etc/aggkit/aggkit.toml
+    ports:
+      - 25576:5576
+      - 28080:8080
+    command: ["run", "--cfg=/etc/aggkit/aggkit.toml", "--components=aggsender"]
+  
   
   xlayer-agglayer:
     container_name: xlayer-agglayer
