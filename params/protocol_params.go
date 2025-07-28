@@ -173,11 +173,6 @@ const (
 
 	// PIP-27: secp256r1 elliptic curve signature verifier gas price
 	P256VerifyGas uint64 = 3450
-
-	// Token Manager precompile gas costs
-	TokenMintGas  uint64 = 50000 // Gas for minting native tokens, free gas for minting operations
-	TokenBurnGas  uint64 = 30000 // Gas for burning native tokens
-	TokenQueryGas uint64 = 10000 // Gas for query admin management address
 )
 
 // EIP-4788: Beacon block root in the EVM

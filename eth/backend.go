@@ -400,7 +400,6 @@ func New(ctx context.Context, stack *node.Node, config *ethconfig.Config, logger
 
 	setBorDefaultMinerGasPrice(chainConfig, config, logger)
 	setBorDefaultTxPoolPriceLimit(chainConfig, config.TxPool, logger)
-	setXLayerTokenManagerConfig(chainConfig, config)
 
 	if err := chainKv.Update(context.Background(), func(tx kv.RwTx) error {
 		isCorrectSync, useSnapshots, err := snap.EnsureNotChanged(tx, config.Snapshot)
@@ -2339,8 +2338,4 @@ func l1ContractAddressCheck(ctx context.Context, cfg *ethconfig.Zk, l1BlockSynce
 	log.Warn("🚨 zkevm.address-sequencer configuration parameter is deprecated and it will be removed in upcoming releases")
 
 	return true, nil
-}
-
-func setXLayerTokenManagerConfig(chainConfig *chain.Config, config *ethconfig.Config) {
-	chainConfig.TokenManager = &config.XLayerTokenManager
 }

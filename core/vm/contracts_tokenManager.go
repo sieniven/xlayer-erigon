@@ -2,30 +2,37 @@ package vm
 
 import (
 	"errors"
+	"fmt"
+	"math/big"
 
 	"github.com/holiman/uint256"
 	libcommon "github.com/ledgerwatch/erigon-lib/common"
 	"github.com/ledgerwatch/erigon/core/types"
+	"github.com/ledgerwatch/erigon/crypto"
 	"github.com/ledgerwatch/erigon/params"
 )
 
-// Initial admin address (hardcoded)
-var INITIAL_ADMIN = libcommon.HexToAddress("0xDE282DC882bbB5100b8A24E30D38a2D5B3080c15")
+// Hardcoded configuration contract address
+// Using OKB hex representation (0x4F4B42) as a meaningful address
+// This should be the PROXY contract address for upgradeability
+// The proxy will delegate calls to the current implementation contract
+var CONFIG_CONTRACT_ADDRESS = libcommon.HexToAddress("0x00000000000000000000000000000000004f4b42")
 
-// Token Manager precompile contract
-type tokenManager_zkevm struct {
-	enabled bool
-	evm     *EVM
-}
+// Token Manager precompile address
+var TOKEN_MANAGER_ADDRESS = libcommon.HexToAddress("0x0000000000000000000000000000000000000101")
 
 // Operation codes definition
 const (
-	// Basic operations
-	TOKEN_MINT_OP = 0x01 // Token minting operation
-	TOKEN_BURN_OP = 0x02 // Token burning operation
-
+	TOKEN_MINT_OP  = 0x01 // Token minting operation
+	TOKEN_BURN_OP  = 0x02 // Token burning operation
 	QUERY_ADMIN_OP = 0x20 // Query current admin
 )
+
+// tokenManager_zkevm precompile contract
+type tokenManager_zkevm struct {
+	evm     *EVM
+	enabled bool
+}
 
 // Event signatures for logging
 var (
@@ -36,58 +43,33 @@ var (
 	TokenBurnedEventSig = libcommon.HexToHash("0xcc16f5dbb4873280815c1ee09dbd06736cffcc184412cf7a71a0fdb75d397ca5")
 )
 
-// RequiredGas calculates the required gas fee
+// RequiredGas returns the required gas for Token Manager operations
 func (c *tokenManager_zkevm) RequiredGas(input []byte) uint64 {
-	if !c.enabled {
+	if len(input) == 0 {
 		return 0
 	}
 
-	// If Token Manager is not yet active, consume 0 gas (like calling an empty account)
-	if !c.isTokenManagerActive() {
-		return 0
-	}
-
-	if len(input) < 1 {
-		return 0
-	}
-
-	switch input[0] {
+	operation := input[0]
+	switch operation {
 	case TOKEN_MINT_OP:
-		return params.TokenMintGas
+		return 0 // Mint operations are gas-free
 	case TOKEN_BURN_OP:
-		return params.TokenBurnGas
+		return params.CallValueTransferGas // Burn operations consume gas
 	case QUERY_ADMIN_OP:
-		return params.TokenQueryGas
+		return params.ColdSloadCostEIP2929 // Query operations have low gas cost
 	default:
 		return 0
 	}
 }
 
-// isTokenManagerActive checks if Token Manager is active at current block height
-func (c *tokenManager_zkevm) isTokenManagerActive() bool {
-	if c.evm == nil {
-		return false
-	}
-
-	//currentBlockNumber := c.evm.Context.BlockNumber
-	//if c.evm.chainConfig != nil && c.evm.chainConfig.TokenManager != nil {
-	//	config := c.evm.chainConfig.TokenManager
-	//	if config.ActivationBlock != nil {
-	//		return currentBlockNumber >= *config.ActivationBlock
-	//	}
-	//}
-
-	return true
-}
-
-// SetCounterCollector sets the counter collector
+// SetCounterCollector sets the counter collector (required by zkEVM interface)
 func (c *tokenManager_zkevm) SetCounterCollector(cc *CounterCollector) {
-	// Temporarily ignore CounterCollector
+	// Token Manager doesn't use counter collector
 }
 
-// SetOutputLength sets the output length
+// SetOutputLength sets the output length (required by zkEVM interface)
 func (c *tokenManager_zkevm) SetOutputLength(outLength int) {
-	// Temporarily ignore output length setting
+	// Token Manager doesn't use output length setting
 }
 
 // SetEVM sets the EVM reference
@@ -101,20 +83,26 @@ func (c *tokenManager_zkevm) Run(input []byte) ([]byte, error) {
 		return []byte{}, ErrUnsupportedPrecompile
 	}
 
-	// If Token Manager is not yet active, behave like an empty account call
-	// This ensures consensus compatibility with nodes that don't have Token Manager
-	if !c.isTokenManagerActive() {
-		return []byte{}, errors.New("token Manager not activated: missing configuration or activation block not reached") // Empty result, no error (same as calling empty account)
+	// Check if configuration contract is deployed
+	if !c.isConfigContractDeployed() {
+		return []byte{}, errors.New("Token Manager configuration contract not deployed yet")
 	}
 
-	if len(input) < 1 {
-		return nil, errors.New("invalid input length")
+	// Quick activation check first (single StaticCall)
+	if !c.isTokenManagerActive() {
+		return []byte{}, errors.New("Token Manager is not activated")
+	}
+
+	if len(input) == 0 {
+		return []byte{}, errors.New("empty input")
 	}
 
 	operation := input[0]
+	data := input[1:]
+
 	switch operation {
 	case TOKEN_MINT_OP, TOKEN_BURN_OP:
-		return c.handleTokenOperation(operation, input[1:])
+		return c.handleTokenOperation(operation, data)
 	case QUERY_ADMIN_OP:
 		return c.handleQueryAdmin()
 	default:
@@ -122,27 +110,107 @@ func (c *tokenManager_zkevm) Run(input []byte) ([]byte, error) {
 	}
 }
 
-// getCurrentAdmin gets the current admin address (always returns hardcoded admin)
-func (c *tokenManager_zkevm) getCurrentAdmin() libcommon.Address {
-	return INITIAL_ADMIN
+// isConfigContractDeployed checks if the configuration contract is deployed
+func (c *tokenManager_zkevm) isConfigContractDeployed() bool {
+	// Check if there's code at the configuration contract address
+	code := c.evm.IntraBlockState().GetCode(CONFIG_CONTRACT_ADDRESS)
+	return len(code) > 0
 }
 
-// isCurrentAdmin checks if the caller is the current admin
-func (c *tokenManager_zkevm) isCurrentAdmin() bool {
-	caller := c.evm.TxContext.Origin
-	currentAdmin := c.getCurrentAdmin()
-	return caller == currentAdmin
+// isTokenManagerActive checks if Token Manager is active (single StaticCall)
+// Note: This assumes the config contract is already deployed (checked by caller)
+func (c *tokenManager_zkevm) isTokenManagerActive() bool {
+	isActiveData := crypto.Keccak256([]byte("isActive()"))[:4]
+	isActiveResult, _, err := c.evm.StaticCall_zkEvm(AccountRef(c.evm.TxContext.Origin), CONFIG_CONTRACT_ADDRESS, isActiveData, 10000, 32)
+	if err != nil {
+		return false
+	}
+
+	if len(isActiveResult) < 32 {
+		return false
+	}
+
+	return new(big.Int).SetBytes(isActiveResult[len(isActiveResult)-32:]).Uint64() != 0
+}
+
+// getAdminAddress gets the current admin address (single StaticCall)
+// Note: This assumes the config contract is already deployed (checked by caller)
+func (c *tokenManager_zkevm) getAdminAddress() (libcommon.Address, error) {
+	getAdminData := crypto.Keccak256([]byte("getAdmin()"))[:4]
+	adminResult, _, err := c.evm.StaticCall_zkEvm(AccountRef(c.evm.TxContext.Origin), CONFIG_CONTRACT_ADDRESS, getAdminData, 10000, 32)
+	if err != nil {
+		return libcommon.Address{}, fmt.Errorf("failed to get admin address: %v", err)
+	}
+
+	if len(adminResult) < 32 {
+		return libcommon.Address{}, errors.New("invalid admin response")
+	}
+
+	// Parse admin address (last 20 bytes of the 32-byte response)
+	adminAddress := libcommon.BytesToAddress(adminResult[12:32])
+	return adminAddress, nil
+}
+
+// checkBurnWhitelist checks if an address is allowed to burn tokens (single StaticCall)
+// Note: This assumes the config contract is already deployed (checked by caller)
+func (c *tokenManager_zkevm) checkBurnWhitelist(addr libcommon.Address) (bool, error) {
+	// Call isBurnAllowed(address) function
+	isBurnAllowedData := crypto.Keccak256([]byte("isBurnAllowed(address)"))[:4]
+
+	// Encode the address parameter (32-byte padded)
+	addressParam := make([]byte, 32)
+	copy(addressParam[12:], addr.Bytes()) // Address goes in the last 20 bytes
+
+	// Combine function selector and parameter
+	callData := append(isBurnAllowedData, addressParam...)
+
+	result, _, err := c.evm.StaticCall_zkEvm(AccountRef(c.evm.TxContext.Origin), CONFIG_CONTRACT_ADDRESS, callData, 10000, 32)
+	if err != nil {
+		return false, fmt.Errorf("failed to check burn whitelist: %v", err)
+	}
+
+	if len(result) < 32 {
+		return false, errors.New("invalid burn whitelist response")
+	}
+
+	// Parse boolean result
+	return new(big.Int).SetBytes(result[len(result)-32:]).Uint64() != 0, nil
+}
+
+// emitTokenEvent emits token operation events (mint/burn)
+func (c *tokenManager_zkevm) emitTokenEvent(eventSig libcommon.Hash, targetAddress libcommon.Address, amount *uint256.Int, admin libcommon.Address) {
+	c.evm.IntraBlockState().AddLog(&types.Log{
+		Address: TOKEN_MANAGER_ADDRESS,
+		Topics: []libcommon.Hash{
+			eventSig,
+			libcommon.BytesToHash(targetAddress.Bytes()),
+			libcommon.BytesToHash(admin.Bytes()),
+		},
+		Data: amount.Bytes(),
+	})
 }
 
 // handleTokenOperation handles token operations
 func (c *tokenManager_zkevm) handleTokenOperation(operation byte, data []byte) ([]byte, error) {
-	if len(data) < 64 { // 32 bytes address + 32 bytes amount
-		return nil, errors.New("invalid token operation data")
+	// Get admin address (single StaticCall)
+	admin, err := c.getAdminAddress()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get admin: %v", err)
 	}
 
-	// Check if caller is the current admin
-	if !c.isCurrentAdmin() {
-		return nil, errors.New("unauthorized: only current admin can perform token operations")
+	if admin == (libcommon.Address{}) {
+		return nil, errors.New("no admin configured")
+	}
+
+	// Check if caller is the admin (owner)
+	caller := c.evm.TxContext.Origin
+	if caller != admin {
+		return nil, errors.New("unauthorized: only admin can perform token operations")
+	}
+
+	// Simple operation (64 bytes: 32 bytes address + 32 bytes amount)
+	if len(data) < 64 {
+		return nil, errors.New("invalid token operation data")
 	}
 
 	// Address is 32-byte encoded (first 12 bytes are padding, last 20 bytes are the actual address)
@@ -151,9 +219,17 @@ func (c *tokenManager_zkevm) handleTokenOperation(operation byte, data []byte) (
 
 	switch operation {
 	case TOKEN_MINT_OP:
-		return c.mintTokens(targetAddress, amount)
+		return c.mintTokens(targetAddress, amount, caller)
 	case TOKEN_BURN_OP:
-		return c.burnTokens(targetAddress, amount)
+		// Check burn whitelist before burning (single StaticCall)
+		isAllowed, err := c.checkBurnWhitelist(targetAddress)
+		if err != nil {
+			return nil, fmt.Errorf("failed to check burn whitelist: %v", err)
+		}
+		if !isAllowed {
+			return nil, fmt.Errorf("address %s is not in burn whitelist", targetAddress.Hex())
+		}
+		return c.burnTokens(targetAddress, amount, caller)
 	}
 
 	return nil, errors.New("invalid token operation")
@@ -161,145 +237,51 @@ func (c *tokenManager_zkevm) handleTokenOperation(operation byte, data []byte) (
 
 // handleQueryAdmin handles querying the current admin
 func (c *tokenManager_zkevm) handleQueryAdmin() ([]byte, error) {
-	currentAdmin := c.getCurrentAdmin()
-	return currentAdmin.Bytes(), nil // Return 20 bytes admin address
+	admin, err := c.getAdminAddress()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get admin: %v", err)
+	}
+
+	return admin.Bytes(), nil
 }
 
-// isBurnAuthorizedAddress checks if the target address can be burned
-func (c *tokenManager_zkevm) isBurnAuthorizedAddress(targetAddress libcommon.Address) bool {
-	// Get configuration with safe fallback
-	var burnAuthorizedAddresses []libcommon.Address
-
-	if c.evm != nil && c.evm.chainConfig != nil && c.evm.chainConfig.TokenManager != nil {
-		config := c.evm.chainConfig.TokenManager
-		burnAuthorizedAddresses = config.BurnAuthorizedAddresses
-	} else {
-		// Fallback to default configuration if chainConfig is not available
-		burnAuthorizedAddresses = []libcommon.Address{
-			libcommon.HexToAddress("0xb6c11e83a19893a0de12ae7b77ff224eae7ea8cb"), // Default burn hole address
-		}
+// mintTokens handles token minting
+func (c *tokenManager_zkevm) mintTokens(to libcommon.Address, amount *uint256.Int, admin libcommon.Address) ([]byte, error) {
+	// Check amount validity
+	if amount == nil || amount.IsZero() {
+		return nil, errors.New("invalid mint amount")
 	}
 
-	// Check if address is in pre-authorized list
-	for _, authorized := range burnAuthorizedAddresses {
-		if authorized == targetAddress {
-			return true
-		}
-	}
+	// Add the minted amount directly
+	c.evm.IntraBlockState().AddBalance(to, amount)
 
-	return false
+	// Emit mint event
+	c.emitTokenEvent(TokenMintedEventSig, to, amount, admin)
+
+	return []byte{}, nil
 }
 
-// mintTokens mints tokens
-func (c *tokenManager_zkevm) mintTokens(targetAddress libcommon.Address, amount *uint256.Int) ([]byte, error) {
-	if amount.IsZero() {
-		return nil, errors.New("mint amount cannot be zero")
+// burnTokens handles token burning with crash prevention and whitelist check
+func (c *tokenManager_zkevm) burnTokens(from libcommon.Address, amount *uint256.Int, admin libcommon.Address) ([]byte, error) {
+	// Check amount validity
+	if amount == nil || amount.IsZero() {
+		return nil, errors.New("invalid burn amount")
 	}
 
-	// Prevent overflow - check target address current balance
-	currentBalance := c.evm.intraBlockState.GetBalance(targetAddress)
-	maxUint256 := new(uint256.Int).SetAllOne()
-	if new(uint256.Int).Add(currentBalance, amount).Cmp(maxUint256) > 0 {
-		return nil, errors.New("mint amount would cause overflow")
+	// Get current balance
+	currentBalance := c.evm.IntraBlockState().GetBalance(from)
+
+	// CRITICAL: Prevent full burn to avoid node crashes
+	// This protection mechanism is essential for chain stability
+	if currentBalance.Cmp(amount) <= 0 {
+		return nil, errors.New("insufficient balance for burn: cannot burn entire balance")
 	}
 
-	currentAdmin := c.getCurrentAdmin()
+	// Subtract the burned amount directly
+	c.evm.IntraBlockState().SubBalance(from, amount)
 
-	// Execute minting
-	c.evm.intraBlockState.AddBalance(targetAddress, amount)
+	// Emit burn event
+	c.emitTokenEvent(TokenBurnedEventSig, from, amount, admin)
 
-	// Emit TokenMinted event
-	c.emitTokenMinted(targetAddress, amount, currentAdmin)
-
-	// Return success flag + new balance
-	newBalance := c.evm.intraBlockState.GetBalance(targetAddress)
-	result := make([]byte, 33)
-	result[0] = 1 // Success flag
-	newBalance.WriteToSlice(result[1:33])
-
-	return result, nil
-}
-
-// burnTokens burns tokens
-func (c *tokenManager_zkevm) burnTokens(targetAddress libcommon.Address, amount *uint256.Int) ([]byte, error) {
-	if amount.IsZero() {
-		return nil, errors.New("burn amount cannot be zero")
-	}
-
-	// Check if target address is authorized to be burned
-	//if !c.isBurnAuthorizedAddress(targetAddress) {
-	//	return nil, errors.New("target address not authorized for burn operation")
-	//}
-
-	// Check if balance is sufficient
-	currentBalance := c.evm.intraBlockState.GetBalance(targetAddress)
-	if currentBalance.Cmp(amount) <= 0 { // cannot burn all gas token, or it will throw nil panic in sequencer
-		return nil, errors.New("insufficient balance for burn")
-	}
-
-	currentAdmin := c.getCurrentAdmin()
-
-	// Execute burning
-	c.evm.intraBlockState.SubBalance(targetAddress, amount)
-
-	// Emit TokenBurned event
-	c.emitTokenBurned(targetAddress, amount, currentAdmin)
-
-	// Return success flag + new balance
-	newBalance := c.evm.intraBlockState.GetBalance(targetAddress)
-	result := make([]byte, 33)
-	result[0] = 1 // Success flag
-	newBalance.WriteToSlice(result[1:33])
-
-	return result, nil
-}
-
-// emitLog helper method for emitting logs
-func (c *tokenManager_zkevm) emitLog(topics []libcommon.Hash, data []byte) {
-	// Create log entry
-	log := &types.Log{
-		Address: c.getContractAddress(), // precompile contract address
-		Topics:  topics,
-		Data:    data,
-	}
-
-	// Add to EVM logs
-	c.evm.intraBlockState.AddLog(log)
-}
-
-// emitTokenMinted emits TokenMinted event
-func (c *tokenManager_zkevm) emitTokenMinted(to libcommon.Address, amount *uint256.Int, admin libcommon.Address) {
-	// topics: [event signature, to address, admin address]
-	topics := []libcommon.Hash{
-		TokenMintedEventSig,
-		libcommon.BytesToHash(to.Bytes()),    // indexed to
-		libcommon.BytesToHash(admin.Bytes()), // indexed admin
-	}
-
-	// data: amount (32 bytes)
-	data := make([]byte, 32)
-	amount.WriteToSlice(data)
-
-	c.emitLog(topics, data)
-}
-
-// emitTokenBurned emits TokenBurned event
-func (c *tokenManager_zkevm) emitTokenBurned(from libcommon.Address, amount *uint256.Int, admin libcommon.Address) {
-	// topics: [event signature, from address, admin address]
-	topics := []libcommon.Hash{
-		TokenBurnedEventSig,
-		libcommon.BytesToHash(from.Bytes()),  // indexed from
-		libcommon.BytesToHash(admin.Bytes()), // indexed admin
-	}
-
-	// data: amount (32 bytes)
-	data := make([]byte, 32)
-	amount.WriteToSlice(data)
-
-	c.emitLog(topics, data)
-}
-
-// getContractAddress gets the contract address
-func (c *tokenManager_zkevm) getContractAddress() libcommon.Address {
-	return libcommon.BytesToAddress([]byte{0x01, 0x01})
+	return []byte{}, nil
 }

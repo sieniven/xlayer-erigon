@@ -121,9 +121,6 @@ type Config struct {
 
 	AllowFreeTransactions bool   `json:"allowFreeTransactions,omitempty"`
 	ZkDefaultGasPrice     uint64 `json:"zkDefaultGasFee,omitempty"`
-
-	// Token Manager precompile configuration (for xlayer-erigon)
-	TokenManager *TokenManagerConfig `json:"tokenManager,omitempty"`
 }
 
 type BorConfig interface {
