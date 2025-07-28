@@ -3,7 +3,7 @@ Environment = "production"
 Level = "info"
 
 [NetworkConfig.L1]
-URL = "https://rpc.ankr.com/eth_sepolia/578c95407e7831f0ac1ef79cacae294dc9bf8307121ca9fffaf1e556a5cca662"
+URL = "https://rpc.ankr.com/eth_sepolia/xxxxxxxx"
 ChainID = 11155111
 RollupAddr = "0x7b1472be9a0115c3076b9f30e6bab91b13b3be6b"
 RollupManagerAddr = "0x32d33d5137a7cffb54c5bf8371172bcec5f310ff"
@@ -11,10 +11,10 @@ POLTokenAddr = "0x6a7c3f4b0651d6da389ad1d11d962ea458cdca70"
 GlobalExitRootManagerAddr = "0xad1490c248c5d3cbae399fd529b79b42984277df"
 
 [Etherman]
-URL = "https://rpc.ankr.com/eth_sepolia/578c95407e7831f0ac1ef79cacae294dc9bf8307121ca9fffaf1e556a5cca662"
+URL = "https://rpc.ankr.com/eth_sepolia/xxxxxxxx"
 ForkIDChunkSize = 0
 [Etherman.EthermanConfig]
-URL = "https://rpc.ankr.com/eth_sepolia/578c95407e7831f0ac1ef79cacae294dc9bf8307121ca9fffaf1e556a5cca662"
+URL = "https://rpc.ankr.com/eth_sepolia/xxxxxxxx"
 MultiGasProvider = false
 L1ChainID = 11155111
 
@@ -61,7 +61,7 @@ DBPath = "/egsender/data/aggsender/L1InfoTreeSync.sqlite"
 GlobalExitRootAddr = "0xad1490c248c5d3cbae399fd529b79b42984277df"
 RollupManagerAddr = "0x32d33d5137a7cffb54c5bf8371172bcec5f310ff"
 BlockFinality = "FinalizedBlock"
-URLRPCL1 = "https://rpc.ankr.com/eth_sepolia/578c95407e7831f0ac1ef79cacae294dc9bf8307121ca9fffaf1e556a5cca662"
+URLRPCL1 = "https://rpc.ankr.com/eth_sepolia/xxxxxxxx"
 InitialBlock = 5158574
 #InitialBlock = 8517637
 
