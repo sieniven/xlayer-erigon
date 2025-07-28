@@ -19,7 +19,7 @@ func (api *RealtimeAPIImpl) BlockNumber(ctx context.Context, tag *RealtimeTag) (
 	blockNumber, _, err := api.getBlockNumber(rpc.BlockNumber(*tag))
 	if err != nil {
 		// Do not redirect to default eth api as block number with tag is custom for realtime
-		return hexutil.Uint64(0), ErrRealtimeNotEnabled
+		return hexutil.Uint64(0), err
 	}
 	return hexutil.Uint64(blockNumber), nil
 }
