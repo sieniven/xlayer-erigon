@@ -59,7 +59,8 @@ UseAgglayerTLS = false
 
 MaxCertSize = 0
 
-UpgradeEndBlock = 17428134
+MaxL2BlockNumber = ${MAX_L2_BLOCK_NUMBER}
+StopOnFinishedSendingAllCertificates = true
 
 [AggSender.MaxSubmitCertificateRate]
 NumRequests = 20

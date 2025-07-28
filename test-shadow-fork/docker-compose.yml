@@ -102,7 +102,9 @@ services:
     volumes:
       - "./tmp/aggkit:/tmp"
       - "./conf:/etc/aggkit"
-    command: ["run", "--cfg=/etc/aggkit/aggkit.toml", "--components=aggsender,bridge"]
+    environment:
+      - MAX_L2_BLOCK_NUMBER=${MAX_L2_BLOCK_NUMBER}
+    command: ["sh", "-c", "envsubst < /etc/aggkit/aggkit.toml > /tmp/aggkit_processed.toml && run --cfg=/tmp/aggkit_processed.toml --components=aggsender,bridge"]
     profiles:
       - testing
     depends_on:

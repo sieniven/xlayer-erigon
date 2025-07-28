@@ -43,88 +43,46 @@ setup_directories() {
 }
 
 build_aggkit() {
-    print_step "Building special Aggkit version..."
+    print_step "Checking Aggkit build..."
     
-    pushd $TDIR
-    
-    # Check if aggkit-code directory already exists
-    if [ -d "aggkit-code" ]; then
-        print_warning "aggkit-code directory already exists, updating..."
-        pushd aggkit-code
-        git reset --hard || true
-        git clean -fd || true
-        git fetch origin || true
-        git switch feat/hermez_to_pp_upgrade_patch || true # Special branch for upgrade
-        git reset --hard origin/feat/hermez_to_pp_upgrade_patch || true
-    else
-        git clone git@github.com:agglayer/aggkit.git aggkit-code
-        pushd aggkit-code
-        git switch feat/hermez_to_pp_upgrade_patch # Special branch for upgrade
+    # Check if aggkit image exists
+    if ! docker images | grep -q "aggkit.*local"; then
+        print_error "Aggkit image not found. Please build it manually:"
+        print_error "cd tmp/aggkit && make build-docker"
+        exit 1
     fi
     
-    make build-docker
-    popd
-    popd
-    
-    print_success "Aggkit built successfully"
+    print_success "Aggkit image verified"
 }
 
 prepare_contracts() {
-    print_step "Preparing Agglayer contracts..."
+    print_step "Checking Agglayer contracts..."
     
-    pushd $TDIR
-    
-    # Check if agglayer-contracts directory already exists
-    if [ -d "agglayer-contracts" ]; then
-        print_warning "agglayer-contracts directory already exists, updating..."
-        pushd agglayer-contracts
-        git reset --hard || true
-        git clean -fd || true
-        git fetch origin || true
-        git checkout v11.0.0-rc.0 || true # Specific version for OKX upgrade
-    else
-        git clone git@github.com:agglayer/agglayer-contracts.git
-        pushd agglayer-contracts
-        git checkout v11.0.0-rc.0 # Specific version for OKX upgrade
+    # Check if agglayer-contracts directory exists
+    if [ ! -d "$TDIR/agglayer-contracts" ]; then
+        print_error "Agglayer contracts directory not found at $TDIR/agglayer-contracts"
+        print_error "Please clone it manually: git clone git@github.com:agglayer/agglayer-contracts.git"
+        exit 1
     fi
     
-    popd
-    popd
-    
-    print_success "Contracts prepared successfully"
+    print_success "Agglayer contracts verified"
 }
 
 create_test_keys() {
-    print_step "Creating test keys..."
+    print_step "Checking test keys..."
     
-    # Create conf directory if it doesn't exist
-    mkdir -p conf/
-    
-    # Create the Agglayer test account
-    print_step "Creating Agglayer test account..."
-    echo "Address:     0xaff8Ed903d079cD0E7fE29138b37B6AC8fFe4AdF"
-    echo "Private key: 0x9cef1f40624aba3fa6a24c587dde060ab9aa823fef108db63fd0ba5f0a4ba830"
-    
-    # Check if keystore already exists
-    if [ -f "conf/agglayer.keystore" ]; then
-        print_warning "Agglayer keystore already exists, skipping creation..."
-    else
-        echo "randompassword" | cast wallet import --private-key 0x9cef1f40624aba3fa6a24c587dde060ab9aa823fef108db63fd0ba5f0a4ba830 --keystore-dir conf/ agglayer.keystore
+    # Check if required keystore files exist
+    if [ ! -f "conf/agglayer.keystore" ]; then
+        print_error "Agglayer keystore not found at conf/agglayer.keystore"
+        exit 1
     fi
     
-    # Create the Sequencer test account
-    print_step "Creating Sequencer test account..."
-    echo "Address:     0x8Ad44b2b5368a3043901ee373dC6D400c6A2e83F"
-    echo "Private key: 0x452e72182077e2bc90ad9a53afc1dc4476fa429cec9fc6a437fb95b791045d43"
-    
-    # Check if keystore already exists
-    if [ -f "conf/sequencer.keystore" ]; then
-        print_warning "Sequencer keystore already exists, skipping creation..."
-    else
-        echo "randompassword" | cast wallet import --private-key 0x452e72182077e2bc90ad9a53afc1dc4476fa429cec9fc6a437fb95b791045d43 --keystore-dir conf/ sequencer.keystore
+    if [ ! -f "conf/sequencer.keystore" ]; then
+        print_error "Sequencer keystore not found at conf/sequencer.keystore"
+        exit 1
     fi
     
-    print_success "Test keys created successfully"
+    print_success "Test keys verified"
 }
 
 setup_environment() {
@@ -138,23 +96,13 @@ setup_environment() {
     
     SP1_KEY=$(cat conf/sp1.key)
     
-    # Create .env file
-    cat > .env << EOF
-# Environment variables for test-shadow-fork setup
-SP1_KEY=$SP1_KEY
-NETWORK_RPC_URL=https://rpc.production.succinct.xyz
-RUST_BACKTRACE=1
-POSTGRES_USER=test_user
-POSTGRES_PASSWORD=test_password
-POSTGRES_DB=test_db
-ANVIL_BLOCK_TIME=12
-ANVIL_FORK_URL=https://rpc.ankr.com/eth/578c95407e7831f0ac1ef79cacae294dc9bf8307121ca9fffaf1e556a5cca662
-ANVIL_FORK_BLOCK_NUMBER=22688021
-UPGRADE_PREPARATION_MEMORY_LIMIT=4g
-UPGRADE_PREPARATION_MEMORY_SWAP=8g
-EOF
+    # Check if .env file exists
+    if [ ! -f ".env" ]; then
+        print_error ".env file not found. Please create it with required environment variables."
+        exit 1
+    fi
     
-    print_success "Environment variables set up"
+    print_success "Environment variables loaded from .env file"
 }
 
 start_services() {
@@ -456,12 +404,8 @@ EOF
            [ -f "$PWD/tmp/agglayer-contracts/tools/addRollupType/add_rollup_type_output.json" ]; then
             print_success "Rollup manager upgrade prepared successfully"
         else
-            print_warning "Upgrade preparation completed but no output files found. Proceeding with manual setup..."
-            # Create minimal mock output files to continue
-            mkdir -p "$PWD/tmp/agglayer-contracts/upgrade/upgrade-rollupManager-v0.3.1"
-            mkdir -p "$PWD/tmp/agglayer-contracts/tools/addRollupType"
-            echo '{"error": "compilation_failed", "timelockContractAddress": "0x242daE44F5d8fb54B198D03a94dA45B5a4413e21"}' > "$PWD/tmp/agglayer-contracts/upgrade/upgrade-rollupManager-v0.3.1/upgrade_output.json"
-            echo '{"error": "compilation_failed"}' > "$PWD/tmp/agglayer-contracts/tools/addRollupType/add_rollup_type_output.json"
+            print_error "Upgrade preparation completed but no output files found"
+            exit 1
         fi
     else
         print_error "Failed to prepare rollup manager upgrade"
