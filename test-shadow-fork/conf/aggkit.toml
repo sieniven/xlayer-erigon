@@ -1,0 +1,132 @@
+PathRWData = "/tmp/"
+L1URL="http://anvil:8545"
+
+L2URL="https://xlayerrpc.okx.com/unlimited/abc"
+
+AggLayerURL="agglayer-node:4443"
+
+ForkId = 12
+ContractVersions = "banana"
+IsValidiumMode = false
+NetworkID = 1
+
+L2Coinbase =  "0x8Ad44b2b5368a3043901ee373dC6D400c6A2e83F"
+SequencerPrivateKeyPath = ""
+SequencerPrivateKeyPassword  = ""
+
+AggregatorPrivateKeyPath = ""
+AggregatorPrivateKeyPassword  = ""
+SenderProofToL1Addr = ""
+polygonBridgeAddr = "0x2a3DD3EB832aF982ec71669E178424b10Dca2EDe"
+
+RPCURL = "https://xlayerrpc.okx.com/unlimited/abc"
+
+WitnessURL = ""
+
+rollupCreationBlockNumber = "19545462"
+rollupManagerCreationBlockNumber = "1686721"
+genesisBlockNumber = "1686721"
+
+[L1Config]
+chainId = "1"
+
+polygonZkEVMGlobalExitRootAddress = "0x580bda1e7A0CFAe92Fa7F6c20A3794F169CE3CFb"
+
+polygonRollupManagerAddress = "0x5132a183e9f3cb7c848b0aac5ae0c4f0491b7ab2"
+
+polTokenAddress = "0x455e53CBB86018Ac2B8092FdCd39d8444aFFC3F6"
+
+polygonZkEVMAddress = "0x2B0ee28D4D51bC9aDde5E58E295873F61F4a0507"
+
+[L2Config]
+GlobalExitRootAddr = "0xa40d5f56745a118d0906a34e69aec8c0db1cb8fa"
+
+[Log]
+Environment = "development"
+
+Level = "info"
+
+Outputs = ["stderr"]
+
+[RPC]
+Port = 5576
+
+[AggSender]
+AggsenderPrivateKey = {Path = "/etc/aggkit/sequencer.keystore", Password = "randompassword"}
+CheckStatusCertificateInterval = "1s"
+Mode="PessimisticProof"
+UseAgglayerTLS = false
+
+MaxCertSize = 0
+
+UpgradeEndBlock = 17428134
+
+[AggSender.MaxSubmitCertificateRate]
+NumRequests = 20
+Interval = "1m"
+
+BlockFinality = "LatestBlock"
+
+SaveCertificatesToFilesPath = "/tmp"
+
+KeepCertificatesHistory = true
+
+[AggOracle]
+BlockFinality = "FinalizedBlock"
+
+WaitPeriodNextGER = "10s"
+
+[AggOracle.EVMSender]
+GlobalExitRootL2 = "0xa40d5f56745a118d0906a34e69aec8c0db1cb8fa"
+
+WaitPeriodMonitorTx = "10s"
+
+[AggOracle.EVMSender.EthTxManager]
+PrivateKeys = [{Path = "/etc/aggkit/aggoracle.keystore", Password = "pSnv6Dh5s9ahuzGzH9RoCDrKAMddaX3m"}]
+
+[AggOracle.EVMSender.EthTxManager.Etherman]
+L1ChainID = "2151908"
+
+[BridgeL1Sync]
+BlockFinality = "LatestBlock"
+
+[BridgeL2Sync]
+BridgeAddr = "0x2a3DD3EB832aF982ec71669E178424b10Dca2EDe"
+
+BlockFinality = "FinalizedBlock"
+
+SyncBlockChunkSize = 1000
+
+[L1InfoTreeSync]
+InitialBlock = "36"
+
+BlockFinality = "LatestBlock"
+
+[LastGERSync]
+BlockFinality = "LatestBlock"
+
+[ClaimSponsor]
+DBPath = "/tmp/claimsponsor.sqlite"
+
+Enabled = false
+
+SenderAddr = "0x5f5dB0D4D58310F53713eF4Df80ba6717868A9f8"
+
+BridgeAddrL2 = "0x927aa8656B3a541617Ef3fBa4A2AB71320dc7fD7"
+
+[ClaimSponsor.EthTxManager]
+PrivateKeys = [
+    {Path = "/etc/aggkit/claimtxmanager.keystore", Password = "pSnv6Dh5s9ahuzGzH9RoCDrKAMddaX3m"},
+]
+
+StoragePath = "/tmp/ethtxmanager-claimsponsor.sqlite"
+
+[ClaimSponsor.EthTxManager.Etherman]
+URL = "http://op-el-1-op-geth-op-node-001:8545"
+
+L1ChainID = "2151908"
+
+[Profiling]
+ProfilingHost = "0.0.0.0"
+
+ProfilingPort = 6060

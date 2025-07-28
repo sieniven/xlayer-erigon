@@ -1,0 +1,19 @@
+grpc-endpoint = "0.0.0.0:4445"
+max-concurrency-limit = 100
+max-request-duration = 300
+max-buffered-queries = 100
+
+[log]
+environment = "production" # "production" or "development"
+level = "debug"
+outputs = ["stderr"]
+format = "json"
+
+[telemetry]
+prometheus-addr = "0.0.0.0:9093"
+
+[primary-prover.network-prover]
+proving-timeout = 900
+
+[grpc]
+max-decoding-message-size = 1073741824  # 1GB

@@ -1,0 +1,117 @@
+version: "3.8"
+
+networks:
+  rpcs:
+    name: rpcs
+    driver: bridge
+
+services:
+  # Anvil shadow fork for mainnet testing
+  anvil:
+    container_name: anvil
+    image: ghcr.io/foundry-rs/foundry:latest
+    ports:
+      - "3000:8545"
+    networks:
+      - rpcs
+    volumes:
+      - "./tmp/anvil:/anvil"
+    entrypoint: ["anvil"]
+    command:
+      - "--block-time"
+      - "${ANVIL_BLOCK_TIME}"
+      - "--host"
+      - "0.0.0.0"
+      - "--fork-url"
+      - "${ANVIL_FORK_URL}"
+      - "--state"
+      - "/anvil"
+      - "--fork-block-number"
+      - "${ANVIL_FORK_BLOCK_NUMBER}"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "cast", "block-number", "--rpc-url", "http://127.0.0.1:8545"]
+      interval: 5s
+      timeout: 10s
+      retries: 30
+      start_period: 10s
+
+  # Agglayer Prover
+  agglayer-prover:
+    container_name: agglayer-prover
+    image: ghcr.io/agglayer/agglayer:0.3.3
+    networks:
+      - rpcs
+    volumes:
+      - "./conf:/etc/agglayer:ro"
+    environment:
+      - SP1_PRIVATE_KEY=${SP1_KEY}
+      - NETWORK_RPC_URL=${NETWORK_RPC_URL}
+      - RUST_BACKTRACE=${RUST_BACKTRACE}
+      - NETWORK_PRIVATE_KEY=${SP1_KEY}
+    entrypoint: ["agglayer"]
+    command: ["prover", "--cfg", "/etc/agglayer/agglayer-prover-config.toml"]
+    restart: unless-stopped
+    depends_on:
+      - anvil
+
+  # Agglayer Node
+  agglayer-node:
+    container_name: agglayer-node
+    image: ghcr.io/agglayer/agglayer:0.3.3
+    networks:
+      - rpcs
+    volumes:
+      - "./conf:/etc/agglayer:ro"
+      - "./tmp/agglayer:/var/agglayer"
+    entrypoint: ["agglayer"]
+    command: ["run", "--cfg", "/etc/agglayer/agglayer-config.toml"]
+    restart: unless-stopped
+    depends_on:
+      - anvil
+      - agglayer-prover
+
+  # Node.js container for upgrade preparation
+  upgrade-preparation:
+    container_name: upgrade-preparation
+    image: node:22-bookworm
+    networks:
+      - rpcs
+    volumes:
+      - "./tmp/agglayer-contracts:/agglayer-contracts"
+      - "./conf:/etc/conf:ro"
+    working_dir: /agglayer-contracts
+    deploy:
+      resources:
+        limits:
+          memory: ${UPGRADE_PREPARATION_MEMORY_LIMIT}
+        reservations:
+          memory: ${UPGRADE_PREPARATION_MEMORY_SWAP}
+    command: ["bash", "-c", "/agglayer-contracts/prepare_upgrade.sh"]
+    profiles:
+      - upgrade
+    depends_on:
+      - anvil
+
+  # Aggkit for testing and validation
+  aggkit:
+    container_name: aggkit
+    image: aggkit:local
+    networks:
+      - rpcs
+    volumes:
+      - "./tmp/aggkit:/tmp"
+      - "./conf:/etc/aggkit"
+    command: ["run", "--cfg=/etc/aggkit/aggkit.toml", "--components=aggsender,bridge"]
+    profiles:
+      - testing
+    depends_on:
+      - anvil
+      - agglayer-node
+      - agglayer-prover
+
+volumes:
+  agglayer_data:
+    driver: local
+
+  
