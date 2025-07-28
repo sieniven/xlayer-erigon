@@ -1,5 +1,9 @@
 # Token Manager 预编译合约快速参考
 
+**⚠️ 重要限制：管理员地址无法更换**
+
+由于预编译合约无法持久化 `SetState` 操作（只能持久化余额操作），所有状态必须硬编码。详细技术说明请参考完整文档。
+
 ## 🚀 快速开始
 
 ### 合约地址
@@ -38,29 +42,24 @@ python3 scripts/token_manager_encoder.py burn 0x1f50d8C07D68F2Ec566a00Ca0689a9B2
 
 # 直接使用 cast（销毁 0x1f50d8C07D68F2Ec566a00Ca0689a9B24799D986 地址的 5 个代币）
 cast send 0x0000000000000000000000000000000000000101 \
-  "0x020000000000000000000000001f50d8C07D68F2Ec566a00Ca0689a9B24799D98600000000000000000000000000000000000000000000000045639182B5AF0000" \
+  "0x020000000000000000000000001f50d8C07D68F2Ec566a00Ca0689a9B24799D986000000000000000000000000000000000000000000000000045639182B5AF0000" \
   --private-key 0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80 \
   --rpc-url http://127.0.0.1:8123
 ```
 
-### 4. 更换管理员
-```bash
-# 使用编码工具
-python3 scripts/token_manager_encoder.py change_admin 0x1234567890123456789012345678901234567890
+**⚠️ 重要限制：**
+- 无法销毁地址的全部余额（防止节点崩溃）
+- 每个地址必须保留至少 1 wei
+- 尝试全量销毁会返回 `insufficient balance for burn` 错误
 
-# 直接使用 cast
-cast send 0x0000000000000000000000000000000000000101 \
-  "0x100000000000000000000000001234567890123456789012345678901234567890" \
-  --private-key 0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80 \
-  --rpc-url http://127.0.0.1:8123
-```
 
-### 5. 检查余额
+
+### 4. 检查余额
 ```bash
 cast balance 0xb6c11e83a19893a0de12ae7b77ff224eae7ea8cb --rpc-url http://127.0.0.1:8123
 ```
 
-### 6. 运行完整测试
+### 5. 运行完整测试
 ```bash
 ./scripts/token_manager_test.sh
 ```
@@ -101,8 +100,17 @@ cast balance 0xb6c11e83a19893a0de12ae7b77ff224eae7ea8cb --rpc-url http://127.0.0
 - 确认使用正确的管理员私钥
 - 检查当前管理员地址
 
-### "address not authorized for burn"
-- 目标地址必须在 `burnAuthorizedAddresses` 列表中
+### "insufficient balance for burn"
+- 无法销毁地址的全部余额（防止节点崩溃）
+- 每个地址必须保留至少 1 wei
+
+## 💰 Gas 费用
+
+| 操作 | Gas 消耗 | 说明 |
+|------|----------|------|
+| 增发 (Mint) | 0 | **免费操作** |
+| 销毁 (Burn) | 15000 | 正常收费 |
+| 查询管理员 | 10000 | 正常收费 |
 
 ## 🎯 操作码速查
 
@@ -110,7 +118,6 @@ cast balance 0xb6c11e83a19893a0de12ae7b77ff224eae7ea8cb --rpc-url http://127.0.0
 |------|------|------|
 | `0x01` | 增发 | `01 + 32字节地址 + 32字节数量` |
 | `0x02` | 销毁 | `02 + 32字节地址 + 32字节数量` |
-| `0x10` | 换管理员 | `10 + 32字节新管理员地址` |
 | `0x20` | 查管理员 | `20` |
 
 ## 🛠️ 工具使用
@@ -123,7 +130,6 @@ python3 scripts/token_manager_encoder.py --help
 # 示例
 python3 scripts/token_manager_encoder.py mint 0xADDRESS 10
 python3 scripts/token_manager_encoder.py burn 0xADDRESS 5
-python3 scripts/token_manager_encoder.py change_admin 0xNEW_ADMIN
 python3 scripts/token_manager_encoder.py query_admin
 ```
 
