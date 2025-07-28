@@ -37,7 +37,7 @@ func APIList(db kv.RoDB, dbsmt kv.RoDB, eth rpchelper.ApiBackend, txPool txpool.
 	realtimeEnabled bool,
 	realtimeCache *realtimeCache.RealtimeCache,
 	realtimeSub *realtimeSub.RealtimeSubscription,
-	NewRealtimeAPI func(base *APIImpl, cacheDB *realtimeCache.RealtimeCache, subService *realtimeSub.RealtimeSubscription, enableFlag bool) interface{},
+	NewRealtimeAPI func(base *APIImpl, cacheDB *realtimeCache.RealtimeCache, subService *realtimeSub.RealtimeSubscription) interface{},
 ) (list []rpc.API, gpCache *GasPriceCache) {
 	// non-sequencer nodes should forward on requests to the sequencer
 	rpcUrl := ""
@@ -99,7 +99,7 @@ func APIList(db kv.RoDB, dbsmt kv.RoDB, eth rpchelper.ApiBackend, txPool txpool.
 				list = append(list, rpc.API{
 					Namespace: "eth",
 					Public:    true,
-					Service:   NewRealtimeAPI(ethImpl, realtimeCache, realtimeSub, realtimeEnabled),
+					Service:   NewRealtimeAPI(ethImpl, realtimeCache, realtimeSub),
 					Version:   "1.0",
 				})
 			} else {

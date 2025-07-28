@@ -13,7 +13,7 @@ import (
 
 // Realtime send a notification each time when a transaction was received in real-time.
 func (api *RealtimeAPIImpl) Realtime(ctx context.Context, criteria realtimeSub.StreamCriteria) (*rpc.Subscription, error) {
-	if !api.enableFlag || api.cacheDB == nil {
+	if api.cacheDB == nil || !api.cacheDB.ReadyFlag.Load() {
 		// Custom for realtime
 		return &rpc.Subscription{}, ErrRealtimeNotEnabled
 	}
@@ -94,7 +94,7 @@ func (api *RealtimeAPIImpl) Realtime(ctx context.Context, criteria realtimeSub.S
 
 // Logs send a notification each time a new log appears in real-time.
 func (api *RealtimeAPIImpl) Logs(ctx context.Context, crit filters.FilterCriteria) (*rpc.Subscription, error) {
-	if !api.enableFlag || api.cacheDB == nil {
+	if api.cacheDB == nil || !api.cacheDB.ReadyFlag.Load() {
 		return api.APIImpl.Logs(ctx, crit)
 	}
 

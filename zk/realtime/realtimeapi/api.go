@@ -23,7 +23,6 @@ type RealtimeAPIImpl struct {
 	jsonrpc.APIImpl
 	cacheDB    *realtimeCache.RealtimeCache
 	subService *subscription.RealtimeSubscription
-	enableFlag bool
 }
 
 // NewRealtimeAPIImpl returns RealtimeAPIImpl instance
@@ -31,14 +30,12 @@ func NewRealtimeAPIImpl(
 	base *jsonrpc.APIImpl,
 	cacheDB *realtimeCache.RealtimeCache,
 	subService *subscription.RealtimeSubscription,
-	enableFlag bool,
 ) *RealtimeAPIImpl {
 
 	return &RealtimeAPIImpl{
 		APIImpl:    *base,
 		cacheDB:    cacheDB,
 		subService: subService,
-		enableFlag: enableFlag,
 	}
 }
 
@@ -46,13 +43,12 @@ func NewRealtimeAPI(
 	base *jsonrpc.APIImpl,
 	cacheDB *realtimeCache.RealtimeCache,
 	subService *subscription.RealtimeSubscription,
-	enableFlag bool,
 ) interface{} {
-	return NewRealtimeAPIImpl(base, cacheDB, subService, enableFlag)
+	return NewRealtimeAPIImpl(base, cacheDB, subService)
 }
 
 func (api *RealtimeAPIImpl) getBlockNumber(blockNr rpc.BlockNumber) (uint64, bool, error) {
-	if !api.enableFlag || api.cacheDB == nil {
+	if api.cacheDB == nil || !api.cacheDB.ReadyFlag.Load() {
 		return 0, false, ErrRealtimeNotEnabled
 	}
 

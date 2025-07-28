@@ -21,7 +21,6 @@ var (
 	MaxKafkaCacheSize       = 1_000
 	MinRealtimeLoopWaitTime = 10 * time.Millisecond
 
-	readyFlag  = atomic.Bool{}
 	errorFlag  = atomic.Bool{}
 	resetFlag  = atomic.Bool{}
 	kafkaCache *cache.KafkaCache
@@ -171,6 +170,7 @@ func realtimeLoop(ctx context.Context, realtimeCache *cache.RealtimeCache) {
 
 		// Check for kafka error
 		if errorFlag.Load() {
+			realtimeCache.ReadyFlag.Store(false)
 			log.Error("[Realtime] Kafka error, stopping realtime loop")
 			return
 		}
@@ -182,7 +182,7 @@ func realtimeLoop(ctx context.Context, realtimeCache *cache.RealtimeCache) {
 		}
 
 		// Check if realtime cache is ready
-		if !readyFlag.Load() {
+		if !realtimeCache.ReadyFlag.Load() {
 			if ok := tryInitRealtimeCache(realtimeCache); !ok {
 				time.Sleep(1 * time.Second)
 			}
@@ -271,7 +271,7 @@ func tryInitRealtimeCache(realtimeCache *cache.RealtimeCache) bool {
 
 	// Flush all kafka data less than or equal to state cache height
 	kafkaCache.Flush(executionHeight)
-	readyFlag.Store(true)
+	realtimeCache.ReadyFlag.Store(true)
 	log.Info(fmt.Sprintf("[Realtime] Realtime cache initialized. executionHeight: %d", executionHeight))
 
 	return true
@@ -279,8 +279,10 @@ func tryInitRealtimeCache(realtimeCache *cache.RealtimeCache) bool {
 
 // resetRealtimeCache clears the realtime cache and resets the state flags
 func resetRealtimeCache(realtimeCache *cache.RealtimeCache) {
+	// Reset and clear realtime cache
 	log.Debug("[Realtime] Resetting realtime cache")
+	realtimeCache.ReadyFlag.Store(false)
 	realtimeCache.Clear()
+
 	resetFlag.Store(false)
-	readyFlag.Store(false)
 }

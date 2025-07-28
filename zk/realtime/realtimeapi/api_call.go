@@ -15,7 +15,7 @@ import (
 // Executes a new message call immediately without creating a transaction on the block chain.
 // Note that realtime API only supports execution on the latest block.
 func (api *RealtimeAPIImpl) Call(ctx context.Context, args ethapi2.CallArgs, blockNrOrHash rpc.BlockNumberOrHash, overrides *ethapi2.StateOverrides) (hexutility.Bytes, error) {
-	if !api.enableFlag || api.cacheDB == nil {
+	if api.cacheDB == nil || !api.cacheDB.ReadyFlag.Load() {
 		return api.APIImpl.Call(ctx, args, blockNrOrHash, overrides)
 	}
 

@@ -8,7 +8,7 @@ import (
 )
 
 func (api *RealtimeAPIImpl) BlockNumber(ctx context.Context, tag *RealtimeTag) (hexutil.Uint64, error) {
-	if !api.enableFlag || api.cacheDB == nil {
+	if api.cacheDB == nil || !api.cacheDB.ReadyFlag.Load() {
 		return api.APIImpl.BlockNumber(ctx)
 	}
 
@@ -25,7 +25,7 @@ func (api *RealtimeAPIImpl) BlockNumber(ctx context.Context, tag *RealtimeTag) (
 }
 
 func (api *RealtimeAPIImpl) GetBlockTransactionCountByNumber(ctx context.Context, blockNr rpc.BlockNumber) (*hexutil.Uint, error) {
-	if !api.enableFlag || api.cacheDB == nil {
+	if api.cacheDB == nil || !api.cacheDB.ReadyFlag.Load() {
 		return api.APIImpl.GetBlockTransactionCountByNumber(ctx, blockNr)
 	}
 

@@ -68,6 +68,7 @@ type RealtimeCache struct {
 	State         *StateCache
 	Stateless     *StatelessCache
 	CacheDumpPath string
+	ReadyFlag     atomic.Bool
 
 	// highestConfirmHeight is the highest confirmed block height closed from kafka
 	highestConfirmHeight atomic.Uint64
@@ -92,6 +93,7 @@ func NewRealtimeCache(ctx context.Context, db kv.RoDB, cacheDumpPath string) (*R
 		State:                  stateCache,
 		Stateless:              NewStatelessCache(DefaultStatelessBlockCacheSize, DefaultStatelessTxCacheSize),
 		CacheDumpPath:          cacheDumpPath,
+		ReadyFlag:              atomic.Bool{},
 		highestConfirmHeight:   atomic.Uint64{},
 		highestExecutionHeight: atomic.Uint64{},
 		highestPendingHeight:   atomic.Uint64{},

@@ -8,7 +8,7 @@ import (
 )
 
 func (api *RealtimeAPIImpl) DebugDumpRealtimeCache(ctx context.Context) error {
-	if !api.enableFlag || api.cacheDB == nil {
+	if api.cacheDB == nil || !api.cacheDB.ReadyFlag.Load() {
 		// Custom for realtime
 		return ErrRealtimeNotEnabled
 	}
@@ -22,7 +22,7 @@ func (api *RealtimeAPIImpl) DebugDumpRealtimeCache(ctx context.Context) error {
 }
 
 func (api *RealtimeAPIImpl) DebugCompareRealtimeStateCache(ctx context.Context) (*RealtimeDebugResult, error) {
-	if !api.enableFlag || api.cacheDB == nil || api.cacheDB.State == nil {
+	if api.cacheDB == nil || !api.cacheDB.ReadyFlag.Load() {
 		// Custom for realtime
 		return nil, ErrRealtimeNotEnabled
 	}

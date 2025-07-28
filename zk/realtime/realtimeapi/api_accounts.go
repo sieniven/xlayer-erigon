@@ -13,7 +13,7 @@ import (
 )
 
 func (api *RealtimeAPIImpl) GetBalance(ctx context.Context, address libcommon.Address, blockNrOrHash rpc.BlockNumberOrHash) (*hexutil.Big, error) {
-	if !api.enableFlag || api.cacheDB == nil {
+	if api.cacheDB == nil || !api.cacheDB.ReadyFlag.Load() {
 		return api.APIImpl.GetBalance(ctx, address, blockNrOrHash)
 	}
 
@@ -35,7 +35,7 @@ func (api *RealtimeAPIImpl) GetBalance(ctx context.Context, address libcommon.Ad
 }
 
 func (api *RealtimeAPIImpl) GetTransactionCount(ctx context.Context, address libcommon.Address, blockNrOrHash *rpc.BlockNumberOrHash) (*hexutil.Uint64, error) {
-	if !api.enableFlag || api.cacheDB == nil {
+	if api.cacheDB == nil || !api.cacheDB.ReadyFlag.Load() {
 		return api.APIImpl.GetTransactionCount(ctx, address, blockNrOrHash)
 	}
 
@@ -76,7 +76,7 @@ func (api *RealtimeAPIImpl) GetTransactionCount(ctx context.Context, address lib
 }
 
 func (api *RealtimeAPIImpl) GetCode(ctx context.Context, address libcommon.Address, blockNrOrHash rpc.BlockNumberOrHash) (hexutility.Bytes, error) {
-	if !api.enableFlag || api.cacheDB == nil {
+	if api.cacheDB == nil || !api.cacheDB.ReadyFlag.Load() {
 		return api.APIImpl.GetCode(ctx, address, blockNrOrHash)
 	}
 
@@ -97,7 +97,7 @@ func (api *RealtimeAPIImpl) GetCode(ctx context.Context, address libcommon.Addre
 }
 
 func (api *RealtimeAPIImpl) GetStorageAt(ctx context.Context, address libcommon.Address, index string, blockNrOrHash rpc.BlockNumberOrHash) (string, error) {
-	if !api.enableFlag || api.cacheDB == nil {
+	if api.cacheDB == nil || !api.cacheDB.ReadyFlag.Load() {
 		return api.APIImpl.GetStorageAt(ctx, address, index, blockNrOrHash)
 	}
 
