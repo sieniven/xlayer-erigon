@@ -4,7 +4,9 @@
 
 Token Manager 是 xlayer-erigon L2 链上的一个原生预编译合约，用于实现 native gas token 的增发和销毁功能。该合约通过 L2 交易调用，提供高性能的代币管理能力。
 
-**⚠️ 重要说明：管理员地址是硬编码的，无法在运行时更换。**
+**🔐 多签管理员设计：采用硬编码的多管理员地址，要求超过半数签名验证。**
+
+**⚠️ 重要说明：管理员地址列表是硬编码的，无法在运行时更换。**
 
 **技术原因说明：**
 预编译合约在 Erigon 中有特殊的地址空间（如 `0x0000000000000000000000000000000000000101`），这些地址被系统识别为预编译功能而非普通智能合约。虽然预编译合约可以修改账户余额（通过 `AddBalance`/`SubBalance`），但无法使用合约存储功能（`SetState`/`GetState`）来持久化自定义状态。
@@ -20,11 +22,12 @@ Token Manager 是 xlayer-erigon L2 链上的一个原生预编译合约，用于
 
 ### 核心原则
 1. **安全性优先**: 只有授权管理员可以执行关键操作
-2. **权限控制**: 销毁操作限制在预授权地址列表中
-3. **固定管理员**: 使用硬编码管理员地址，简化权限管理
-4. **无状态设计**: 预编译合约不依赖链上状态存储
-5. **事件日志**: 所有关键操作都发出标准以太坊事件
-6. **共识安全**: 在激活高度前保持与旧节点的共识兼容性
+2. **多签验证**: 要求超过半数的管理员签名才能执行操作
+3. **权限控制**: 销毁操作限制在预授权地址列表中
+4. **固定管理员**: 使用硬编码管理员地址列表，简化权限管理
+5. **无状态设计**: 预编译合约不依赖链上状态存储
+6. **事件日志**: 所有关键操作都发出标准以太坊事件
+7. **共识安全**: 在激活高度前保持与旧节点的共识兼容性
 
 ### 架构特点
 - **预编译合约**: 直接集成在 EVM 中，高性能执行
@@ -38,9 +41,9 @@ Token Manager 是 xlayer-erigon L2 链上的一个原生预编译合约，用于
 
 | 操作码 | 名称 | 功能 | 权限要求 |
 |--------|------|------|----------|
-| `0x01` | TOKEN_MINT_OP | 增发代币到指定地址 | 仅管理员 |
-| `0x02` | TOKEN_BURN_OP | 销毁指定地址的代币 | 仅管理员 + 防崩溃保护 |
-| `0x20` | QUERY_ADMIN_OP | 查询当前管理员地址 | 无限制 |
+| `0x01` | TOKEN_MINT_OP | 增发代币到指定地址 | 多签验证 (≥50% 管理员签名) |
+| `0x02` | TOKEN_BURN_OP | 销毁指定地址的代币 | 多签验证 (≥50% 管理员签名) + 防崩溃保护 |
+| `0x20` | QUERY_ADMIN_OP | 查询管理员地址列表 | 无限制 |
 
 ### 安全机制与限制
 
@@ -103,14 +106,29 @@ cast send 0x0101 "0x02...1000000000000000000" # 尝试 burn 全部 1 ETH
 
 ### 管理员机制
 
-#### 初始管理员
+#### 多签管理员配置
 ```go
-var INITIAL_ADMIN = libcommon.HexToAddress("0xDE282DC882bbB5100b8A24E30D38a2D5B3080c15")
+// 硬编码的管理员地址列表
+var ADMIN_ADDRESSES = []libcommon.Address{
+    libcommon.HexToAddress("0xDE282DC882bbB5100b8A24E30D38a2D5B3080c15"),
+    libcommon.HexToAddress("0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266"),
+    // 可以根据需要添加更多管理员地址
+}
+
+// 最小签名数量要求 (当前要求超过50%)
+var MIN_SIGNATURES = uint64(2)  // 对于2个管理员，需要2个签名
 ```
 
+#### 多签验证流程
+1. **签名生成**: 每个管理员使用私钥对操作数据签名
+2. **签名验证**: 预编译合约验证签名数量是否达到最小要求
+3. **权限检查**: 确认签名者都是有效的管理员地址
+4. **操作执行**: 验证通过后执行相应的mint/burn操作
+
 #### 管理员生命周期
-1. **固定管理员**: 使用硬编码的管理员地址，不可更换
+1. **固定管理员**: 使用硬编码的管理员地址列表，不可更换
 2. **永久有效**: 管理员地址永远有效，无法被禁用或更换
+3. **多签安全**: 单个管理员无法独立执行操作，增强安全性
 
 ### 事件日志
 
@@ -241,6 +259,126 @@ type PrecompiledContract_zkEvm interface {
 ### 配置说明
 - `activationBlock`: 预编译合约激活的区块高度
 - `burnAuthorizedAddresses`: 允许被销毁代币的地址列表
+
+## 多签数据格式
+
+### Calldata 结构
+
+多签操作的 Calldata 格式如下：
+
+| 字段 | 长度 | 描述 |
+|------|------|------|
+| 操作码 | 1 byte | 0x01 (mint) 或 0x02 (burn) |
+| 目标地址 | 32 bytes | 32字节对齐的地址 (前12字节为0) |
+| 数量 | 32 bytes | uint256 格式的代币数量 |
+| Nonce | 8 bytes | 防重放攻击的随机数 |
+| 签名数量 | 1 byte | 包含的签名数量 |
+| 签名1 | 65 bytes | 第一个管理员的签名 (r+s+v) |
+| 签名2 | 65 bytes | 第二个管理员的签名 (r+s+v) |
+| ... | 65 bytes | 更多签名 (如果有) |
+
+**总长度**: 1 + 32 + 32 + 8 + 1 + (65 × 签名数量) = 74 + (65 × N) bytes
+
+### 签名消息格式
+
+每个管理员需要对以下数据进行签名：
+
+```go
+// 消息哈希构造
+data := []byte{}
+data = append(data, operation)           // 1 byte: 操作码
+data = append(data, target.Bytes()...)   // 20 bytes: 目标地址
+data = append(data, amount.PaddedBytes(32)...) // 32 bytes: 数量
+data = append(data, nonceBytes...)       // 8 bytes: nonce (big-endian)
+
+messageHash := crypto.Keccak256(data)
+signature := crypto.Sign(messageHash, privateKey)
+```
+
+### Go 生成脚本
+
+为了简化多签 Calldata 的生成，我们提供了一个 Go 脚本，位于 `cmd/multisig_gen/main.go`：
+
+#### 脚本功能
+- 自动生成正确格式的多签 Calldata
+- 支持 mint 和 burn 操作
+- 使用真实的管理员私钥进行签名
+- 输出完整的 cast 命令用于测试
+
+#### 使用方法
+
+1. **准备环境**
+   ```bash
+   cd cmd/multisig_gen
+   ```
+
+2. **运行脚本**
+   ```bash
+   go run main.go
+   ```
+
+3. **输出示例**
+   ```bash
+   === MINT 10 ETH ===
+   Amount: 10000000000000000000 wei
+   Nonce: 1
+   Cast Command:
+   cast send 0x0000000000000000000000000000000000000101 "0x01..." --private-key 0x... --rpc-url http://127.0.0.1:8123 --legacy
+   
+   === BURN 5 ETH ===
+   Amount: 5000000000000000000 wei
+   Nonce: 2
+   Cast Command:
+   cast send 0x0000000000000000000000000000000000000101 "0x02..." --private-key 0x... --rpc-url http://127.0.0.1:8123 --legacy
+   ```
+
+#### 脚本配置
+
+脚本中的关键配置可以根据需要修改：
+
+```go
+// 目标地址：要接收mint/burn的地址
+target := libcommon.HexToAddress("0x0000000000000000000000000000000000000000")
+
+// 管理员私钥 (对应具体的管理员地址)
+admin1PrivateKey := "0x..."  // 对应 0xDE282DC882bbB5100b8A24E30D38a2D5B3080c15
+admin2PrivateKey := "0x..."  // 对应 0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266
+```
+
+#### 核心函数
+
+```go
+// createMessageHash 复制 tokenManager 中的确切逻辑
+func createMessageHash(operation byte, target libcommon.Address, amount *uint256.Int, nonce uint64) []byte {
+    data := make([]byte, 0, 1+20+32+8)
+    data = append(data, operation)
+    data = append(data, target.Bytes()...)
+    data = append(data, amount.PaddedBytes(32)...)
+    
+    nonceBytes := make([]byte, 8)
+    for i := 0; i < 8; i++ {
+        nonceBytes[7-i] = byte(nonce >> (i * 8))
+    }
+    data = append(data, nonceBytes...)
+    
+    return crypto.Keccak256(data)
+}
+
+func signMessage(privateKey *ecdsa.PrivateKey, msgHash []byte) ([]byte, error) {
+    signature, err := crypto.Sign(msgHash, privateKey)
+    if err != nil {
+        return nil, err
+    }
+    return signature, nil
+}
+```
+
+#### 测试验证
+
+脚本已验证支持的地址类型：
+- ✅ **普通账户**: 如 `0xAeFA44f2E8cb4871A0cA862a4E7C5f2761111886`
+- ✅ **NULL地址**: `0x0000000000000000000000000000000000000000`
+- ✅ **预编译地址**: 如 `0x0000000000000000000000000000000000000001` (ecrecover)
 
 ## 使用指南
 
