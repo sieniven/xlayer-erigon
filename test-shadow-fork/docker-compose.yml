@@ -110,6 +110,7 @@ services:
       - 58124:8545
       - 56901:6900
       - 59091:9095
+    restart: always
     volumes:
       - ./mainnet-rpc:/home/erigon/data/
       - ./config/xlayerconfig-mainnet-rpc.yaml:/usr/src/app/config.yaml
