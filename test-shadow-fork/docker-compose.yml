@@ -86,7 +86,7 @@ services:
     environment:
       - EXPERIMENTAL_DOCKER_DESKTOP_FORCE_QEMU=1
     volumes:
-      - ./config/test.prover.config.json:/usr/src/app/config.json
+      - ./config/fep.prover.config.json:/usr/src/app/config.json
     command: >
       zkProver -c /usr/src/app/config.json
 
