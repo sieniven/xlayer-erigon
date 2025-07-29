@@ -223,7 +223,7 @@ func TestRealtimeBenchmarNewHeadsSubscription(t *testing.T) {
 		}
 	}
 
-	avgTimeDiff := time.Duration(int64(totalSubTimeDiff) / int64(Iterations))
+	avgTimeDiff := time.Duration(int64(totalSubTimeDiff) / int64(Iterations-1))
 	fmt.Printf("Avg RT newHeads sub is faster than ETH newHeads sub by: %s\n", avgTimeDiff)
 }
 
@@ -287,7 +287,7 @@ func TestRealtimeBenchmarNewTransactionSubscription(t *testing.T) {
 		fmt.Printf("RT newTx sub duration: %s\n", subDuration)
 	}
 
-	avgDuration := time.Duration(int64(totalRealtimeDuration) / int64(Iterations))
+	avgDuration := time.Duration(int64(totalRealtimeDuration) / int64(Iterations-1))
 
 	// Log out metrics
 	fmt.Printf("Avg RT newTx sub duration: %s\n", avgDuration)
