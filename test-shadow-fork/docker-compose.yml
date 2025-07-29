@@ -43,7 +43,7 @@ services:
     networks:
       - rpcs
     volumes:
-      - "./conf:/etc/agglayer:ro"
+      - "./config:/etc/agglayer:ro"
     environment:
       - SP1_PRIVATE_KEY=${SP1_KEY}
       - NETWORK_RPC_URL=${NETWORK_RPC_URL}
@@ -62,7 +62,7 @@ services:
     networks:
       - rpcs
     volumes:
-      - "./conf:/etc/agglayer:ro"
+      - "./config:/etc/agglayer:ro"
       - "./tmp/agglayer:/var/agglayer"
     entrypoint: ["agglayer"]
     command: ["run", "--cfg", "/etc/agglayer/agglayer-config.toml"]
@@ -79,7 +79,7 @@ services:
       - rpcs
     volumes:
       - "./tmp/agglayer-contracts:/agglayer-contracts"
-      - "./conf:/etc/conf:ro"
+      - "./config:/etc/config:ro"
     working_dir: /agglayer-contracts
     deploy:
       resources:
@@ -101,7 +101,7 @@ services:
       - rpcs
     volumes:
       - "./tmp/aggkit:/tmp"
-      - "./conf:/etc/aggkit"
+      - "./config:/etc/aggkit"
     environment:
       - MAX_L2_BLOCK_NUMBER=${MAX_L2_BLOCK_NUMBER}
     command: ["sh", "-c", "envsubst < /etc/aggkit/aggkit.toml > /tmp/aggkit_processed.toml && run --cfg=/tmp/aggkit_processed.toml --components=aggsender,bridge"]

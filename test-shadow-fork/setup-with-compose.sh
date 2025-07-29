@@ -72,13 +72,13 @@ create_test_keys() {
     print_step "Checking test keys..."
     
     # Check if required keystore files exist
-    if [ ! -f "conf/agglayer.keystore" ]; then
-        print_error "Agglayer keystore not found at conf/agglayer.keystore"
+    if [ ! -f "config/agglayer.keystore" ]; then
+        print_error "Agglayer keystore not found at config/agglayer.keystore"
         exit 1
     fi
     
-    if [ ! -f "conf/sequencer.keystore" ]; then
-        print_error "Sequencer keystore not found at conf/sequencer.keystore"
+    if [ ! -f "config/sequencer.keystore" ]; then
+        print_error "Sequencer keystore not found at config/sequencer.keystore"
         exit 1
     fi
     
@@ -89,12 +89,12 @@ setup_environment() {
     print_step "Setting up environment variables..."
     
     # Check if SP1 key exists
-    if [ ! -f "conf/sp1.key" ]; then
-        print_error "SP1 key file not found at conf/sp1.key"
+    if [ ! -f "config/sp1.key" ]; then
+        print_error "SP1 key file not found at config/sp1.key"
         exit 1
     fi
     
-    SP1_KEY=$(cat conf/sp1.key)
+    SP1_KEY=$(cat config/sp1.key)
     
     # Check if .env file exists
     if [ ! -f ".env" ]; then
