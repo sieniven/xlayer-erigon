@@ -2,36 +2,12 @@
 
 set -e 
 
-# Colors for output
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-BLUE='\033[0;34m'
-NC='\033[0m' # No Color
-
-# Function to print colored output
-print_step() {
-    echo -e "${BLUE}[STEP]${NC} $1"
-}
-
-print_success() {
-    echo -e "${GREEN}[SUCCESS]${NC} $1"
-}
-
-print_warning() {
-    echo -e "${YELLOW}[WARNING]${NC} $1"
-}
-
-print_error() {
-    echo -e "${RED}[ERROR]${NC} $1"
-}
-
 # Global variables
 TDIR=""
 SP1_KEY=""
 
 setup_directories() {
-    print_step "Creating working directory structure..."
+    echo "Creating working directory structure..."
     
     TDIR="$PWD/tmp"
     mkdir -p "$TDIR/anvil"
@@ -39,58 +15,58 @@ setup_directories() {
     mkdir -p "$TDIR/aggkit"
     chmod -R 777 "$TDIR"
     
-    print_success "Working directory created at: $TDIR"
+    echo "Working directory created at: $TDIR"
 }
 
 build_aggkit() {
-    print_step "Checking Aggkit build..."
+    echo "Checking Aggkit build..."
     
     # Check if aggkit image exists
     if ! docker images | grep -q "aggkit.*local"; then
-        print_error "Aggkit image not found. Please build it manually:"
-        print_error "cd tmp/aggkit && make build-docker"
+        echo "Aggkit image not found. Please build it manually:"
+        echo "cd tmp/aggkit && make build-docker"
         exit 1
     fi
     
-    print_success "Aggkit image verified"
+    echo "Aggkit image verified"
 }
 
 prepare_contracts() {
-    print_step "Checking Agglayer contracts..."
+    echo "Checking Agglayer contracts..."
     
     # Check if agglayer-contracts directory exists
     if [ ! -d "$TDIR/agglayer-contracts" ]; then
-        print_error "Agglayer contracts directory not found at $TDIR/agglayer-contracts"
-        print_error "Please clone it manually: git clone git@github.com:agglayer/agglayer-contracts.git"
+        echo "Agglayer contracts directory not found at $TDIR/agglayer-contracts"
+        echo "Please clone it manually: git clone git@github.com:agglayer/agglayer-contracts.git"
         exit 1
     fi
     
-    print_success "Agglayer contracts verified"
+    echo "Agglayer contracts verified"
 }
 
 create_test_keys() {
-    print_step "Checking test keys..."
+    echo "Checking test keys..."
     
     # Check if required keystore files exist
     if [ ! -f "config/agglayer.keystore" ]; then
-        print_error "Agglayer keystore not found at config/agglayer.keystore"
+        echo "Agglayer keystore not found at config/agglayer.keystore"
         exit 1
     fi
     
     if [ ! -f "config/sequencer.keystore" ]; then
-        print_error "Sequencer keystore not found at config/sequencer.keystore"
+        echo "Sequencer keystore not found at config/sequencer.keystore"
         exit 1
     fi
     
-    print_success "Test keys verified"
+    echo "Test keys verified"
 }
 
 setup_environment() {
-    print_step "Setting up environment variables..."
+    echo "Setting up environment variables..."
     
     # Check if SP1 key exists
     if [ ! -f "config/sp1.key" ]; then
-        print_error "SP1 key file not found at config/sp1.key"
+        echo "SP1 key file not found at config/sp1.key"
         exit 1
     fi
     
@@ -98,41 +74,41 @@ setup_environment() {
     
     # Check if .env file exists
     if [ ! -f ".env" ]; then
-        print_error ".env file not found. Please create it with required environment variables."
+        echo ".env file not found. Please create it with required environment variables."
         exit 1
     fi
     
-    print_success "Environment variables loaded from .env file"
+    echo "Environment variables loaded from .env file"
 }
 
 start_services() {
-    print_step "Starting services with docker-compose..."
+    echo "Starting services with docker-compose..."
     
     # Start core services (anvil, agglayer-prover, agglayer-node)
     docker-compose up -d anvil agglayer-prover agglayer-node
     
     # Wait for anvil to be ready
-    print_step "Waiting for Anvil to be ready..."
+    echo "Waiting for Anvil to be ready..."
     for i in {1..30}; do
         if cast block-number --rpc-url http://127.0.0.1:3000 >/dev/null 2>&1; then
-            print_success "Anvil is ready!"
+            echo "Anvil is ready!"
             break
         fi
         echo -n "."
         sleep 2
         if [ $i -eq 30 ]; then
-            print_error "Anvil failed to start within 60 seconds"
+            echo "Anvil failed to start within 60 seconds"
             docker-compose logs anvil
             exit 1
         fi
     done
     echo
     
-    print_success "Services started successfully"
+    echo "Services started successfully"
 }
 
 configure_fork() {
-    print_step "Configuring fork environment..."
+    echo "Configuring fork environment..."
     
     # Set current timestamp to avoid timing issues
     cast rpc --rpc-url http://127.0.0.1:3000 evm_setNextBlockTimestamp $(date +%s)
@@ -140,11 +116,11 @@ configure_fork() {
     # override the _minDelay for our timelock
     cast rpc --rpc-url http://127.0.0.1:3000 anvil_setStorageAt 0xEf1462451C30Ea7aD8555386226059Fe837CA4EF $(cast to-uint256 2) $(cast to-uint256 1)
     
-    print_success "Fork environment configured"
+    echo "Fork environment configured"
 }
 
 grant_roles() {
-    print_step "Granting sequencer and aggregator roles..."
+    echo "Granting sequencer and aggregator roles..."
     
     # Grant sequencer role
     cast rpc --rpc-url http://127.0.0.1:3000 anvil_impersonateAccount 0xa90b4c8b8807569980f6cc958c8905383136b5ea
@@ -159,13 +135,13 @@ grant_roles() {
     # Fund the Agglayer account for gas fees
     cast rpc --rpc-url http://127.0.0.1:3000 anvil_setBalance 0xaff8Ed903d079cD0E7fE29138b37B6AC8fFe4AdF 1000000000000000000
     
-    print_success "Roles granted successfully"
+    echo "Roles granted successfully"
 }
 
 # ===== STEP 2: UPGRADE FUNCTIONS =====
 
 prepare_upgrade() {
-    print_step "Preparing rollup manager upgrade..."
+    echo "Preparing rollup manager upgrade..."
     
     # Create the upgrade preparation script
     cat > "$PWD/tmp/agglayer-contracts/prepare_upgrade.sh" << 'EOF'
@@ -395,31 +371,31 @@ EOF
 
     chmod +x "$PWD/tmp/agglayer-contracts/prepare_upgrade.sh"
     
-    print_step "Running upgrade preparation in container..."
+    echo "Running upgrade preparation in container..."
     docker-compose --profile upgrade run --rm upgrade-preparation
     
     if [ $? -eq 0 ]; then
         # Check if at least one output file exists
         if [ -f "$PWD/tmp/agglayer-contracts/upgrade/upgrade-rollupManager-v0.3.1/upgrade_output.json" ] || \
            [ -f "$PWD/tmp/agglayer-contracts/tools/addRollupType/add_rollup_type_output.json" ]; then
-            print_success "Rollup manager upgrade prepared successfully"
+            echo "Rollup manager upgrade prepared successfully"
         else
-            print_error "Upgrade preparation completed but no output files found"
+            echo "Upgrade preparation completed but no output files found"
             exit 1
         fi
     else
-        print_error "Failed to prepare rollup manager upgrade"
+        echo "Failed to prepare rollup manager upgrade"
         exit 1
     fi
 }
 
 execute_timelock() {
-    print_step "Executing timelock transactions..."
+    echo "Executing timelock transactions..."
     
     # Check if output files contain actual data
     if [ -f "$PWD/tmp/agglayer-contracts/upgrade/upgrade-rollupManager-v0.3.1/upgrade_output.json" ]; then
         if grep -q "compilation_failed" "$PWD/tmp/agglayer-contracts/upgrade/upgrade-rollupManager-v0.3.1/upgrade_output.json"; then
-            print_warning "Skipping timelock execution due to compilation failures"
+            echo "Skipping timelock execution due to compilation failures"
             return 0
         fi
     fi
@@ -435,7 +411,7 @@ execute_timelock() {
     timelock_contract=$(jq -r '.timelockContractAddress' "$PWD/tmp/agglayer-contracts/upgrade/upgrade-rollupManager-v0.3.1/upgrade_output.json" 2>/dev/null)
     
     if [ "$rollup_type_schedule_data" != "null" ] && [ "$rollup_type_schedule_data" != "" ] && [ "$timelock_contract" != "null" ] && [ "$timelock_contract" != "" ]; then
-        print_step "Scheduling rollup type addition..."
+        echo "Scheduling rollup type addition..."
         cast send \
             --unlocked \
             --from 0x242dae44f5d8fb54b198d03a94da45b5a4413e21 \
@@ -444,12 +420,12 @@ execute_timelock() {
             "$rollup_type_schedule_data"
         
         # Wait 60 seconds
-        print_step "Waiting 60 seconds for timelock..."
+        echo "Waiting 60 seconds for timelock..."
         sleep 60
         
         # Execute the rollup type addition
         rollup_type_execute_data=$(jq -r '.executeData' "$PWD/tmp/agglayer-contracts/tools/addRollupType/add_rollup_type_output.json" 2>/dev/null)
-        print_step "Executing rollup type addition..."
+        echo "Executing rollup type addition..."
         cast send \
             --unlocked \
             --from 0x242dae44f5d8fb54b198d03a94da45b5a4413e21 \
@@ -457,14 +433,14 @@ execute_timelock() {
             "$timelock_contract" \
             "$rollup_type_execute_data"
     else
-        print_warning "Skipping rollup type timelock due to missing data"
+        echo "Skipping rollup type timelock due to missing data"
     fi
     
     # Schedule the rollup manager upgrade
     upgrade_schedule_data=$(jq -r '.scheduleData' "$PWD/tmp/agglayer-contracts/upgrade/upgrade-rollupManager-v0.3.1/upgrade_output.json" 2>/dev/null)
     
     if [ "$upgrade_schedule_data" != "null" ] && [ "$upgrade_schedule_data" != "" ]; then
-        print_step "Scheduling rollup manager upgrade..."
+        echo "Scheduling rollup manager upgrade..."
         cast send \
             --unlocked \
             --from 0x242dae44f5d8fb54b198d03a94da45b5a4413e21 \
@@ -473,12 +449,12 @@ execute_timelock() {
             "$upgrade_schedule_data"
         
         # Wait 60 seconds
-        print_step "Waiting 60 seconds for timelock..."
+        echo "Waiting 60 seconds for timelock..."
         sleep 60
         
         # Execute the rollup manager upgrade
         upgrade_execute_data=$(jq -r '.executeData' "$PWD/tmp/agglayer-contracts/upgrade/upgrade-rollupManager-v0.3.1/upgrade_output.json" 2>/dev/null)
-        print_step "Executing rollup manager upgrade..."
+        echo "Executing rollup manager upgrade..."
         cast send \
             --unlocked \
             --from 0x242dae44f5d8fb54b198d03a94da45b5a4413e21 \
@@ -486,17 +462,17 @@ execute_timelock() {
             "$timelock_contract" \
             "$upgrade_execute_data"
     else
-        print_warning "Skipping rollup manager timelock due to missing data"
+        echo "Skipping rollup manager timelock due to missing data"
     fi
     
     # Stop impersonation
     cast rpc --rpc-url http://127.0.0.1:3000 anvil_stopImpersonatingAccount 0x242dae44f5d8fb54b198d03a94da45b5a4413e21
     
-    print_success "Timelock transactions completed (where possible)"
+    echo "Timelock transactions completed (where possible)"
 }
 
 verify_upgrade() {
-    print_step "Verifying rollup manager upgrade..."
+    echo "Verifying rollup manager upgrade..."
     
     # Check rollup manager version
     VERSION=$(cast call --rpc-url http://127.0.0.1:3000 0x5132A183E9F3CB7C848b0AAC5Ae0c4f0491B7aB2 "ROLLUP_MANAGER_VERSION()(string)" 2>/dev/null || echo "unknown")
@@ -507,28 +483,28 @@ verify_upgrade() {
     echo "Rollup Type Count: $COUNT"
     
     if [ "$COUNT" = "11" ]; then
-        print_success "Rollup manager upgrade verified"
+        echo "Rollup manager upgrade verified"
     else
-        print_warning "Rollup type count is $COUNT (expected 11), upgrade may need manual verification"
+        echo "Rollup type count is $COUNT (expected 11), upgrade may need manual verification"
     fi
 }
 
 execute_migration() {
-    print_step "Running OKX rollup migration..."
+    echo "Running OKX rollup migration..."
     
     # Impersonate admin for migration
     cast rpc --rpc-url http://127.0.0.1:3000 anvil_impersonateAccount 0x242dae44f5d8fb54b198d03a94da45b5a4413e21
     
     # Initialize migration of rollup 3 (OKX) to type 11 (PP)
-    print_step "Executing migration from rollup type 3 to type 11..."
+    echo "Executing migration from rollup type 3 to type 11..."
     if cast send \
         --unlocked \
         --from 0x242dae44f5d8fb54b198d03a94da45b5a4413e21 \
         --rpc-url http://127.0.0.1:3000 \
         0x5132A183E9F3CB7C848b0AAC5Ae0c4f0491B7aB2 "initMigrationToPP(uint32,uint32)" 3 11; then
-        print_success "OKX rollup migration completed"
+        echo "OKX rollup migration completed"
     else
-        print_warning "OKX rollup migration may have failed, check manually"
+        echo "OKX rollup migration may have failed, check manually"
     fi
     
     # Stop impersonation
@@ -538,11 +514,11 @@ execute_migration() {
 # ===== STEP 3: TESTING FUNCTIONS =====
 
 run_aggkit() {
-    print_step "Running Aggkit for certificate settlement..."
+    echo "Running Aggkit for certificate settlement..."
     
     docker-compose --profile testing run --rm aggkit
     
-    print_success "Aggkit execution completed"
+    echo "Aggkit execution completed"
 }
 
 # ===== MAIN EXECUTION =====
@@ -555,22 +531,22 @@ main() {
     
     # Check prerequisites
     if ! command -v docker &> /dev/null; then
-        print_error "Docker is not installed or not in PATH"
+        echo "Docker is not installed or not in PATH"
         exit 1
     fi
     
     if ! command -v docker-compose &> /dev/null; then
-        print_error "Docker Compose is not installed or not in PATH"
+        echo "Docker Compose is not installed or not in PATH"
         exit 1
     fi
     
     if ! command -v cast &> /dev/null; then
-        print_error "Foundry cast is not installed or not in PATH"
+        echo "Foundry cast is not installed or not in PATH"
         exit 1
     fi
     
     if ! command -v jq &> /dev/null; then
-        print_error "jq is not installed or not in PATH"
+        echo "jq is not installed or not in PATH"
         exit 1
     fi
     
@@ -598,7 +574,7 @@ main() {
     echo "=== STEP 3: TESTING ==="
     run_aggkit
     
-    print_success "Complete setup, upgrade, and testing completed successfully!"
+    echo "Complete setup, upgrade, and testing completed successfully!"
     echo
     echo "All services are now running:"
     echo "- Anvil: http://127.0.0.1:3000"

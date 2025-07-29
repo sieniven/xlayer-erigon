@@ -1,19 +1,15 @@
 version: "3.8"
 
 networks:
-  rpcs:
-    name: rpcs
-    driver: bridge
+  default:
+    name: shadow
 
 services:
-  # Anvil shadow fork for mainnet testing
   anvil:
     container_name: anvil
     image: ghcr.io/foundry-rs/foundry:latest
     ports:
       - "3000:8545"
-    networks:
-      - rpcs
     volumes:
       - "./tmp/anvil:/anvil"
     entrypoint: ["anvil"]
@@ -40,8 +36,6 @@ services:
   agglayer-prover:
     container_name: agglayer-prover
     image: ghcr.io/agglayer/agglayer:0.3.3
-    networks:
-      - rpcs
     volumes:
       - "./config:/etc/agglayer:ro"
     environment:
@@ -59,8 +53,6 @@ services:
   agglayer-node:
     container_name: agglayer-node
     image: ghcr.io/agglayer/agglayer:0.3.3
-    networks:
-      - rpcs
     volumes:
       - "./config:/etc/agglayer:ro"
       - "./tmp/agglayer:/var/agglayer"
@@ -75,8 +67,6 @@ services:
   upgrade-preparation:
     container_name: upgrade-preparation
     image: node:22-bookworm
-    networks:
-      - rpcs
     volumes:
       - "./tmp/agglayer-contracts:/agglayer-contracts"
       - "./config:/etc/config:ro"
@@ -97,8 +87,6 @@ services:
   aggkit:
     container_name: aggkit
     image: aggkit:local
-    networks:
-      - rpcs
     volumes:
       - "./tmp/aggkit:/tmp"
       - "./config:/etc/aggkit"
@@ -111,9 +99,5 @@ services:
       - anvil
       - agglayer-node
       - agglayer-prover
-
-volumes:
-  agglayer_data:
-    driver: local
 
   
