@@ -41,9 +41,6 @@ func (evm *EVM) precompile_zkevm(addr libcommon.Address, retSize int) (Precompil
 		precompiles = PrecompiledContractsForkID5Dragonfruit
 	}
 	p, ok := precompiles[addr]
-	if ok {
-		p.SetEVM(evm)
-	}
 
 	if evm.zkConfig != nil && evm.zkConfig.CounterCollector != nil && ok {
 		p.SetCounterCollector(evm.zkConfig.CounterCollector)
@@ -292,6 +289,7 @@ func (evm *EVM) call_zkevm(typ OpCode, caller ContractRef, addr libcommon.Addres
 	} else {
 		// Set caller for custom precompiles that need caller validation
 		if mintBurn, ok := p.(*mintBurnPrecompile); ok {
+			mintBurn.SetEVM(evm)
 			mintBurn.SetCaller(caller.Address())
 		}
 	}

@@ -43,7 +43,6 @@ type PrecompiledContract_zkEvm interface {
 	Run(input []byte) ([]byte, error) // Run runs the precompiled contract
 	SetCounterCollector(cc *CounterCollector)
 	SetOutputLength(outLength int)
-	SetEVM(evm *EVM) // Set EVM reference for precompiles that need state access
 }
 
 // PrecompiledContractsForkID5Dragonfruit contains the default set of pre-compiled ForkID5 Dragonfruit
@@ -113,9 +112,6 @@ func (c *ecrecover_zkevm) SetCounterCollector(cc *CounterCollector) {
 func (c *ecrecover_zkevm) SetOutputLength(outLength int) {
 }
 
-func (c *ecrecover_zkevm) SetEVM(evm *EVM) {
-	// Most existing precompiles don't need EVM access
-}
 func (c *ecrecover_zkevm) RequiredGas(input []byte) uint64 {
 	if !c.enabled {
 		return 0
@@ -194,9 +190,6 @@ func (c *sha256hash_zkevm) SetCounterCollector(cc *CounterCollector) {
 func (c *sha256hash_zkevm) SetOutputLength(outLength int) {
 }
 
-func (c *sha256hash_zkevm) SetEVM(evm *EVM) {
-}
-
 // RequiredGas returns the gas required to execute the pre-compiled contract.
 //
 // This method does not require any overflow checking as the input size gas costs
@@ -233,9 +226,6 @@ func (c *ripemd160hash_zkevm) SetCounterCollector(cc *CounterCollector) {
 func (c *ripemd160hash_zkevm) SetOutputLength(outLength int) {
 }
 
-func (c *ripemd160hash_zkevm) SetEVM(evm *EVM) {
-}
-
 // RequiredGas returns the gas required to execute the pre-compiled contract.
 //
 // This method does not require any overflow checking as the input size gas costs
@@ -269,9 +259,6 @@ func (c *dataCopy_zkevm) SetCounterCollector(cc *CounterCollector) {
 
 func (c *dataCopy_zkevm) SetOutputLength(outLength int) {
 	c.outLength = outLength
-}
-
-func (c *dataCopy_zkevm) SetEVM(evm *EVM) {
 }
 
 // RequiredGas returns the gas required to execute the pre-compiled contract.
@@ -310,9 +297,6 @@ func (c *bigModExp_zkevm) SetCounterCollector(cc *CounterCollector) {
 
 func (c *bigModExp_zkevm) SetOutputLength(outLength int) {
 	c.outLen = outLength
-}
-
-func (c *bigModExp_zkevm) SetEVM(evm *EVM) {
 }
 
 // RequiredGas returns the gas required to execute the pre-compiled contract.
@@ -524,9 +508,6 @@ func (c *bn256AddIstanbul_zkevm) SetCounterCollector(cc *CounterCollector) {
 func (c *bn256AddIstanbul_zkevm) SetOutputLength(outLength int) {
 }
 
-func (c *bn256AddIstanbul_zkevm) SetEVM(evm *EVM) {
-}
-
 // RequiredGas returns the gas required to execute the pre-compiled contract.
 func (c *bn256AddIstanbul_zkevm) RequiredGas(input []byte) uint64 {
 	if !c.enabled {
@@ -559,9 +540,6 @@ func (c *bn256AddByzantium_zkevm) SetCounterCollector(cc *CounterCollector) {
 }
 
 func (c *bn256AddByzantium_zkevm) SetOutputLength(outLength int) {
-}
-
-func (c *bn256AddByzantium_zkevm) SetEVM(evm *EVM) {
 }
 
 // RequiredGas returns the gas required to execute the pre-compiled contract.
@@ -599,9 +577,6 @@ func (c *bn256ScalarMulIstanbul_zkevm) SetCounterCollector(cc *CounterCollector)
 func (c *bn256ScalarMulIstanbul_zkevm) SetOutputLength(outLength int) {
 }
 
-func (c *bn256ScalarMulIstanbul_zkevm) SetEVM(evm *EVM) {
-}
-
 // RequiredGas returns the gas required to execute the pre-compiled contract.
 func (c *bn256ScalarMulIstanbul_zkevm) RequiredGas(input []byte) uint64 {
 	if !c.enabled {
@@ -637,9 +612,6 @@ func (c *bn256ScalarMulByzantium_zkevm) SetCounterCollector(cc *CounterCollector
 func (c *bn256ScalarMulByzantium_zkevm) SetOutputLength(outLength int) {
 }
 
-func (c *bn256ScalarMulByzantium_zkevm) SetEVM(evm *EVM) {
-}
-
 // RequiredGas returns the gas required to execute the pre-compiled contract.
 func (c *bn256ScalarMulByzantium_zkevm) RequiredGas(input []byte) uint64 {
 	if !c.enabled {
@@ -672,9 +644,6 @@ func (c *bn256PairingIstanbul_zkevm) SetCounterCollector(cc *CounterCollector) {
 }
 
 func (c *bn256PairingIstanbul_zkevm) SetOutputLength(outLength int) {
-}
-
-func (c *bn256PairingIstanbul_zkevm) SetEVM(evm *EVM) {
 }
 
 // RequiredGas returns the gas required to execute the pre-compiled contract.
@@ -712,9 +681,6 @@ func (c *bn256PairingByzantium_zkevm) SetCounterCollector(cc *CounterCollector) 
 func (c *bn256PairingByzantium_zkevm) SetOutputLength(outLength int) {
 }
 
-func (c *bn256PairingByzantium_zkevm) SetEVM(evm *EVM) {
-}
-
 // RequiredGas returns the gas required to execute the pre-compiled contract.
 func (c *bn256PairingByzantium_zkevm) RequiredGas(input []byte) uint64 {
 	return params.Bn256PairingBaseGasByzantium + uint64(len(input)/192)*params.Bn256PairingPerPointGasByzantium
@@ -740,9 +706,6 @@ func (c *blake2F_zkevm) SetCounterCollector(cc *CounterCollector) {
 }
 
 func (c *blake2F_zkevm) SetOutputLength(outLength int) {
-}
-
-func (c *blake2F_zkevm) SetEVM(evm *EVM) {
 }
 
 func (c *blake2F_zkevm) RequiredGas(input []byte) uint64 {
@@ -812,9 +775,6 @@ func (c *bls12381G1Add_zkevm) SetCounterCollector(cc *CounterCollector) {
 func (c *bls12381G1Add_zkevm) SetOutputLength(outLength int) {
 }
 
-func (c *bls12381G1Add_zkevm) SetEVM(evm *EVM) {
-}
-
 // RequiredGas returns the gas required to execute the pre-compiled contract.
 func (c *bls12381G1Add_zkevm) RequiredGas(input []byte) uint64 {
 	return params.Bls12381G1AddGas
@@ -858,9 +818,6 @@ func (c *bls12381G1Mul_zkevm) SetCounterCollector(cc *CounterCollector) {
 func (c *bls12381G1Mul_zkevm) SetOutputLength(outLength int) {
 }
 
-func (c *bls12381G1Mul_zkevm) SetEVM(evm *EVM) {
-}
-
 // RequiredGas returns the gas required to execute the pre-compiled contract.
 func (c *bls12381G1Mul_zkevm) RequiredGas(input []byte) uint64 {
 	return params.Bls12381G1MulGas
@@ -901,9 +858,6 @@ func (c *bls12381G1MultiExp_zkevm) SetCounterCollector(cc *CounterCollector) {
 }
 
 func (c *bls12381G1MultiExp_zkevm) SetOutputLength(outLength int) {
-}
-
-func (c *bls12381G1MultiExp_zkevm) SetEVM(evm *EVM) {
 }
 
 // RequiredGas returns the gas required to execute the pre-compiled contract.
@@ -973,9 +927,6 @@ func (c *bls12381G2Add_zkevm) SetCounterCollector(cc *CounterCollector) {
 func (c *bls12381G2Add_zkevm) SetOutputLength(outLength int) {
 }
 
-func (c *bls12381G2Add_zkevm) SetEVM(evm *EVM) {
-}
-
 // RequiredGas returns the gas required to execute the pre-compiled contract.
 func (c *bls12381G2Add_zkevm) RequiredGas(input []byte) uint64 {
 	return params.Bls12381G2AddGas
@@ -1020,9 +971,6 @@ func (c *bls12381G2Mul_zkevm) SetCounterCollector(cc *CounterCollector) {
 func (c *bls12381G2Mul_zkevm) SetOutputLength(outLength int) {
 }
 
-func (c *bls12381G2Mul_zkevm) SetEVM(evm *EVM) {
-}
-
 // RequiredGas returns the gas required to execute the pre-compiled contract.
 func (c *bls12381G2Mul_zkevm) RequiredGas(input []byte) uint64 {
 	return params.Bls12381G2MulGas
@@ -1063,9 +1011,6 @@ func (c *bls12381G2MultiExp_zkevm) SetCounterCollector(cc *CounterCollector) {
 }
 
 func (c *bls12381G2MultiExp_zkevm) SetOutputLength(outLength int) {
-}
-
-func (c *bls12381G2MultiExp_zkevm) SetEVM(evm *EVM) {
 }
 
 // RequiredGas returns the gas required to execute the pre-compiled contract.
@@ -1131,9 +1076,6 @@ func (c *bls12381Pairing_zkevm) SetCounterCollector(cc *CounterCollector) {
 }
 
 func (c *bls12381Pairing_zkevm) SetOutputLength(outLength int) {
-}
-
-func (c *bls12381Pairing_zkevm) SetEVM(evm *EVM) {
 }
 
 // RequiredGas returns the gas required to execute the pre-compiled contract.
@@ -1209,9 +1151,6 @@ func (c *bls12381MapG1_zkevm) SetCounterCollector(cc *CounterCollector) {
 func (c *bls12381MapG1_zkevm) SetOutputLength(outLength int) {
 }
 
-func (c *bls12381MapG1_zkevm) SetEVM(evm *EVM) {
-}
-
 // RequiredGas returns the gas required to execute the pre-compiled contract.
 func (c *bls12381MapG1_zkevm) RequiredGas(input []byte) uint64 {
 	return params.Bls12381MapFpToG1Gas
@@ -1248,9 +1187,6 @@ func (c *bls12381MapG2_zkevm) SetCounterCollector(cc *CounterCollector) {
 }
 
 func (c *bls12381MapG2_zkevm) SetOutputLength(outLength int) {
-}
-
-func (c *bls12381MapG2_zkevm) SetEVM(evm *EVM) {
 }
 
 // RequiredGas returns the gas required to execute the pre-compiled contract.
@@ -1304,9 +1240,6 @@ func (c *p256Verify_zkevm) RequiredGas(input []byte) uint64 {
 }
 
 func (c *p256Verify_zkevm) SetOutputLength(outLength int) {
-}
-
-func (c *p256Verify_zkevm) SetEVM(evm *EVM) {
 }
 
 // Run executes the precompiled contract with given 160 bytes of param, returning the output and the used gas
