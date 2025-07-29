@@ -2,7 +2,7 @@ ForkUpgradeBatchNumber = 0
 ForkUpgradeNewForkId = 0
 
 [Log]
-Environment = "development" # "production" or "development"
+Environment = "development"
 Level = "debug"
 Outputs = ["stdout"]
 
@@ -14,7 +14,7 @@ RollupManagerAddr = "0x5132a183e9f3cb7c848b0aac5ae0c4f0491b7ab2"
 GlobalExitRootManagerAddr = "0x580bda1e7A0CFAe92Fa7F6c20A3794F169CE3CFb"
 
 [Etherman]
-        URL="https://rpc.ankr.com/eth/xxxxxxx"
+        URL="https://rpc.ankr.com/eth/zjg-api"
         ForkIDChunkSize=100
         MultiGasProvider=false
         L1ChainID=1
@@ -28,9 +28,7 @@ IsValidiumMode = true
 ContractVersions = "banana"
 
 [Aggregator]
-# GRPC server host
 Host = "0.0.0.0"
-# GRPC server port
 Port = 8000
 RetryTime = "30s"
 VerifyProofInterval = "60s"
@@ -39,7 +37,6 @@ TxProfitabilityCheckerType = "acceptall"
 TxProfitabilityMinReward = "1.1"
 IntervalAfterWhichBatchConsolidateAnyway="0s"
 BatchProofSanityCheckEnabled = true
-#  ChainID is L2ChainID. Is populated on runtimme
 ChainID = 196
 ForkId = 13
 SenderAddress = "0x20A53dCb196cD2bcc14Ece01F358f1C849aA51dE"
@@ -57,17 +54,17 @@ SyncModeOnlyEnabled = false
 DBPath = "/tmp/cdk/aggregator.sqlite"
         [Aggregator.SequencerPrivateKey]
                 Path = "/pk/sequencer.keystore"
-                Password = "password"
+                Password = "testonly"
         [Aggregator.DB]
-                Name = "xlayer_cdkagg_db"
-		        User = "xlayer_pool_user"
-		        Password = "Z4B497m!j0882qw9le0L"
-		        Host = "x1-pool-pro.cluster-cpvlnksujjmh.ap-east-1.rds.amazonaws.com"
-		        Port = "5432"
-		        EnableLog = false
-		        MaxConns = 200
+			Name = "aggregator_db"
+			User = "aggregator_user"
+			Password = "aggregator_password"
+			Host = "xlayer-fep-agg-db"
+			Port = "5432"
+			EnableLog = false	
+			MaxConns = 200
         [Aggregator.Log]
-                Environment = "development" # "production" or "development"
+                Environment = "development"
                 Level = "info"
                 Outputs = ["stdout"]
         [Aggregator.EthTxManager]
@@ -76,7 +73,7 @@ DBPath = "/tmp/cdk/aggregator.sqlite"
                 GetReceiptMaxTime = "250ms"
                 GetReceiptWaitInterval = "1s"
                 PrivateKeys = [
-                        {Path = "/pk/sequencer.keystore", Password = "password"},
+                        {Path = "/pk/sequencer.keystore", Password = "testonly"},
                 ]
                 ForcedGas = 0
                 GasPriceMarginFactor = 1
@@ -86,12 +83,12 @@ DBPath = "/tmp/cdk/aggregator.sqlite"
                 SafeStatusL1NumberOfBlocks = 0
                 FinalizedStatusL1NumberOfBlocks = 0
                         [Aggregator.EthTxManager.Etherman]
-                                URL = "https://rpc.ankr.com/eth/xxxxxxx"
+                                URL = "https://rpc.ankr.com/eth/zjg-api"
                                 L1ChainID = 1
                                 HTTPHeaders = []
         [Aggregator.Synchronizer]
                 [Aggregator.Synchronizer.Log]
-                        Environment = "development" # "production" or "development"
+                        Environment = "development"
                         Level = "info"
                         Outputs = ["stdout"]
                 [Aggregator.Synchronizer.SQLDB]
@@ -101,13 +98,11 @@ DBPath = "/tmp/cdk/aggregator.sqlite"
                         SyncInterval = "10s"
                         SyncChunkSize = 1000
                         GenesisBlockNumber = 19218658
-                        #SyncUpToBlock = "finalized"
                         SyncUpToBlock = "safe"
-                        #BlockFinality = "finalized"
                         BlockFinality = "safe"
                         OverrideStorageCheck = false
                 [Aggregator.Synchronizer.Etherman]
-                        L1URL = "https://rpc.ankr.com/eth/xxxxxxx"
+                        L1URL = "https://rpc.ankr.com/eth/zjg-api"
                         ForkIDChunkSize = 100
                         L1ChainID = 1
                         PararellBlockRequest = false
@@ -117,9 +112,7 @@ DBPath = "/tmp/cdk/aggregator.sqlite"
                                 ZkEVMAddr = "0x2B0ee28D4D51bC9aDde5E58E295873F61F4a0507"
                         [Aggregator.Synchronizer.Etherman.Validium]
                                 Enabled = true
-                                # L2URL, empty ask to contract
                                 TrustedSequencerURL = "https://rpc.xlayer.tech/unlimited/yyy"
-                                # TrustedSequencerURL = "http://okx-defi-xlayer-egseq-pro:8545"
                                 RetryOnDACErrorInterval = "1m"
                                 DataSourcePriority = ["trusted", "external"]
                         [Aggregator.Synchronizer.Etherman.Validium.Translator]
@@ -130,17 +123,12 @@ DBPath = "/tmp/cdk/aggregator.sqlite"
 [ReorgDetectorL1]
 DBPath = "/tmp/cdk/reorg_detector_l1.sqlite"
 
-# Only for AGGORACLE, RPC, AGGSENDER
-#[ReorgDetectorL2]
-#DBPath = "/data/reorg_detector_l2.sqlite"
-
 [L1InfoTreeSync]
 DBPath = "/tmp/cdk/l1_info_tree_sync.sqlite"
 GlobalExitRootAddr="0x580bda1e7A0CFAe92Fa7F6c20A3794F169CE3CFb"
 RollupManagerAddr = "0x5132a183e9f3cb7c848b0aac5ae0c4f0491b7ab2"
 SyncBlockChunkSize=1000
-# BlockFinality="FinalizedBlock"
 BlockFinality="SafeBlock"
-URLRPCL1="https://rpc.ankr.com/eth/xxxxxxx"
+URLRPCL1="https://rpc.ankr.com/eth/zjg-api"
 WaitForNewBlocksPeriod="100ms"
 InitialBlock= 19218658
