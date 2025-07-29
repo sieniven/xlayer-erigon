@@ -130,6 +130,7 @@ cmd/smt-db-split/smt-db-split
 test/app
 bridge-config-artifact
 kurtosis-cli.tar.gz
+<<<<<<< HEAD
 test-pp-op/data
 test-pp-op/l1-geth/execution/genesis.json
 test-pp-op/l1-geth/execution/geth
@@ -144,3 +145,7 @@ test-pp-op/config-op/rollup.json
 test-pp-op/config-op/state_dump.json
 test-pp-op/config-op/genesis-op-raw.json
 test-pp-op/config-op/genesis-op-before-number.json
+=======
+zk/debug_tools/rpc-cache/cache.db
+zk/debug_tools/rpc-cache/rpc-cache
+>>>>>>> dev-pp

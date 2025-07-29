@@ -90,6 +90,7 @@ import (
 	"github.com/ledgerwatch/erigon/core"
 	"github.com/ledgerwatch/erigon/core/rawdb"
 	"github.com/ledgerwatch/erigon/core/rawdb/blockio"
+	"github.com/ledgerwatch/erigon/core/state"
 	"github.com/ledgerwatch/erigon/core/types"
 	"github.com/ledgerwatch/erigon/core/vm"
 	"github.com/ledgerwatch/erigon/crypto"
@@ -133,6 +134,11 @@ import (
 	"github.com/ledgerwatch/erigon/zk/hermez_db"
 	"github.com/ledgerwatch/erigon/zk/l1_cache"
 	"github.com/ledgerwatch/erigon/zk/l1infotree"
+	"github.com/ledgerwatch/erigon/zk/realtime"
+	realtimeCache "github.com/ledgerwatch/erigon/zk/realtime/cache"
+	realtimeKafka "github.com/ledgerwatch/erigon/zk/realtime/kafka"
+	realtimeSub "github.com/ledgerwatch/erigon/zk/realtime/subscription"
+	realtimeTypes "github.com/ledgerwatch/erigon/zk/realtime/types"
 	zkStages "github.com/ledgerwatch/erigon/zk/stages"
 	"github.com/ledgerwatch/erigon/zk/syncer"
 	txpool2 "github.com/ledgerwatch/erigon/zk/txpool"
@@ -247,6 +253,16 @@ type Ethereum struct {
 	seqVerSyncer     *syncer.L1Syncer
 	l1InfoTreeSyncer *syncer.L1Syncer
 	l1BlockSyncer    *syncer.L1Syncer
+
+	// For X Layer, realtime
+	kafkaEnabled  bool
+	kafkaProducer *realtimeKafka.KafkaProducer
+	kafkaConsumer *realtimeKafka.KafkaConsumer
+	realtimeCache *realtimeCache.RealtimeCache
+	blockInfoChan chan *realtimeTypes.BlockInfo
+	txInfoChan    chan *state.TxInfo
+	finishChan    chan uint64
+	realtimeSub   *realtimeSub.RealtimeSubscription
 }
 
 func splitAddrIntoHostAndPort(addr string) (host string, port int, err error) {
@@ -1174,7 +1190,7 @@ func New(ctx context.Context, stack *node.Node, config *ethconfig.Config, logger
 			ctx,
 			ethermanClients,
 			[]libcommon.Address{cfg.AddressGerManager},
-			[][]libcommon.Hash{{contracts.UpdateL1InfoTreeTopic}},
+			[][]libcommon.Hash{{contracts.UpdateL1InfoTreeTopic, contracts.UpdateL1InfoTreeV2Topic}},
 			cfg.L1BlockRange,
 			cfg.L1QueryDelay,
 			cfg.L1HighestBlockType,
@@ -1216,6 +1232,20 @@ func New(ctx context.Context, stack *node.Node, config *ethconfig.Config, logger
 			// For X Layer, apollo
 			backend.l1BlockSyncer = l1BlockSyncer
 
+			// For X Layer, realtime
+			if cfg.Zk.XLayer.Realtime.Enable {
+				kafkaProducer, err := realtimeKafka.NewKafkaProducer(cfg.Zk.XLayer.Realtime.Kafka)
+				if err != nil {
+					backend.kafkaEnabled = false
+					log.Warn("[Realtime] Failed to initialize kafka producer", "error", err)
+				} else {
+					backend.kafkaEnabled = true
+					backend.kafkaProducer = kafkaProducer
+					backend.blockInfoChan = make(chan *realtimeTypes.BlockInfo, realtimeKafka.DefaultKafkaBufferSize)
+					backend.txInfoChan = make(chan *state.TxInfo, realtimeKafka.DefaultKafkaBufferSize)
+				}
+			}
+
 			backend.syncStages = stages2.NewSequencerZkStages(
 				backend.sentryCtx,
 				backend.chainDB,
@@ -1236,6 +1266,8 @@ func New(ctx context.Context, stack *node.Node, config *ethconfig.Config, logger
 				backend.txPool2DB,
 				l1InfoTreeUpdater,
 				hook,
+				backend.blockInfoChan,
+				backend.txInfoChan,
 			)
 
 			backend.syncUnwindOrder = zkStages.ZkSequencerUnwindOrder
@@ -1261,6 +1293,32 @@ func New(ctx context.Context, stack *node.Node, config *ethconfig.Config, logger
 			}
 			streamClient := initDataStreamClient(ctx, cfg.Zk, uint16(latestForkId))
 
+			// For X Layer, realtime
+			if cfg.Zk.XLayer.Realtime.Enable {
+				// Init kafka consumer
+				kafkaConsumer, err := realtimeKafka.NewKafkaConsumer(cfg.Zk.XLayer.Realtime.Kafka, true)
+				if err != nil {
+					backend.kafkaEnabled = false
+					log.Warn("[Realtime] Failed to initialize kafka consumer", "error", err)
+				} else {
+					backend.kafkaEnabled = true
+					backend.kafkaConsumer = kafkaConsumer
+
+					// Init realtime cache
+					backend.realtimeCache, err = realtimeCache.NewRealtimeCache(backend.sentryCtx, backend.chainDB, cfg.Zk.XLayer.Realtime.CacheDumpPath)
+					if err != nil {
+						return nil, err
+					}
+
+					backend.finishChan = make(chan uint64)
+
+					if cfg.Zk.XLayer.Realtime.EnableSubscribe {
+						backend.realtimeSub = realtimeSub.NewRealtimeSubscription()
+						backend.realtimeSub.Start(ctx)
+					}
+				}
+			}
+
 			backend.syncStages = stages2.NewDefaultZkStages(
 				backend.sentryCtx,
 				backend.chainDB,
@@ -1277,6 +1335,8 @@ func New(ctx context.Context, stack *node.Node, config *ethconfig.Config, logger
 				streamClient,
 				dataStreamServer,
 				l1InfoTreeUpdater,
+				backend.realtimeCache,
+				backend.finishChan,
 			)
 
 			backend.syncUnwindOrder = zkStages.ZkUnwindOrder
@@ -1351,7 +1411,6 @@ func (s *Ethereum) Init(stack *node.Node, config *ethconfig.Config, chainConfig 
 	var err error
 
 	s.stagedSync = stagedsync.New(s.config.Sync, s.syncStages, s.syncUnwindOrder, s.syncPruneOrder, s.logger)
-	// Legacy verifier code removed
 
 	if chainConfig.Bor == nil {
 		s.sentriesClient.Hd.StartPoSDownloader(s.sentryCtx, s.sentriesClient.SendHeaderRequest, s.sentriesClient.Penalize)
@@ -1397,7 +1456,7 @@ func (s *Ethereum) Init(stack *node.Node, config *ethconfig.Config, chainConfig 
 
 	var gpCache *jsonrpc.GasPriceCache
 	// For X Layer, split db
-	s.apiList, gpCache = jsonrpc.APIList(chainKv, s.smtDB, ethRpcClient, txPoolRpcClient, s.txPool2, miningRpcClient, ff, stateCache, blockReader, s.agg, &httpRpcCfg, s.engine, config, s.l1Syncer, s.logger, dataStreamServer, s.gasTracker, s.stagedSync.GetCache())
+	s.apiList, gpCache = jsonrpc.APIList(chainKv, s.smtDB, ethRpcClient, txPoolRpcClient, s.txPool2, miningRpcClient, ff, stateCache, blockReader, s.agg, &httpRpcCfg, s.engine, config, s.l1Syncer, s.logger, dataStreamServer, s.gasTracker, s.stagedSync.GetCache(), config.Zk.XLayer.Realtime.Enable && s.kafkaEnabled, s.realtimeCache, s.realtimeSub)
 
 	// For X Layer
 	if s.txPool2 != nil && gpCache != nil {
@@ -1966,6 +2025,12 @@ func (s *Ethereum) Start() error {
 		go stages2.AsyncFlushSmtData(s.smtFlushCtx, smtdb, s.stagedSync, s.config.Zk.XLayer, s.logger, s.smtFlushDoneCh)
 
 		go stages2.StageLoop(s.sentryCtx, s.chainDB, s.stagedSync, s.sentriesClient.Hd, s.waitForStageLoopStop, s.config.Sync.LoopThrottle, s.logger, s.blockReader, hook, s.config.ForcePartialCommit)
+
+		// For X Layer, realtime
+		if s.config.Zk.XLayer.Realtime.Enable && s.kafkaEnabled {
+			go realtime.ListenKafkaConsumer(s.sentryCtx, s.kafkaConsumer, s.realtimeCache, s.finishChan, s.realtimeSub)
+			go realtime.ListenKafkaProducer(s.sentryCtx, s.kafkaProducer, s.blockInfoChan, s.txInfoChan)
+		}
 	}
 
 	stages := diagnostics.InitStagesFromList(nodeStages)
@@ -2040,6 +2105,15 @@ func (s *Ethereum) Stop() error {
 	}
 	if s.agg != nil {
 		s.agg.Close()
+	}
+
+	// For X Layer, realtime
+	if sequencer.IsSequencer() {
+		if s.config.Zk.XLayer.Realtime.Enable && s.kafkaEnabled {
+			if err := s.kafkaProducer.SendKafkaErrorTrigger(0); err != nil {
+				log.Error(fmt.Sprintf("[Realtime] Failed to send kafka error trigger message. error: %v", err))
+			}
+		}
 	}
 
 	// For X Layer, split db and ac

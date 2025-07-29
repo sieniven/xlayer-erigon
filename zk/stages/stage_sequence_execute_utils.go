@@ -34,6 +34,7 @@ import (
 	"github.com/ledgerwatch/erigon/zk/datastream/server"
 	"github.com/ledgerwatch/erigon/zk/hermez_db"
 	"github.com/ledgerwatch/erigon/zk/l1infotree"
+	realtimeTypes "github.com/ledgerwatch/erigon/zk/realtime/types"
 	zktx "github.com/ledgerwatch/erigon/zk/tx"
 	"github.com/ledgerwatch/erigon/zk/txpool"
 	zktypes "github.com/ledgerwatch/erigon/zk/types"
@@ -94,6 +95,10 @@ type SequenceBlockCfg struct {
 
 	decodedTxCache *expirable.LRU[common.Hash, *types.Transaction]
 	doneHook       DoneHook
+
+	// For X Layer, realtime
+	kafkaBlockInfoChan chan *realtimeTypes.BlockInfo
+	kafkaTxInfoChan    chan *state.TxInfo
 }
 
 func StageSequenceBlocksCfg(
@@ -124,6 +129,10 @@ func StageSequenceBlocksCfg(
 	yieldSize uint16,
 	infoTreeUpdater *l1infotree.Updater,
 	doneHook DoneHook,
+
+	// For X Layer, realtime
+	kafkaBlockInfoChan chan *realtimeTypes.BlockInfo,
+	kafkaTxInfoChan chan *state.TxInfo,
 ) SequenceBlockCfg {
 
 	return SequenceBlockCfg{
@@ -154,6 +163,10 @@ func StageSequenceBlocksCfg(
 
 		// For X Layer, split db and ac
 		dbsmt: dbsmt,
+
+		// For X Layer, realtime
+		kafkaBlockInfoChan: kafkaBlockInfoChan,
+		kafkaTxInfoChan:    kafkaTxInfoChan,
 	}
 }
 
@@ -183,10 +196,10 @@ func (sCfg *SequenceBlockCfg) toErigonExecuteBlockCfg() stagedsync.ExecuteBlockC
 
 func validateIfDatastreamIsAheadOfExecution(
 	s *stagedsync.StageState,
-// u stagedsync.Unwinder,
+	// u stagedsync.Unwinder,
 	ctx context.Context,
 	cfg SequenceBlockCfg,
-// historyCfg stagedsync.HistoryCfg,
+	// historyCfg stagedsync.HistoryCfg,
 ) error {
 	roTx, err := cfg.db.BeginRo(ctx)
 	if err != nil {
@@ -217,9 +230,10 @@ type forkDb interface {
 	GetForkId(batch uint64) (uint64, error)
 	WriteForkIdBlockOnce(forkId, block uint64) error
 	WriteForkId(batch, forkId uint64) error
+	WriteNewForkHistory(forkId, lastVerifiedBatch uint64) error
 }
 
-func prepareForkId(lastBatch, executionAt uint64, hermezDb forkDb) (uint64, error) {
+func prepareForkId(lastBatch, executionAt uint64, hermezDb forkDb, cfg SequenceBlockCfg) (uint64, error) {
 	var err error
 	var latest uint64
 
@@ -230,6 +244,31 @@ func prepareForkId(lastBatch, executionAt uint64, hermezDb forkDb) (uint64, erro
 	}
 
 	nextBatch := lastBatch + 1
+
+	if len(allForks) == 1 && allForks[0] == 0 {
+		// we are running on a network that has never had an FEP rollup type
+		// assigned to it, so there is no fork history to use here.  So we fall back
+		// to the fork number specified in the config.  If this config isn't set then
+		// we return an error to notify that the flag must be set.
+		log.Info("No fork history found, checking for PP fork number", "batch", nextBatch)
+
+		ppFork := cfg.zk.PessimisticForkNumber
+		if ppFork == 0 {
+			return 0, fmt.Errorf("zkevm.pessimistic-fork-number flag must be set when running on a network that has never had an FEP rollup type assigned to it")
+		}
+
+		log.Info("Upgrading fork id", "from", 0, "to", ppFork, "batch", nextBatch)
+		if err := hermezDb.WriteForkIdBlockOnce(ppFork, executionAt+1); err != nil {
+			return latest, err
+		}
+
+		if err := hermezDb.WriteNewForkHistory(ppFork, nextBatch); err != nil {
+			return latest, err
+		}
+		log.Info("Written fork history for PP fork", "fork", ppFork, "batch", nextBatch)
+
+		return ppFork, nil
+	}
 
 	// iterate over the batch boundaries and find the latest fork that applies
 	for idx, batch := range allBatches {
@@ -297,7 +336,7 @@ func prepareHeader(tx kv.RwTx, previousBlockNumber, deltaTimestamp, forcedTimest
 	return header, parentBlock, nil
 }
 
-func prepareL1AndInfoTreeRelatedStuff(sdb *stageDb, batchState *BatchState, proposedTimestamp uint64, reuseL1InfoIndex bool) (
+func prepareL1AndInfoTreeRelatedStuff(logPrefix string, sdb *stageDb, batchState *BatchState, proposedTimestamp uint64, reuseL1InfoIndex bool, l1InfoTreeOffset *ethconfig.L1InfoTreeOffset) (
 	infoTreeIndexProgress uint64,
 	l1TreeUpdate *zktypes.L1InfoTreeUpdate,
 	l1TreeUpdateIndex uint64,
@@ -324,6 +363,15 @@ func prepareL1AndInfoTreeRelatedStuff(sdb *stageDb, batchState *BatchState, prop
 			// If we are in the middle of a block (AtNewBlockBoundary -> false), it means the original block will be requenced into multiple blocks, so we will leave l1TreeUpdateIndex as 0 for the rest of blocks.
 			if batchState.resequenceBatchJob.AtNewBlockBoundary() {
 				l1TreeUpdateIndex = uint64(batchState.resequenceBatchJob.CurrentBlock().L1InfoTreeIndex)
+
+				// check for and handle an info tree offset if we have one
+				if l1InfoTreeOffset != nil && l1TreeUpdateIndex != 0 {
+					log.Info(fmt.Sprintf("[%s] Resequence checking L1 info tree offset", logPrefix), "foundIndex", l1TreeUpdateIndex, "offset", l1InfoTreeOffset.Offset)
+					if l1TreeUpdateIndex >= l1InfoTreeOffset.Index {
+						l1TreeUpdateIndex = uint64(int64(l1TreeUpdateIndex) + l1InfoTreeOffset.Offset)
+						log.Info(fmt.Sprintf("[%s] Resequence using L1 info tree offset", logPrefix), "newIndex", l1TreeUpdateIndex)
+					}
+				}
 			}
 			// For X Layer, fix mismatch issue
 			if infoTreeIndexProgress >= l1TreeUpdateIndex {
@@ -340,9 +388,21 @@ func prepareL1AndInfoTreeRelatedStuff(sdb *stageDb, batchState *BatchState, prop
 			}
 			return
 		}
+
 		if l1TreeUpdate, err = sdb.hermezDb.GetL1InfoTreeUpdate(l1TreeUpdateIndex); err != nil {
 			return
 		}
+
+		// if we are at the exact point for an info tree index offset then we want to check for the expected ger hash and error if it doesn't match
+		if batchState.isResequence() && reuseL1InfoIndex {
+			if l1InfoTreeOffset != nil && l1InfoTreeOffset.Index == uint64(batchState.resequenceBatchJob.CurrentBlock().L1InfoTreeIndex) {
+				if l1InfoTreeOffset.ExpectedGerHash != l1TreeUpdate.GER {
+					err = fmt.Errorf("resequence info tree offset expected ger hash %s does not match actual ger hash %s", l1InfoTreeOffset.ExpectedGerHash, l1TreeUpdate.GER)
+					return
+				}
+			}
+		}
+
 		if infoTreeIndexProgress >= l1TreeUpdateIndex {
 			shouldWriteGerToContract = false
 		}

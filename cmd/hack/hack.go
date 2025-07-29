@@ -90,6 +90,8 @@ var (
 	ignoreScalable  = flag.Bool("ignore-scalable", false, "ignore scalable account")
 	deleteScalable  = flag.Bool("delete-scalable", false, "delete scalable account")
 	debugPrint      = flag.Bool("debugPrint", false, "print debug info")
+	key             = flag.Int("key", 1, "key to use from a table")
+	offset          = flag.Int("offset", 0, "offset to apply")
 )
 
 func dbSlice(chaindata string, bucket string, prefix []byte) {
@@ -2081,6 +2083,8 @@ func main() {
 		}
 	case "getSmtroot":
 		err = getSmtroot(*chaindata)
+	case "infoTreeChange":
+		err = infoTreeChange(*chaindata, key, offset)
 	default:
 		fmt.Printf("Unknown action: %s\n", *action)
 		return
