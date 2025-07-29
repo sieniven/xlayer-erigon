@@ -1,99 +1,63 @@
 [Log]
-Level = "debug"
-Outputs = ["stdout"]
-
-[Apollo]
-Enabled = false
-AppID = "xlayer-bridge-service"
-Cluster = "default"
-MetaAddress = "http://127.0.0.1:8080"
-Namespaces = ["application"]
-Secret = ""
-IsBackupConfig = true
+Level = "info"
+Environment = "production"
+Outputs = ["stderr"]
 
 [SyncDB]
 Database = "postgres"
-User = "test_user"
-Password = "test_password"
-Name = "test_db"
-Host = "xlayer-bridge-db"
-Port = "5432"
-MaxConns = 20
-
-[ClaimTxManager]
-Enabled = true
-FrequencyToMonitorTxs = "1s"
-PrivateKey = {Path = "/pk/keystore.claimtxmanager", Password = "testonly"}
-RetryInterval = "1s"
-RetryNumber = 10
-FreeGas = true
-AuthorizedClaimMessageAddresses = ["0x90F79bf6EB2c4f870365E785982E1f101E93b906"]
+    [SyncDB.PgStorage]
+    User = "test_user"
+    Name = "test_db"
+    Password = "test_password"
+    Host = "xlayer-bridge-db"
+    Port = "5432"
+    MaxConns = 20
 
 [Etherman]
-L1URL = "http://xlayer-mock-l1-network:8545"
-L2URLs = ["http://xlayer-rpc:8545"]
-L1ChainId = 1337
-L2ChainIds = [195]
+L1URL = "https://rpc.ankr.com/eth/zjg-api"
+L2URLs = ["https://rpc.xlayer.tech/unlimited/yyy"]
 
 [Synchronizer]
 SyncInterval = "1s"
 SyncChunkSize = 100
+ForceL2SyncChunk = true
 
 [BridgeController]
-Store = "postgres"
 Height = 32
 
 [BridgeServer]
 GRPCPort = "9090"
 HTTPPort = "8080"
-CacheSize = 100000
 DefaultPageLimit = 25
-MaxPageLimit = 100
-BridgeVersion = "v1"
-SentinelConfigFilePath = "/app/sentinel_config.json"
-[BridgeServer.DB]
-Database = "postgres"
-User = "test_user"
-Password = "test_password"
-Name = "test_db"
-Host = "xlayer-bridge-db"
-Port = "5432"
-MaxConns = 20
-TableSuffix = ""
-[BridgeServer.Redis]
-IsClusterMode = false
-Addrs = ["xlayer-bridge-redis:6379"]
-Username = ""
-Password = ""
-DB = 0
-MockPrice = true
-
-[CoinKafkaConsumer]
-Brokers = ["xlayer-bridge-coin-kafka:9092"]
-Topics = ["explorer_chainAddressPrice_push"]
-ConsumerGroupID = "xlayer-bridge-service"
-InitialOffset = -1
-Username = ""
-Password = ""
-RootCAPath = "/app/root-ca-cert"
-
-[MessagePushProducer]
-Enabled = false
+MaxPageLimit = 1000
+    [BridgeServer.DB]
+    Database = "postgres"
+        [BridgeServer.DB.PgStorage]
+        User = "test_user"
+        Name = "test_db"
+        Password = "test_password"
+        Host = "xlayer-bridge-db"
+        Port = "5432"
+        MaxConns = 20
 
 [NetworkConfig]
-GenBlockNumber = 353
-PolygonBridgeAddress = "0x3a277Fa4E78cc1266F32E26c467F99A8eAEfF7c3"
-PolygonZkEVMGlobalExitRootAddress = "0xB8cedD4B9eF683f0887C44a6E4312dC7A6e2fcdB"
-PolygonRollupManagerAddress = "0x2d42E2899662EFf08b13eeb65b154b904C7a1c8a"
-PolygonZkEvmAddress = "0xeb173087729c88a47568AF87b17C653039377BA6"
-L2PolygonBridgeAddresses = ["0x3a277Fa4E78cc1266F32E26c467F99A8eAEfF7c3"]
+GenBlockNumber = 16896721
+PolygonBridgeAddress = "0x2a3DD3EB832aF982ec71669E178424b10Dca2EDe"
+PolygonZkEVMGlobalExitRootAddress = "0x580bda1e7A0CFAe92Fa7F6c20A3794F169CE3CFb"
+PolygonRollupManagerAddress = "0x5132a183e9f3cb7c848b0aac5ae0c4f0491b7ab2"
+PolygonZkEVMAddress = "0x2B0ee28D4D51bC9aDde5E58E295873F61F4a0507"
+L2PolygonBridgeAddresses = ["0x2a3DD3EB832aF982ec71669E178424b10Dca2EDe"]
+RequireSovereignChainSmcs = [false]
+L2PolygonZkEVMGlobalExitRootAddresses = ["0xa40d5f56745a118d0906a34e69aec8c0db1cb8fa"]
 
-[NacosConfig]
-NacosUrls = ""
-NamespaceId = "public"
-ApplicationName = ""
-ExternalListenAddr = "127.0.0.1:26659"
+[ClaimTxManager]
+Enabled = false
+FrequencyToMonitorTxs = "5s"
+PrivateKey = {Path = "/pk/keystore.claimtxmanager", Password = "testonly"}
+RetryInterval = "1s"
+RetryNumber = 10
 
-[BusinessConfig]
-StandardChainIds = [195]
-InnerChainIds = [19500]
+[Metrics]
+Enabled = true
+Host = "0.0.0.0"
+Port = "8090"
