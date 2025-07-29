@@ -97,7 +97,7 @@ services:
     volumes:
       - ./data/agg:/tmp/cdk
       - ./keystore/aggregator.keystore:/pk/aggregator.keystore
-      - ./config/cdk.config.toml:/app/config.toml
+      - ./config/fep.cdk.config.toml:/app/config.toml
       - ./config/test.genesis.config.json:/app/genesis.json
     command:
       - "/bin/sh"
