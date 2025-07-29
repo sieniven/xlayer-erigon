@@ -1,6 +1,8 @@
 set -e
 set -x
 
+source .env
+
 sed_inplace() {
   if [[ "$OSTYPE" == "darwin"* ]]; then
     sed -i '' "$@"
@@ -9,8 +11,16 @@ sed_inplace() {
   fi
 }
 
+ROOT_DIR=$(git rev-parse --show-toplevel)
+TEST_DIR="$ROOT_DIR/test-pp-op"
 
-docker compose stop xlayer-seq
+cd $TEST_DIR
+if [ $CHECK_REGENESIS = "true" ]; then
+  ./scripts/prepare-check-regenesis.sh
+else
+  docker compose stop xlayer-seq
+fi
+
 docker compose stop xlayer-rpc
 
 docker compose stop xlayer-bridge-service
@@ -192,11 +202,17 @@ docker run \
 echo "genesis.json and rollup.json are generated in deployments folder"
 
 # regenerate genesis.json for op-geth
-cd $ROOT_DIR
-go install ./cmd/hack/
-cd $PWD_DIR
-cp ./config-op/genesis.json ./config-op/genesis-op-raw.json
-hack -action migrateGenesis -chaindata ./data/seq/chaindata/ -input ./config-op/genesis-op-raw.json -output ./config-op/genesis.json
+cd $TEST_DIR
+if [ $CHECK_REGENESIS = "true" ]; then
+  ./scripts/generate-genesis-check-regenesis.sh
+else
+  cd $ROOT_DIR
+  go install ./cmd/hack/
+  cd $TEST_DIR
+  cp ./config-op/genesis.json ./config-op/genesis-op-raw.json
+  hack -action migrateGenesis -chaindata ./data/seq/chaindata/ -input ./config-op/genesis-op-raw.json -output ./config-op/genesis.json
+  cp ./config-op/genesis.json ./config-op/state0.json
+fi
 
 # FORK_BLOCK_HEX=$(printf "0x%x" "$FORK_BLOCK")
 # cp ./config-op/genesis.json ./config-op/genesis-op-before-number.json

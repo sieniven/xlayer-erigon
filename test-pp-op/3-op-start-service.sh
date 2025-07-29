@@ -12,6 +12,9 @@ sed_inplace() {
 # Load environment variables early
 source .env
 
+PWD_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ROOT_DIR="$(dirname "$PWD_DIR")"
+
 docker compose up -d op-batcher
 
 sleep 10
@@ -41,21 +44,21 @@ if [ ! -f "$EXPORT_DIR/prestate.json.gz" ] || [ ! -f "$EXPORT_DIR/op-program" ];
     # Create temporary container to extract prestate files
     TEMP_CONTAINER="temp-prestate-extract"
     docker create --name "$TEMP_CONTAINER" "$OP_STACK_IMAGE_TAG"
-    
+
     # Extract op-program and prestate files
     docker cp "$TEMP_CONTAINER":/app/op-program/bin/op-program "$EXPORT_DIR/op-program" || echo "Warning: Could not copy op-program"
     docker cp "$TEMP_CONTAINER":/app/op-program/bin/prestate.json "$EXPORT_DIR/prestate.json" || echo "Warning: Could not copy prestate.json"
     docker cp "$TEMP_CONTAINER":/app/op-program/bin/prestate-proof.json "$EXPORT_DIR/prestate-proof.json" || echo "Warning: Could not copy prestate-proof.json"
     docker cp "$TEMP_CONTAINER":/app/op-program/bin/meta.json "$EXPORT_DIR/meta.json" || echo "Warning: Could not copy meta.json"
-    
+
     # Cleanup
     docker rm -f "$TEMP_CONTAINER"
-    
+
     # Gzip prestate.json if it exists
     if [ -f "$EXPORT_DIR/prestate.json" ]; then
         gzip -c "$EXPORT_DIR/prestate.json" > "$EXPORT_DIR/prestate.json.gz"
         echo "✅ Created prestate.json.gz"
-        
+
         # Calculate the actual prestate hash and update devnetL1.json if needed
         ACTUAL_HASH=$(sha256sum "$EXPORT_DIR/prestate.json.gz" | awk '{print $1}')
         DEVNET_L1_JSON="$PWD_DIR/config-op/devnetL1.json"
@@ -66,7 +69,7 @@ if [ ! -f "$EXPORT_DIR/prestate.json.gz" ] || [ ! -f "$EXPORT_DIR/op-program" ];
                 echo "   Configured: 0x$CONFIGURED_HASH"
                 echo "   Actual:     0x$ACTUAL_HASH"
                 echo "   Updating devnetL1.json with correct hash..."
-                
+
                 # Update the hash in devnetL1.json
                 jq --arg hash "0x$ACTUAL_HASH" '.faultGameAbsolutePrestate = $hash' "$DEVNET_L1_JSON" > "${DEVNET_L1_JSON}.tmp" && mv "${DEVNET_L1_JSON}.tmp" "$DEVNET_L1_JSON"
                 echo "✅ Updated faultGameAbsolutePrestate in devnetL1.json"
@@ -260,14 +263,14 @@ docker run --rm \
     OPTIMISM_PORTAL_ADDR=\$(cast call --rpc-url $L1_RPC_URL_IN_DOCKER $SYSTEM_CONFIG_PROXY_ADDRESS 'optimismPortal()(address)')
     echo 'disputeGameFactory: '\$DISPUTE_GAME_FACTORY_ADDR
     echo 'optimismPortal: '\$OPTIMISM_PORTAL_ADDR
-    
+
     # Get anchorStateRegistry address with proper return type specification
     ANCHOR_STATE_REGISTRY_ADDR=\$(cast call --rpc-url $L1_RPC_URL_IN_DOCKER \$OPTIMISM_PORTAL_ADDR 'anchorStateRegistry()(address)')
     echo 'anchorStateRegistry: '\$ANCHOR_STATE_REGISTRY_ADDR
-    
+
     GAME_ADDR=\$(cast call --rpc-url $L1_RPC_URL_IN_DOCKER \$DISPUTE_GAME_FACTORY_ADDR 'gameImpls(uint32)(address)' 0)
     echo 'gameImpls(0): '\$GAME_ADDR
-    
+
     cast send \$ANCHOR_STATE_REGISTRY_ADDR 'setRespectedGameType(uint32)' 0 --rpc-url $L1_RPC_URL_IN_DOCKER --private-key $DEPLOYER_PRIVATE_KEY
 
     echo "✅ setRespectedGameType completed successfully"
@@ -277,3 +280,7 @@ export GAME_TYPE=0
 
 sleep $GAME_WINDOW
 docker compose up -d op-proposer op-challenger op-dispute-mon
+
+if [ $CHECK_REGENESIS = "true" ]; then
+  ./scripts/check-regenesis.sh
+fi
