@@ -211,8 +211,11 @@ func TestRealtimeBenchmarNewHeadsSubscription(t *testing.T) {
 			_, ok := heights[height]
 			if ok {
 				timeDiff := time.Since(heights[height])
-				totalSubTimeDiff += timeDiff
 				count++
+				if count == 1 {
+					continue
+				}
+				totalSubTimeDiff += timeDiff
 				fmt.Printf("RT newHeads sub is faster than ETH newHeads sub by: %s\n", timeDiff)
 			}
 		case err := <-realtimeSub.Err():
@@ -275,6 +278,9 @@ func TestRealtimeBenchmarNewTransactionSubscription(t *testing.T) {
 		err = g.Wait()
 		require.NoError(t, err)
 
+		if i == 0 {
+			continue
+		}
 		totalRealtimeDuration += subDuration
 
 		fmt.Printf("Iteration %v:\n", i)
