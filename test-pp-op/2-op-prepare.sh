@@ -153,11 +153,52 @@ docker run \
 echo "genesis.json and rollup.json are generated in deployments folder"
 
 # regenerate genesis.json for op-geth
-cd $ROOT_DIR
-go install ./cmd/hack/
-cd $PWD_DIR
 cp ./config-op/genesis.json ./config-op/genesis-op-raw.json
-hack -action migrateGenesis -chaindata ./data/seq/chaindata/ -input ./config-op/genesis-op-raw.json   -output ./config-op/genesis.json
+
+# Try to build hack tool locally first, fall back to Docker if it fails
+echo "🔧 Building hack tool..."
+cd $ROOT_DIR
+
+if go install ./cmd/hack/ 2>/dev/null; then
+    echo "✅ hack tool built successfully"
+    cd $PWD_DIR
+    hack -action migrateGenesis -chaindata ./data/seq/chaindata/ -input ./config-op/genesis-op-raw.json -output ./config-op/genesis.json
+else
+    echo "❌ Local build failed, using Docker fallback..."
+    cd $PWD_DIR
+    
+    # Build Docker image for hack tool
+    echo "📦 Building hack tool Docker image..."
+    cat > Dockerfile-hack << 'EOF'
+FROM golang:1.24
+
+RUN apt-get update && apt-get install -y git build-essential && apt-get clean
+
+WORKDIR /app
+COPY . .
+RUN go build -o hack ./cmd/hack
+
+CMD ["./hack"]
+EOF
+
+    cd $ROOT_DIR
+    docker build -f $PWD_DIR/Dockerfile-hack -t hack-tool:latest .
+    
+    # Run hack tool in Docker
+    cd $PWD_DIR
+    docker run --rm \
+        -v "$(pwd)/data/seq/chaindata:/chaindata:rw" \
+        -v "$(pwd)/config-op:/config:rw" \
+        hack-tool:latest \
+        ./hack -action migrateGenesis \
+        -chaindata /chaindata \
+        -input /config/genesis-op-raw.json \
+        -output /config/genesis.json
+    
+    # Clean up
+    rm -f Dockerfile-hack
+    echo "✅ hack tool completed via Docker"
+fi
 
 # FORK_BLOCK_HEX=$(printf "0x%x" "$FORK_BLOCK")
 # cp ./config-op/genesis.json ./config-op/genesis-op-before-number.json
