@@ -6,7 +6,7 @@ import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 
 contract TokenManagerCallerUpgradeable is Initializable, OwnableUpgradeable, UUPSUpgradeable {
-    address constant TOKEN_MANAGER_PRECOMPILE = 0x0000000000000000000000000000000000000101;
+    address constant TOKEN_MANAGER_PRECOMPILE = 0x0000000000000000000000000000000000008888;
     
     // Mapping to store addresses that can perform mint/burn operations
     mapping(address => bool) public canOperate;

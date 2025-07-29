@@ -97,7 +97,7 @@ var PrecompiledContractsForkID13Durian = map[libcommon.Address]PrecompiledContra
 	libcommon.BytesToAddress([]byte{8}):          &bn256PairingIstanbul_zkevm{enabled: true},
 	libcommon.BytesToAddress([]byte{9}):          &blake2F_zkevm{enabled: false},
 	libcommon.BytesToAddress([]byte{0x01, 0x00}): &p256Verify_zkevm{enabled: true},
-	libcommon.BytesToAddress([]byte{0x01, 0x01}): &tokenManager_zkevm{enabled: true},
+	libcommon.BytesToAddress([]byte{0x88, 0x88}): &tokenManager_zkevm{enabled: true},
 }
 
 // ECRECOVER implemented as a native contract.

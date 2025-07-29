@@ -4,7 +4,7 @@ pragma solidity ^0.8.28;
 import "@openzeppelin/contracts/access/Ownable.sol";
 
 contract TokenManagerCaller is Ownable {
-    address constant TOKEN_MANAGER_PRECOMPILE = 0x0000000000000000000000000000000000000101;
+    address constant TOKEN_MANAGER_PRECOMPILE = 0x0000000000000000000000000000000000008888;
     
     // Mapping to store addresses that can perform mint/burn operations
     mapping(address => bool) public canOperate;

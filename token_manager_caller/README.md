@@ -53,7 +53,7 @@ cast balance 0x00000000000000000000000000000000000000ff --rpc-url localhost:8123
 6. Test Query Hardcoded Caller
 
 ```sh
-cast call 0x0000000000000000000000000000000000000101 --data "0x20" --rpc-url http://127.0.0.1:8123
+cast call 0x0000000000000000000000000000000000008888 --data "0x20" --rpc-url http://127.0.0.1:8123
 ```
 
 7. Test Upgrade
