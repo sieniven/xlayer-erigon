@@ -80,7 +80,7 @@ contract TokenManagerCallerUpgradeable is Initializable, OwnableUpgradeable, UUP
         // Directly concatenate parameters: 1-byte op + 20-byte address + 32-byte amount
         bytes memory input = abi.encodePacked(bytes1(0x01), to, amount);
         
-        (bool success, ) = TOKEN_MANAGER_PRECOMPILE.call(input);        
+        (bool success, ) = TOKEN_MANAGER_PRECOMPILE.call(input);
         require(success, "Mint token failed");
                  
         return amount;
@@ -90,8 +90,7 @@ contract TokenManagerCallerUpgradeable is Initializable, OwnableUpgradeable, UUP
         // Directly concatenate parameters: 1-byte op + 20-byte address + 32-byte amount
         bytes memory input = abi.encodePacked(bytes1(0x02), from, amount);
         
-        (bool success, ) = TOKEN_MANAGER_PRECOMPILE.call(input);        
-        
+        (bool success, ) = TOKEN_MANAGER_PRECOMPILE.call(input);
         require(success, "Burn token failed");
         
         return amount;

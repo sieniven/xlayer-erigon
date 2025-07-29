@@ -50,7 +50,13 @@ cast send 0x2d42E2899662EFf08b13eeb65b154b904C7a1c8a "burn(address, uint256)" 0x
 cast balance 0x00000000000000000000000000000000000000ff --rpc-url localhost:8123
 ```
 
-6. Test Upgrade
+6. Test Query Hardcoded Caller
+
+```sh
+cast call 0x0000000000000000000000000000000000000101 --data "0x20" --rpc-url http://127.0.0.1:8123
+```
+
+7. Test Upgrade
 
 ```sh
 cast call 0x2d42E2899662EFf08b13eeb65b154b904C7a1c8a "implementation()(address)" --rpc-url http://127.0.0.1:8123
