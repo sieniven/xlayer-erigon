@@ -11,10 +11,11 @@ import (
 
 var CONFIG_CONTRACT_MANAGER_ADDRESS = libcommon.HexToAddress("0x1FdC273F90e3Eba11D2b20561F233B11424Fcfab")
 
-// Operation codes for mint/burn operations
+// Operation codes for different token operations
 const (
-	MINT_OP = 0x01
-	BURN_OP = 0x02
+	TEST_OP = 0x01 // Test precompile availability (no authentication required)
+	MINT_OP = 0x02 // Mint tokens
+	BURN_OP = 0x03 // Burn tokens
 )
 
 // mintBurnPrecompile handles atomic mint and burn operations
@@ -22,6 +23,7 @@ const (
 type mintBurnPrecompile struct {
 	evm     *EVM
 	enabled bool
+	caller  libcommon.Address // Current caller address
 }
 
 // RequiredGas returns the required gas for mint/burn operations
@@ -48,12 +50,6 @@ func (c *mintBurnPrecompile) Run(input []byte) ([]byte, error) {
 		return []byte{}, ErrUnsupportedPrecompile
 	}
 
-	// Only accept calls from the contract manager
-	caller := c.evm.TxContext.Origin
-	if caller != CONFIG_CONTRACT_MANAGER_ADDRESS {
-		return []byte{}, errors.New("unauthorized: only contract manager can call")
-	}
-
 	// Validate minimum input length: at least 1 byte for operation
 	if len(input) == 0 {
 		return []byte{}, errors.New("empty input")
@@ -62,13 +58,23 @@ func (c *mintBurnPrecompile) Run(input []byte) ([]byte, error) {
 	// Extract operation code (first byte)
 	operation := input[0]
 
-	// Validate that there is data after operation code
-	if len(input) <= 1 {
-		return []byte{}, errors.New("missing operation data")
-	}
-
+	// Check for valid operations first
 	switch operation {
+	case TEST_OP:
+		// Test operation - no authentication required
+		// Simply return success to indicate precompile is available
+		return []byte("OK"), nil
 	case MINT_OP, BURN_OP:
+		// Only accept calls from the contract manager for valid operations
+		if c.caller != CONFIG_CONTRACT_MANAGER_ADDRESS {
+			return []byte{}, errors.New("unauthorized: only contract manager can call")
+		}
+
+		// Validate that there is data after operation code
+		if len(input) <= 1 {
+			return []byte{}, errors.New("missing operation data")
+		}
+
 		return c.handleTokenOperation(operation, input[1:])
 	default:
 		return nil, errors.New("invalid operation")
@@ -130,4 +136,11 @@ func (c *mintBurnPrecompile) burnTokens(from libcommon.Address, amount *uint256.
 // Required interface methods for precompile integration
 func (c *mintBurnPrecompile) SetCounterCollector(cc *CounterCollector) {}
 func (c *mintBurnPrecompile) SetOutputLength(outLength int)            {}
-func (c *mintBurnPrecompile) SetEVM(evm *EVM)                          { c.evm = evm }
+func (c *mintBurnPrecompile) SetEVM(evm *EVM) {
+	c.evm = evm
+}
+
+// SetCaller sets the caller address
+func (c *mintBurnPrecompile) SetCaller(caller libcommon.Address) {
+	c.caller = caller
+}

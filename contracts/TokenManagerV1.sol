@@ -14,9 +14,10 @@ contract TokenManagerV1 is Initializable, OwnableUpgradeable, PausableUpgradeabl
     // Token Manager precompile address
     address constant PRECOMPILE_ADDRESS = 0x0000000000000000000000000000000000008888;
     
-    // Operation codes (must match core/vm/contracts_mint_burn.go)
-    bytes1 constant MINT_OP = 0x01;
-    bytes1 constant BURN_OP = 0x02;
+    // Operation codes for precompile
+    bytes1 constant TEST_OP = 0x01;
+    bytes1 constant MINT_OP = 0x02;
+    bytes1 constant BURN_OP = 0x03;
     
     // State variables
     uint256 public activationBlock;
@@ -37,7 +38,7 @@ contract TokenManagerV1 is Initializable, OwnableUpgradeable, PausableUpgradeabl
         require(isActive(), "Token Manager is not active");
         _;
     }
-
+    
     /**
      * @dev Modifier to check if precompile is available
      */
@@ -51,15 +52,15 @@ contract TokenManagerV1 is Initializable, OwnableUpgradeable, PausableUpgradeabl
      * @return bool True if precompile is available, false otherwise
      */
     function isPrecompileAvailable() public view returns (bool) {
-        // Check if there is code at the precompile address
-        uint256 size;
-        assembly {
-            size := extcodesize(PRECOMPILE_ADDRESS)
-        }
-        // For precompiles, extcodesize returns 0, so we need to test with a call
-        // We'll do a static call with minimal data to test availability
-        (bool success, ) = PRECOMPILE_ADDRESS.staticcall(abi.encodePacked(bytes1(0x00)));
-        return success;
+        // Use the dedicated TEST_OP to check precompile availability
+        // This operation doesn't require authentication and returns "OK" if successful
+        bytes memory testData = abi.encodePacked(TEST_OP);
+        
+        (bool success, bytes memory returnData) = PRECOMPILE_ADDRESS.staticcall(testData);
+        
+        // If the call succeeded and returned "OK", precompile is available
+        return success && returnData.length == 2 && 
+               returnData[0] == 0x4F && returnData[1] == 0x4B; // "OK" in hex
     }
     
     /**
@@ -290,6 +291,6 @@ contract TokenManagerV1 is Initializable, OwnableUpgradeable, PausableUpgradeabl
      * @return string Contract version
      */
     function VERSION() external pure returns (string memory) {
-        return "V1: OpenZeppelin-based Token Manager with enhanced security";
+        return "v1.0.0";
     }
 } 
