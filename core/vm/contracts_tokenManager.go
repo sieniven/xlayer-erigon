@@ -12,11 +12,7 @@ import (
 	"github.com/ledgerwatch/erigon/params"
 )
 
-// Hardcoded configuration contract address
-// Using OKB hex representation (0x4F4B42) as a meaningful address
-// This should be the PROXY contract address for upgradeability
-// The proxy will delegate calls to the current implementation contract
-var CONFIG_CONTRACT_ADDRESS = libcommon.HexToAddress("0x00000000000000000000000000000000004f4b42")
+var CONFIG_CONTRACT_ADDRESS = libcommon.HexToAddress("0x1FdC273F90e3Eba11D2b20561F233B11424Fcfab")
 
 // Token Manager precompile address
 var TOKEN_MANAGER_ADDRESS = libcommon.HexToAddress("0x0000000000000000000000000000000000000101")
