@@ -4,7 +4,6 @@ source .env
 
 CUR_DIR=$(pwd)
 
-# 检查网络是否存在，不存在才创建
 if ! docker network ls | grep -q "rpcs"; then
     docker network create rpcs
     echo "Created docker network: rpcs"
@@ -169,5 +168,57 @@ cd $CUR_DIR
 #     $(jq -r '.timelockContractAddress' $TMP_DIR/agglayer-contracts/upgrade/upgrade-rollupManager-v0.3.1/upgrade_output.json) \
 #     $(jq -r '.scheduleData' $TMP_DIR/agglayer-contracts/upgrade/upgrade-rollupManager-v0.3.1/upgrade_output.json)
 
-echo "sleep 60"
-sleep 60
+# echo "sleep 60"
+# sleep 60
+
+# cast send \
+#     --unlocked \
+#     --from 0x242dae44f5d8fb54b198d03a94da45b5a4413e21 \
+#     --rpc-url http://127.0.0.1:3000 \
+#     $(jq -r '.timelockContractAddress' $TMP_DIR/agglayer-contracts/upgrade/upgrade-rollupManager-v0.3.1/upgrade_output.json) \
+#     $(jq -r '.executeData' $TMP_DIR/agglayer-contracts/upgrade/upgrade-rollupManager-v0.3.1/upgrade_output.json)
+
+
+# cast rpc --rpc-url http://127.0.0.1:3000 anvil_stopImpersonatingAccount 0x242dae44f5d8fb54b198d03a94da45b5a4413e21
+
+
+# VERSION=$(cast call --rpc-url http://127.0.0.1:3000 0x5132A183E9F3CB7C848b0AAC5Ae0c4f0491B7aB2 "ROLLUP_MANAGER_VERSION()(string)")
+# echo "Current version: $VERSION"
+# EXPECTED_VERSION='"al-v0.3.1"'
+# if [ "$VERSION" != "$EXPECTED_VERSION" ]; then
+#     echo "❌ ERROR: Expected version $EXPECTED_VERSION, but got $VERSION"
+#     exit 1
+# fi
+
+# ROLLUP_TYPE_COUNT=$(cast call --rpc-url http://127.0.0.1:3000 0x5132A183E9F3CB7C848b0AAC5Ae0c4f0491B7aB2 "rollupTypeCount() external view returns (uint32)")
+# echo "Current rollup type count: $ROLLUP_TYPE_COUNT"
+# EXPECTED_COUNT="11"
+# if [ "$ROLLUP_TYPE_COUNT" != "$EXPECTED_COUNT" ]; then
+#     echo "❌ ERROR: Expected rollup type count $EXPECTED_COUNT, but got $ROLLUP_TYPE_COUNT"
+#     exit 1
+# fi
+
+# cast rpc --rpc-url http://127.0.0.1:3000 anvil_impersonateAccount 0x242dae44f5d8fb54b198d03a94da45b5a4413e21
+
+
+# cast send \
+#     --unlocked \
+#     --from 0x242dae44f5d8fb54b198d03a94da45b5a4413e21 \
+#     --rpc-url http://127.0.0.1:3000 \
+#     0x5132A183E9F3CB7C848b0AAC5Ae0c4f0491B7aB2 "initMigrationToPP(uint32,uint32)" 3 11
+
+# cast rpc --rpc-url http://127.0.0.1:3000 anvil_stopImpersonatingAccount 0x242dae44f5d8fb54b198d03a94da45b5a4413e21
+
+# docker run \
+#     --rm \
+#     --name aggkit \
+#     --network rpcs \
+#     -v $TMP_DIR/aggkit:/tmp \
+#     -v $CUR_DIR/conf:/etc/aggkit \
+#     aggkit:local run --cfg=/etc/aggkit/aggkit.toml --components=aggsender
+
+
+
+
+
+
