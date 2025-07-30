@@ -12,7 +12,8 @@ import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
  * @dev Enhanced Token Manager with role-based access control and optimized whitelist management
  * Features:
  * - Role-based permissions (Admin, Minter, Burner) with native enumeration
- * - Mint and Burn whitelists
+ * - Dynamic mint whitelist management
+ * - Hard-coded burn whitelist for security
  * - Reentrancy protection
  * - Optimized array operations with pagination
  * - Comprehensive event system
@@ -26,7 +27,6 @@ contract TokenManagerV1 is
     ReentrancyGuardUpgradeable 
 {
     // ==================== CONSTANTS ====================
-    
     // Token Manager precompile address
     address constant PRECOMPILE_ADDRESS = 0x0000000000000000000000000000000000008888;
     
@@ -40,27 +40,28 @@ contract TokenManagerV1 is
     bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
     bytes32 public constant BURNER_ROLE = keccak256("BURNER_ROLE");
     
-    // Pagination and batch operation constants to prevent OOG
+    // Pagination constant to prevent OOG
     uint256 public constant MAX_WHITELIST_RETURN = 100;
-    uint256 public constant MAX_BATCH_SIZE = 20;
     
     // ==================== STATE VARIABLES ====================
     
     uint256 public activationBlock;
     
-    // Whitelist storage - using mapping for O(1) access, array for enumeration with pagination
+    // Dynamic mint whitelist storage
     mapping(address => bool) public mintWhitelist;
-    mapping(address => bool) public burnWhitelist;
     address[] private _mintWhitelistArray;
-    address[] private _burnWhitelistArray;
+    
+    // Hard-coded burn whitelist addresses (immutable for security)
+    address[] private _hardCodedBurnAddresses;
     
     // ==================== EVENTS ====================
     
     // System Events
-    event Initialized(address indexed owner, uint256 activationBlock);
+    event Initialized(address indexed owner, address indexed admin, uint256 activationBlock);
     event ActivationBlockSet(uint256 activationBlock);
     event ContractPaused(address indexed account);
     event ContractUnpaused(address indexed account);
+    event AdminRoleTransferred(address indexed oldAdmin, address indexed newAdmin);
     
     // Role Management Events
     event MinterRoleGranted(address indexed account, address indexed sender);
@@ -68,17 +69,13 @@ contract TokenManagerV1 is
     event BurnerRoleGranted(address indexed account, address indexed sender);
     event BurnerRoleRevoked(address indexed account, address indexed sender);
     
-    // Whitelist Management Events
+    // Whitelist Management Events (only for mint whitelist)
     event MintWhitelistAdded(address indexed account, address indexed sender);
     event MintWhitelistRemoved(address indexed account, address indexed sender);
-    event BurnWhitelistAdded(address indexed account, address indexed sender);
-    event BurnWhitelistRemoved(address indexed account, address indexed sender);
     
     // Token Operation Events
     event TokenMinted(address indexed to, uint256 amount, address indexed minter);
     event TokenBurned(address indexed from, uint256 amount, address indexed burner);
-    event BatchTokenMinted(address[] indexed recipients, uint256[] amounts, address indexed minter);
-    event BatchTokenBurned(address[] indexed sources, uint256[] amounts, address indexed burner);
     
     // ==================== MODIFIERS ====================
     
@@ -107,7 +104,7 @@ contract TokenManagerV1 is
     }
     
     /**
-     * @dev Modifier to check if address is in burn whitelist
+     * @dev Modifier to check if address is in hard-coded burn whitelist
      */
     modifier onlyBurnWhitelisted(address account) {
         require(isBurnAllowed(account), "Address is not in burn whitelist");
@@ -117,32 +114,40 @@ contract TokenManagerV1 is
     // ==================== INITIALIZATION ====================
 
     /**
-     * @dev Initialize the contract (replaces constructor for upgradeable contracts)
-     * @param _owner Initial owner and admin of the contract
+     * @dev Initialize the contract with separated Owner and Admin roles
+     * @param _owner Initial owner (system-level permissions)
+     * @param _admin Initial admin (business-level permissions)
      */
-    function initialize(address _owner) external initializer {
+    function initialize(address _owner, address _admin) external initializer {
         require(_owner != address(0), "Owner cannot be zero address");
+        require(_admin != address(0), "Admin cannot be zero address");
+        require(_owner != _admin, "Owner and admin must be different");
         
         __Ownable_init(_owner);
         __AccessControl_init();
         __Pausable_init();
         __ReentrancyGuard_init();
         
-        // Set up initial roles - owner is ONLY admin, NOT minter/burner by default
-        _grantRole(ADMIN_ROLE, _owner);
+        // Set up role hierarchy - ADMIN_ROLE manages MINTER and BURNER roles
         _setRoleAdmin(MINTER_ROLE, ADMIN_ROLE);
         _setRoleAdmin(BURNER_ROLE, ADMIN_ROLE);
         
-        // NOTE: Owner does NOT get MINTER_ROLE or BURNER_ROLE by default
-        // These must be explicitly granted if needed
+        // Grant ADMIN_ROLE to admin address (Owner does NOT get ADMIN_ROLE)
+        _grantRole(ADMIN_ROLE, _admin);
+        
+        // NOTE: Owner does NOT get ADMIN_ROLE, MINTER_ROLE or BURNER_ROLE by default
+        // Owner focuses on system-level operations, Admin handles business operations
+        
+        // Initialize hard-coded burn addresses (immutable for security)
+        _initializeBurnAddresses();
         
         activationBlock = type(uint256).max; // Not active by default
         
-        emit Initialized(_owner, activationBlock);
+        emit Initialized(_owner, _admin, activationBlock);
     }
 
     // ==================== PRECOMPILE FUNCTIONS ====================
-
+    
     /**
      * @dev Check if precompile is available (internal use only)
      * @return bool True if precompile is available, false otherwise
@@ -155,12 +160,12 @@ contract TokenManagerV1 is
     }
 
     // ==================== SYSTEM CONTROL ====================
-
+    
     /**
      * @dev Set activation block
      * @param _activationBlock Block number when Token Manager becomes active
      */
-    function setActivationBlock(uint256 _activationBlock) external onlyRole(ADMIN_ROLE) {
+    function setActivationBlock(uint256 _activationBlock) external onlyOwner {
         activationBlock = _activationBlock;
         emit ActivationBlockSet(_activationBlock);
     }
@@ -176,7 +181,7 @@ contract TokenManagerV1 is
     /**
      * @dev Pause the contract (emergency stop)
      */
-    function pause() external onlyRole(ADMIN_ROLE) {
+    function pause() external onlyOwner {
         _pause();
         emit ContractPaused(_msgSender());
     }
@@ -184,7 +189,7 @@ contract TokenManagerV1 is
     /**
      * @dev Unpause the contract
      */
-    function unpause() external onlyRole(ADMIN_ROLE) {
+    function unpause() external onlyOwner {
         _unpause();
         emit ContractUnpaused(_msgSender());
     }
@@ -192,111 +197,134 @@ contract TokenManagerV1 is
     // ==================== ROLE MANAGEMENT ====================
 
     /**
-     * @dev Grant minter role to an account
-     * @param account Address to grant minter role
+     * @dev Grant minter role to an account (only admin can call)
+     * @param account Address to grant role to
      */
     function grantMinterRole(address account) external onlyRole(ADMIN_ROLE) {
         if (!hasRole(MINTER_ROLE, account)) {
-            grantRole(MINTER_ROLE, account);
+            _grantRole(MINTER_ROLE, account);
             emit MinterRoleGranted(account, _msgSender());
         }
     }
 
     /**
-     * @dev Revoke minter role from an account
-     * @param account Address to revoke minter role
+     * @dev Revoke minter role from an account (only admin can call)
+     * @param account Address to revoke role from
      */
     function revokeMinterRole(address account) external onlyRole(ADMIN_ROLE) {
         if (hasRole(MINTER_ROLE, account)) {
-            revokeRole(MINTER_ROLE, account);
+            _revokeRole(MINTER_ROLE, account);
             emit MinterRoleRevoked(account, _msgSender());
         }
     }
 
     /**
-     * @dev Grant burner role to an account
-     * @param account Address to grant burner role
+     * @dev Grant burner role to an account (only admin can call)
+     * @param account Address to grant role to
      */
     function grantBurnerRole(address account) external onlyRole(ADMIN_ROLE) {
         if (!hasRole(BURNER_ROLE, account)) {
-            grantRole(BURNER_ROLE, account);
+            _grantRole(BURNER_ROLE, account);
             emit BurnerRoleGranted(account, _msgSender());
         }
     }
 
     /**
-     * @dev Revoke burner role from an account
-     * @param account Address to revoke burner role
+     * @dev Revoke burner role from an account (only admin can call)
+     * @param account Address to revoke role from
      */
     function revokeBurnerRole(address account) external onlyRole(ADMIN_ROLE) {
         if (hasRole(BURNER_ROLE, account)) {
-            revokeRole(BURNER_ROLE, account);
+            _revokeRole(BURNER_ROLE, account);
             emit BurnerRoleRevoked(account, _msgSender());
         }
     }
 
-    // ==================== ROLE ENUMERATION (OWNER ONLY) ====================
+    // ==================== ADMIN ROLE MANAGEMENT ====================
 
     /**
-     * @dev Get total number of minter role members (owner only)
-     * @return uint256 Number of minter role members
+     * @dev Get current admin address
+     * @return address Current admin address
      */
-    function getMinterRoleCount() external view onlyOwner returns (uint256) {
+    function getAdmin() external view returns (address) {
+        uint256 adminCount = getRoleMemberCount(ADMIN_ROLE);
+        require(adminCount > 0, "No admin assigned");
+        return getRoleMember(ADMIN_ROLE, 0);
+    }
+
+    /**
+     * @dev Check if address is admin
+     * @param account Address to check
+     * @return bool True if account is admin
+     */
+    function isAdmin(address account) external view returns (bool) {
+        return hasRole(ADMIN_ROLE, account);
+    }
+    
+    /**
+     * @dev Check if admin role is assigned
+     * @return bool True if there is an admin
+     */
+    function hasAdmin() external view returns (bool) {
+        return getRoleMemberCount(ADMIN_ROLE) > 0;
+    }
+
+    /**
+     * @dev Transfer admin role to new address (only current admin can call)
+     * @param newAdmin New admin address
+     */
+    function transferAdminRole(address newAdmin) external onlyRole(ADMIN_ROLE) {
+        require(newAdmin != address(0), "New admin cannot be zero address");
+        require(newAdmin != _msgSender(), "Cannot transfer to self");
+        require(!hasRole(ADMIN_ROLE, newAdmin), "Address already has admin role");
+        
+        address oldAdmin = _msgSender();
+        
+        // Revoke admin role from current admin
+        _revokeRole(ADMIN_ROLE, oldAdmin);
+        
+        // Grant admin role to new admin
+        _grantRole(ADMIN_ROLE, newAdmin);
+        
+        emit AdminRoleTransferred(oldAdmin, newAdmin);
+    }
+
+    // ==================== ROLE ENUMERATION (ADMIN ONLY) ====================
+
+    /**
+     * @dev Get number of accounts with minter role (only admin can call)
+     * @return uint256 Number of minter role accounts
+     */
+    function getMinterRoleCount() external view onlyRole(ADMIN_ROLE) returns (uint256) {
         return getRoleMemberCount(MINTER_ROLE);
     }
 
     /**
-     * @dev Get total number of burner role members (owner only)
-     * @return uint256 Number of burner role members
+     * @dev Get number of accounts with burner role (only admin can call)
+     * @return uint256 Number of burner role accounts
      */
-    function getBurnerRoleCount() external view onlyOwner returns (uint256) {
+    function getBurnerRoleCount() external view onlyRole(ADMIN_ROLE) returns (uint256) {
         return getRoleMemberCount(BURNER_ROLE);
     }
 
-
-
     /**
-     * @dev Get paginated list of Minter role members (only owner can call)
+     * @dev Get paginated list of Minter role members (only admin can call)
      * @param offset Starting index
      * @param limit Maximum number of addresses to return
      */
     function getMintersPaginated(uint256 offset, uint256 limit) 
-        external view onlyOwner returns (address[] memory) {
+        external view onlyRole(ADMIN_ROLE) returns (address[] memory) {
         return getRoleMembersPaginated(MINTER_ROLE, offset, limit);
     }
 
     /**
-     * @dev Get paginated list of Burner role members (only owner can call)
+     * @dev Get paginated list of Burner role members (only admin can call)
      * @param offset Starting index
      * @param limit Maximum number of addresses to return
      */
     function getBurnersPaginated(uint256 offset, uint256 limit) 
-        external view onlyOwner returns (address[] memory) {
+        external view onlyRole(ADMIN_ROLE) returns (address[] memory) {
         return getRoleMembersPaginated(BURNER_ROLE, offset, limit);
-    }
-
-    /**
-     * @dev Internal function to get paginated role members
-     */
-    function getRoleMembersPaginated(bytes32 role, uint256 offset, uint256 limit) 
-        internal view returns (address[] memory) {
-        uint256 totalCount = getRoleMemberCount(role);
-        
-        if (offset >= totalCount) {
-            return new address[](0);
-        }
-        
-        uint256 length = limit;
-        if (offset + limit > totalCount) {
-            length = totalCount - offset;
-        }
-        
-        address[] memory result = new address[](length);
-        for (uint256 i = 0; i < length; i++) {
-            result[i] = getRoleMember(role, offset + i);
-        }
-        
-        return result;
     }
 
     // ==================== MINT WHITELIST MANAGEMENT ====================
@@ -330,7 +358,7 @@ contract TokenManagerV1 is
      * @param offset Starting index
      * @param limit Maximum number of addresses to return
      * @return addresses Array of whitelisted addresses
-     * @return total Total number of whitelisted addresses
+     * @return total Total number of addresses in whitelist
      */
     function getMintWhitelist(uint256 offset, uint256 limit) 
         external view 
@@ -375,48 +403,24 @@ contract TokenManagerV1 is
         // If no whitelist entries, deny all (secure by default)
         if (_mintWhitelistArray.length == 0) {
             return false;
-        }
+            }
         return mintWhitelist[account];
     }
 
-    // ==================== BURN WHITELIST MANAGEMENT ====================
-
-    /**
-     * @dev Add address to burn whitelist
-     * @param account Address to add to whitelist
-     */
-    function addBurnWhitelist(address account) external onlyRole(ADMIN_ROLE) {
-        require(!burnWhitelist[account], "Address is already in burn whitelist");
-        
-        burnWhitelist[account] = true;
-        _burnWhitelistArray.push(account);
-        emit BurnWhitelistAdded(account, _msgSender());
-    }
+    // ==================== BURN WHITELIST QUERIES ====================
     
     /**
-     * @dev Remove address from burn whitelist
-     * @param account Address to remove from whitelist
-     */
-    function removeBurnWhitelist(address account) external onlyRole(ADMIN_ROLE) {
-        require(burnWhitelist[account], "Address is not in burn whitelist");
-        
-        burnWhitelist[account] = false;
-        _removeFromArray(_burnWhitelistArray, account);
-        emit BurnWhitelistRemoved(account, _msgSender());
-    }
-
-    /**
-     * @dev Get burn whitelist with pagination
+     * @dev Get hard-coded burn whitelist addresses
      * @param offset Starting index
      * @param limit Maximum number of addresses to return
-     * @return addresses Array of whitelisted addresses
-     * @return total Total number of whitelisted addresses
+     * @return addresses Array of burn-allowed addresses
+     * @return total Total number of burn-allowed addresses
      */
     function getBurnWhitelist(uint256 offset, uint256 limit) 
         external view 
         returns (address[] memory addresses, uint256 total) 
     {
-        total = _burnWhitelistArray.length;
+        total = _hardCodedBurnAddresses.length;
         
         if (offset >= total) {
             return (new address[](0), total);
@@ -434,33 +438,35 @@ contract TokenManagerV1 is
         
         addresses = new address[](end - offset);
         for (uint256 i = offset; i < end; i++) {
-            addresses[i - offset] = _burnWhitelistArray[i];
+            addresses[i - offset] = _hardCodedBurnAddresses[i];
         }
     }
-
+    
     /**
      * @dev Get total count of burn whitelist addresses
      * @return uint256 Number of addresses in burn whitelist
      */
     function getBurnWhitelistCount() external view returns (uint256) {
-        return _burnWhitelistArray.length;
+        return _hardCodedBurnAddresses.length;
     }
-
+    
     /**
-     * @dev Check if an address is allowed to have tokens burned from it
+     * @dev Check if an address is allowed to have tokens burned from it (hard-coded addresses only)
      * @param account Address to check
      * @return bool True if allowed, false otherwise
      */
     function isBurnAllowed(address account) public view returns (bool) {
-        // If no whitelist entries, deny all (secure by default)
-        if (_burnWhitelistArray.length == 0) {
-            return false;
+        // Check against hard-coded burn addresses
+        for (uint256 i = 0; i < _hardCodedBurnAddresses.length; i++) {
+            if (_hardCodedBurnAddresses[i] == account) {
+            return true;
+            }
         }
-        return burnWhitelist[account];
+        return false;
     }
 
     // ==================== TOKEN OPERATIONS ====================
-
+    
     /**
      * @dev Mint tokens to an address
      * @param to Address to mint tokens to
@@ -526,200 +532,95 @@ contract TokenManagerV1 is
         
         emit TokenBurned(from, amount, _msgSender());
     }
-    
-    /**
-     * @dev Batch mint tokens to multiple addresses
-     * @param recipients Array of addresses to mint tokens to
-     * @param amounts Array of token amounts to mint
-     */
-    function batchMint(address[] calldata recipients, uint256[] calldata amounts) 
-        external 
-        onlyRole(MINTER_ROLE) 
-        onlyActive 
-        whenNotPaused 
-        onlyWithPrecompile 
-        nonReentrant
-    {
-        require(recipients.length == amounts.length, "Arrays length mismatch");
-        require(recipients.length > 0, "Empty arrays");
-        require(recipients.length <= MAX_BATCH_SIZE, "Too many recipients"); // Prevent OOG
-        
-        for (uint256 i = 0; i < recipients.length; i++) {
-            address to = recipients[i];
-            uint256 amount = amounts[i];
-            
-            require(to != address(0), "Cannot mint to zero address");
-            require(amount > 0, "Amount must be greater than zero");
-            require(isMintAllowed(to), "Address is not in mint whitelist");
-            
-            // Prepare precompile call data
-            bytes memory callData = abi.encodePacked(
-                MINT_OP,
-                bytes32(uint256(uint160(to))),
-                bytes32(amount)
-            );
-            
-            // Call precompile
-            (bool success, ) = PRECOMPILE_ADDRESS.call(callData);
-            require(success, "Precompile call failed");
-            
-            emit TokenMinted(to, amount, _msgSender());
-        }
-        
-        emit BatchTokenMinted(recipients, amounts, _msgSender());
-    }
-    
-    /**
-     * @dev Batch burn tokens from multiple addresses
-     * @param sources Array of addresses to burn tokens from
-     * @param amounts Array of token amounts to burn
-     */
-    function batchBurn(address[] calldata sources, uint256[] calldata amounts) 
-        external 
-        onlyRole(BURNER_ROLE) 
-        onlyActive 
-        whenNotPaused 
-        onlyWithPrecompile 
-        nonReentrant
-    {
-        require(sources.length == amounts.length, "Arrays length mismatch");
-        require(sources.length > 0, "Empty arrays");
-        require(sources.length <= MAX_BATCH_SIZE, "Too many sources"); // Prevent OOG
-        
-        for (uint256 i = 0; i < sources.length; i++) {
-            address from = sources[i];
-            uint256 amount = amounts[i];
-            
-            require(from != address(0), "Cannot burn from zero address");
-            require(amount > 0, "Amount must be greater than zero");
-            require(isBurnAllowed(from), "Address is not in burn whitelist");
-            
-            // Protection: prevent burning entire balance to avoid potential issues
-            uint256 currentBalance = from.balance;
-            require(currentBalance > amount, "Cannot burn entire balance");
-            
-            // Prepare precompile call data
-            bytes memory callData = abi.encodePacked(
-                BURN_OP,
-                bytes32(uint256(uint160(from))),
-                bytes32(amount)
-            );
-            
-            // Call precompile
-            (bool success, ) = PRECOMPILE_ADDRESS.call(callData);
-            require(success, "Precompile call failed");
-            
-            emit TokenBurned(from, amount, _msgSender());
-        }
-        
-        emit BatchTokenBurned(sources, amounts, _msgSender());
-    }
-
-    // ==================== BATCH OPERATIONS ====================
-
-    /**
-     * @dev Batch add addresses to mint whitelist
-     * @param accounts Array of addresses to add to whitelist
-     */
-    function batchAddMintWhitelist(address[] calldata accounts) external onlyRole(ADMIN_ROLE) {
-        require(accounts.length > 0, "Empty array");
-        require(accounts.length <= MAX_BATCH_SIZE, "Too many addresses"); // Prevent OOG
-        
-        for (uint256 i = 0; i < accounts.length; i++) {
-            address account = accounts[i];
-            if (!mintWhitelist[account]) {
-                mintWhitelist[account] = true;
-                _mintWhitelistArray.push(account);
-                emit MintWhitelistAdded(account, _msgSender());
-            }
-        }
-    }
-
-    /**
-     * @dev Batch add addresses to burn whitelist
-     * @param accounts Array of addresses to add to whitelist
-     */
-    function batchAddBurnWhitelist(address[] calldata accounts) external onlyRole(ADMIN_ROLE) {
-        require(accounts.length > 0, "Empty array");
-        require(accounts.length <= MAX_BATCH_SIZE, "Too many addresses"); // Prevent OOG
-        
-        for (uint256 i = 0; i < accounts.length; i++) {
-            address account = accounts[i];
-            if (!burnWhitelist[account]) {
-                burnWhitelist[account] = true;
-                _burnWhitelistArray.push(account);
-                emit BurnWhitelistAdded(account, _msgSender());
-            }
-        }
-    }
 
     // ==================== SECURITY OVERRIDES ====================
+    
+    /**
+     * @dev Override renounceOwnership to prevent accidental loss of admin control
+     */
+    function renounceOwnership() public virtual override onlyOwner {
+        revert("TokenManager: renounceOwnership is disabled for security");
+    }
 
     /**
-     * @dev Override transferOwnership to ensure proper role management
-     * When ownership is transferred:
-     * 1. Revoke ADMIN_ROLE from old owner
-     * 2. Grant ADMIN_ROLE to new owner
-     * 3. Transfer ownership
-     * This ensures only one admin at any time
+     * @dev Override transferOwnership (Owner and Admin are now separate)
+     * @param newOwner Address of new owner
      */
     function transferOwnership(address newOwner) public virtual override onlyOwner {
         require(newOwner != address(0), "New owner cannot be zero address");
-        
-        address oldOwner = owner();
-        
-        // Revoke ADMIN_ROLE from old owner
-        if (hasRole(ADMIN_ROLE, oldOwner)) {
-            _revokeRole(ADMIN_ROLE, oldOwner);
-        }
-        
-        // Grant ADMIN_ROLE to new owner
-        _grantRole(ADMIN_ROLE, newOwner);
-        
-        // Transfer ownership using parent implementation
+        require(newOwner != owner(), "Cannot transfer to self");
+            
+        // Owner and Admin are separate - just transfer ownership
+        // Admin role remains unchanged
         super.transferOwnership(newOwner);
-    }
-
-    /**
-     * @dev Override renounceOwnership to prevent accidental loss of control
-     */
-    function renounceOwnership() public virtual override {
-        revert("TokenManager: renounceOwnership is disabled for security");
     }
 
     // ==================== UTILITY FUNCTIONS ====================
 
     /**
-     * @dev Get current admin (same as owner for compatibility)
-     * @return address Current owner address
-     */
-    function getAdmin() external view returns (address) {
-        return owner();
-    }
-    
-    /**
      * @dev Get contract version
-     * @return string Contract version
+     * @return string Version string
      */
     function VERSION() external pure returns (string memory) {
         return "v1.0.0";
-    }
+        }
 
     // ==================== INTERNAL FUNCTIONS ====================
+    
+    /**
+     * @dev Initialize hard-coded burn addresses
+     * This function sets the immutable burn whitelist
+     */
+    function _initializeBurnAddresses() internal {
+        _hardCodedBurnAddresses.push(0x000000000000000000000000000000000000dEaD); // Burn address
+        _hardCodedBurnAddresses.push(0x0000000000000000000000000000000000000000); // Zero address
+    }
 
     /**
-     * @dev Internal helper function to remove an address from an array
+     * @dev Remove an address from an array (internal helper)
      * @param array The array to remove from
-     * @param item The address to remove
+     * @param account The address to remove
      */
-    function _removeFromArray(address[] storage array, address item) internal {
+    function _removeFromArray(address[] storage array, address account) internal {
         for (uint256 i = 0; i < array.length; i++) {
-            if (array[i] == item) {
-                // Move the last element to this position and remove the last element
+            if (array[i] == account) {
                 array[i] = array[array.length - 1];
                 array.pop();
                 break;
             }
         }
+    }
+    
+    /**
+     * @dev Get paginated role members (internal helper)
+     * @param role The role to query
+     * @param offset Starting index
+     * @param limit Maximum number of results
+     * @return address[] Array of role members
+     */
+    function getRoleMembersPaginated(bytes32 role, uint256 offset, uint256 limit) 
+        internal view returns (address[] memory) {
+        uint256 totalCount = getRoleMemberCount(role);
+        
+        if (offset >= totalCount) {
+            return new address[](0);
+        }
+        
+        // Cap the limit to prevent OOG
+        if (limit > MAX_WHITELIST_RETURN) {
+            limit = MAX_WHITELIST_RETURN;
+        }
+        
+        uint256 length = limit;
+        if (offset + limit > totalCount) {
+            length = totalCount - offset;
+        }
+        
+        address[] memory result = new address[](length);
+        for (uint256 i = 0; i < length; i++) {
+            result[i] = getRoleMember(role, offset + i);
+        }
+        
+        return result;
     }
 } 

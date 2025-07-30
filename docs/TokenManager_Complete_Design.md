@@ -1,9 +1,9 @@
 # Token Manager 完整设计文档
 
 ## 版本信息
-- **当前版本**: v1.4.0
-- **最后更新**: 2024年12月
-- **架构**: Precompile + Smart Contract + Proxy
+- **当前版本**: v1.5.0
+- **最后更新**: 2024年12月  
+- **架构**: Precompile + Smart Contract + Proxy + 权限分离
 
 ## 系统概述
 
@@ -14,7 +14,8 @@ Token Manager 是一个基于 Erigon 的双层架构代币管理系统，结合�
 - ✅ **高性能操作**: 使用 Precompile (0x8888) 实现原子级 mint/burn 操作
 - ✅ **OpenZeppelin 安全标准**: 基于经过审计的 OwnableUpgradeable、PausableUpgradeable 等标准合约
 - ✅ **可升级设计**: 使用 TransparentUpgradeableProxy 支持合约升级
-- ✅ **权限控制**: 多层权限验证，支持所有者管理和紧急暂停
+- ✅ **权限分离**: Owner(系统权限) 与 Admin(业务权限) 完全分离，降低单点故障风险
+- ✅ **角色管理**: 支持 ADMIN/MINTER/BURNER 三层角色体系，权限边界清晰
 - ✅ **白名单管理**: 灵活的销毁地址白名单系统
 - ✅ **可用性检测**: 内置 TEST_OP 用于检测 Precompile 可用性
 - ✅ **标准部署**: 使用 CREATE 操作码进行可靠部署
@@ -286,7 +287,7 @@ cast send --private-key $ADMIN_KEY --rpc-url $RPC_URL --legacy \
 
 # 批量铸造
 cast send --private-key $ADMIN_KEY --rpc-url $RPC_URL --legacy \
-  --to $PROXY_ADDRESS "batchMint(address[],uint256[])" "[$ADDR1,$ADDR2]" "[$AMOUNT1,$AMOUNT2]"
+  
 ```
 
 #### 白名单管理
@@ -310,10 +311,41 @@ cast send --private-key $ADMIN_KEY --rpc-url $RPC_URL --legacy \
 
 ### 权限控制
 
-1. **双重验证**: Precompile 和智能合约都进行权限检查
-2. **OpenZeppelin 标准**: 使用经过审计的权限管理合约
-3. **紧急暂停**: 支持 pause/unpause 功能
-4. **所有权转移**: 安全的所有权转移机制
+#### 权限分离架构
+
+```
+┌─────────────────────────────────────────────────────┐
+│                Owner (系统级权限)                    │
+│ • pause() / unpause()                              │
+│ • setActivationBlock()                             │ 
+│ • transferOwnership()                              │
+│ • 合约升级权限 (通过ProxyAdmin)                      │
+└─────────────────────────────────────────────────────┘
+                           │ 完全分离
+                           ▼
+┌─────────────────────────────────────────────────────┐
+│               Admin (业务级权限)                     │
+│ • grantMinterRole() / revokeMinterRole()           │
+│ • grantBurnerRole() / revokeBurnerRole()           │
+│ • addMintWhitelist() / removeMintWhitelist()       │
+│ • transferAdminRole()                              │
+│ • 角色成员查询权限                                   │
+└─────────────────────────────────────────────────────┘
+            │                          │
+            ▼                          ▼
+┌─────────────────┐            ┌──────────────────┐
+│   MINTER_ROLE   │            │   BURNER_ROLE    │
+│ • mint()        │            │ • burn()         │
+└─────────────────┘            └──────────────────┘
+```
+
+#### 核心安全特性
+
+1. **权限分离**: Owner(系统) 与 Admin(业务) 完全分离，降低单点故障风险
+2. **角色体系**: ADMIN/MINTER/BURNER 三层角色，权限边界清晰
+3. **OpenZeppelin 标准**: 使用经过审计的 AccessControlEnumerableUpgradeable
+4. **权限转移**: 支持安全的 Owner 和 Admin 权限转移
+5. **紧急控制**: Owner 可暂停系统，Admin 可维持业务运转
 
 ### 输入验证
 
@@ -337,20 +369,35 @@ cast send --private-key $ADMIN_KEY --rpc-url $RPC_URL --legacy \
 
 ### 核心函数
 
-#### 管理函数
+#### 初始化函数 (权限分离)
 ```solidity
-function initialize(address _owner) external initializer
-function transferOwnership(address newOwner) public virtual onlyOwner
+function initialize(address _owner, address _admin) external initializer
+```
+
+#### Owner 权限函数 (系统级)
+```solidity
 function pause() external onlyOwner
 function unpause() external onlyOwner
 function setActivationBlock(uint256 _activationBlock) external onlyOwner
+function transferOwnership(address newOwner) public virtual onlyOwner
+```
+
+#### Admin 权限函数 (业务级)
+```solidity
+function transferAdminRole(address newAdmin) external onlyRole(ADMIN_ROLE)
+function grantMinterRole(address account) external onlyRole(ADMIN_ROLE)
+function revokeMinterRole(address account) external onlyRole(ADMIN_ROLE)
+function grantBurnerRole(address account) external onlyRole(ADMIN_ROLE)
+function revokeBurnerRole(address account) external onlyRole(ADMIN_ROLE)
+function addMintWhitelist(address account) external onlyRole(ADMIN_ROLE)
+function removeMintWhitelist(address account) external onlyRole(ADMIN_ROLE)
 ```
 
 #### 代币操作
 ```solidity
-function mint(address to, uint256 amount) external onlyOwner onlyActive whenNotPaused onlyWithPrecompile
-function burn(address from, uint256 amount) external onlyOwner onlyActive whenNotPaused onlyWithPrecompile
-function batchMint(address[] calldata recipients, uint256[] calldata amounts) external onlyOwner onlyActive whenNotPaused onlyWithPrecompile
+function mint(address to, uint256 amount) external onlyRole(MINTER_ROLE) onlyActive whenNotPaused onlyWithPrecompile
+function burn(address from, uint256 amount) external onlyRole(BURNER_ROLE) onlyActive whenNotPaused onlyWithPrecompile
+
 ```
 
 #### 白名单管理
@@ -379,7 +426,8 @@ event TokenBurned(address indexed from, uint256 amount);
 event BurnWhitelistAdded(address indexed account);
 event BurnWhitelistRemoved(address indexed account);
 event ActivationBlockSet(uint256 activationBlock);
-event Initialized(address indexed owner, uint256 activationBlock);
+event Initialized(address indexed owner, address indexed admin, uint256 activationBlock);
+event AdminRoleTransferred(address indexed oldAdmin, address indexed newAdmin);
 ```
 
 ### 错误代码

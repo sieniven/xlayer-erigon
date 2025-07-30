@@ -16,26 +16,28 @@ Token Manager V1 是一个可升级的代币管理系统，提供安全的代币
 
 | 角色 | 角色标识符 | 权限说明 | 专有接口 (仅此角色可调用) |
 |------|------------|----------|--------------------------|
-| **ADMIN_ROLE** | `0x0000000000000000000000000000000000000000000000000000000000000000` | 合约管理员 | **角色管理**:<br/>• `grantMinterRole(address)`<br/>• `revokeMinterRole(address)`<br/>• `grantBurnerRole(address)`<br/>• `revokeBurnerRole(address)`<br/>• `getMinterRoleCount()`<br/>• `getBurnerRoleCount()`<br/>• `getMintersPaginated(uint256,uint256)`<br/>• `getBurnersPaginated(uint256,uint256)`<br/><br/>**白名单管理**:<br/>• `addMintWhitelist(address)`<br/>• `removeMintWhitelist(address)`<br/>• `batchAddMintWhitelist(address[])`<br/>• `addBurnWhitelist(address)`<br/>• `removeBurnWhitelist(address)`<br/>• `batchAddBurnWhitelist(address[])`<br/><br/>**系统控制**:<br/>• `setActivationBlock(uint256)`<br/>• `pause()`<br/>• `unpause()`<br/>• `transferOwnership(address)` |
-| **MINTER_ROLE** | `keccak256("MINTER_ROLE")` | 铸造操作员 | **铸造操作**:<br/>• `mint(address,uint256)`<br/>• `batchMint(address[],uint256[])` |
-| **BURNER_ROLE** | `keccak256("BURNER_ROLE")` | 销毁操作员 | **销毁操作**:<br/>• `burn(address,uint256)`<br/>• `batchBurn(address[],uint256[])` |
-| **Owner** | 合约所有者 | 继承ADMIN_ROLE | • **自动拥有ADMIN_ROLE的所有专有接口**<br/>• **不自动拥有MINTER_ROLE或BURNER_ROLE** |
+| **Owner** | 合约所有者 | 系统级权限 | **系统控制**:<br/>• `pause()`<br/>• `unpause()`<br/>• `setActivationBlock(uint256)`<br/>• `transferOwnership(address)`<br/>• *合约升级权限 (通过ProxyAdmin)* |
+| **ADMIN_ROLE** | `0x0000000000000000000000000000000000000000000000000000000000000000` | 业务管理员 | **角色管理**:<br/>• `grantMinterRole(address)`<br/>• `revokeMinterRole(address)`<br/>• `grantBurnerRole(address)`<br/>• `revokeBurnerRole(address)`<br/>• `getMinterRoleCount()`<br/>• `getBurnerRoleCount()`<br/>• `getMintersPaginated(uint256,uint256)`<br/>• `getBurnersPaginated(uint256,uint256)`<br/>• `transferAdminRole(address)`<br/><br/>**白名单管理**:<br/>• `addMintWhitelist(address)`<br/>• `removeMintWhitelist(address)`<br/>• *(burn白名单已硬编码，无需管理)* |
+| **MINTER_ROLE** | `keccak256("MINTER_ROLE")` | 铸造操作员 | **铸造操作**:<br/>• `mint(address,uint256)` |
+| **BURNER_ROLE** | `keccak256("BURNER_ROLE")` | 销毁操作员 | **销毁操作**:<br/>• `burn(address,uint256)` |
 
 ### 公开查询接口 (所有用户可调用)
 
 | 接口类型 | 具体接口 |
 |----------|----------|
-| **基础信息** | • `owner()` - 获取Owner地址 *(自动生成)*<br/>• `getAdmin()` - 获取管理员地址<br/>• `VERSION()` - 获取版本信息<br/>• `hasRole(bytes32,address)` - 检查角色权限 *(自动生成)* |
+| **基础信息** | • `owner()` - 获取Owner地址 *(自动生成)*<br/>• `getAdmin()` - 获取Admin地址<br/>• `isAdmin(address)` - 检查是否为Admin<br/>• `hasAdmin()` - 检查是否有Admin<br/>• `VERSION()` - 获取版本信息<br/>• `hasRole(bytes32,address)` - 检查角色权限 *(自动生成)* |
 | **系统状态** | • `isActive()` - 检查激活状态<br/>• `activationBlock()` - 获取激活区块 *(自动生成)*<br/>• `paused()` - 检查暂停状态 *(自动生成)* |
-| **常量查询** | • `MAX_BATCH_SIZE()` - 批量操作限制 *(自动生成)*<br/>• `MAX_WHITELIST_RETURN()` - 分页查询限制 *(自动生成)*<br/>• `ADMIN_ROLE()` - 管理员角色标识符 *(自动生成)*<br/>• `MINTER_ROLE()` - 铸造者角色标识符 *(自动生成)*<br/>• `BURNER_ROLE()` - 销毁者角色标识符 *(自动生成)* |
+| **常量查询** | • `MAX_WHITELIST_RETURN()` - 分页查询限制 *(自动生成)*<br/>• `ADMIN_ROLE()` - 管理员角色标识符 *(自动生成)*<br/>• `MINTER_ROLE()` - 铸造者角色标识符 *(自动生成)*<br/>• `BURNER_ROLE()` - 销毁者角色标识符 *(自动生成)* |
 | **白名单查询** | • `getMintWhitelist(uint256,uint256)` - 分页获取mint白名单<br/>• `getMintWhitelistCount()` - 获取mint白名单数量<br/>• `mintWhitelist(address)` - 检查mint白名单状态 *(自动生成)*<br/>• `isMintAllowed(address)` - 检查mint权限<br/>• `getBurnWhitelist(uint256,uint256)` - 分页获取burn白名单<br/>• `getBurnWhitelistCount()` - 获取burn白名单数量<br/>• `burnWhitelist(address)` - 检查burn白名单状态 *(自动生成)*<br/>• `isBurnAllowed(address)` - 检查burn权限 |
 
 **重要说明**:
-- 合约Owner默认只拥有ADMIN_ROLE，**不会自动获得MINTER_ROLE或BURNER_ROLE**
+- 合约Owner和Admin完全分离，Owner默认**不拥有任何业务权限**
+- Owner只负责系统级操作（合约升级、所有权转移）
+- Admin负责所有业务操作（角色管理、白名单管理）
 - 要进行mint/burn操作，必须明确授予相应角色
 - 每个角色可以授予给多个地址
 - ADMIN_ROLE可以管理其他所有角色
-- 转移Owner时，旧Owner的ADMIN_ROLE会被撤销，新Owner自动获得ADMIN_ROLE
+- 转移Owner时，Admin权限保持不变
 
 ---
 
@@ -83,44 +85,7 @@ cast send --private-key $BURNER_KEY --rpc-url $RPC $PROXY_ADDRESS \
   "burn(address,uint256)" $FROM_ADDRESS $AMOUNT --legacy
 ```
 
-#### `batchMint(address[] recipients, uint256[] amounts)`
-批量铸造代币到多个地址
 
-**权限**: 仅Minter角色(onlyRole(MINTER_ROLE)) + 重入保护(nonReentrant)  
-**状态**: 需要激活(onlyActive) + 未暂停(whenNotPaused) + Precompile可用(onlyWithPrecompile)
-
-**参数**:
-- `recipients`: 接收地址数组
-- `amounts`: 对应的铸造数量数组
-
-**限制**:
-- 两个数组长度必须相等
-- 所有地址不能为零地址
-- 所有数量必须大于0
-- 所有地址必须在mint白名单中
-- 数组长度不能超过20个 (MAX_BATCH_SIZE)
-
-**事件**: `BatchTokenMinted(address[] indexed recipients, uint256[] amounts, address indexed minter)`
-
-#### `batchBurn(address[] sources, uint256[] amounts)`
-批量销毁多个地址的代币
-
-**权限**: 仅Burner角色(onlyRole(BURNER_ROLE)) + 重入保护(nonReentrant)  
-**状态**: 需要激活(onlyActive) + 未暂停(whenNotPaused) + Precompile可用(onlyWithPrecompile)
-
-**参数**:
-- `sources`: 销毁代币的地址数组
-- `amounts`: 对应的销毁数量数组
-
-**限制**:
-- 两个数组长度必须相等
-- 所有地址不能为零地址
-- 所有数量必须大于0
-- 所有地址必须在burn白名单中
-- 不能销毁任何地址的全部余额
-- 数组长度不能超过20个 (MAX_BATCH_SIZE)
-
-**事件**: `BatchTokenBurned(address[] indexed sources, uint256[] amounts, address indexed burner)`
 
 ---
 
@@ -132,7 +97,7 @@ cast send --private-key $BURNER_KEY --rpc-url $RPC $PROXY_ADDRESS \
 获取当前合约Owner地址
 
 **权限**: 公开查询  
-**返回**: 当前Owner地址 (拥有ADMIN_ROLE)
+**返回**: 当前Owner地址 (仅系统级权限，不拥有ADMIN_ROLE)
 
 #### `transferOwnership(address newOwner)`
 转移Owner权限 (安全转移)
@@ -140,9 +105,8 @@ cast send --private-key $BURNER_KEY --rpc-url $RPC $PROXY_ADDRESS \
 **权限**: 仅Owner(onlyOwner)  
 **参数**: `newOwner` - 新Owner地址 (不能为零地址)  
 **逻辑**: 
-1. 撤销旧Owner的ADMIN_ROLE
-2. 授予新Owner的ADMIN_ROLE  
-3. 转移所有权
+1. 转移所有权到新Owner
+2. Admin权限保持不变（Owner和Admin完全分离）
 
 **事件**: `OwnershipTransferred(address indexed previousOwner, address indexed newOwner)`
 
@@ -155,38 +119,64 @@ cast send --private-key $BURNER_KEY --rpc-url $RPC $PROXY_ADDRESS \
 **说明**: 为防止合约变成不可管理状态，此功能已被禁用
 
 #### `getAdmin() → address`
-获取管理员地址 (兼容性接口)
+获取管理员地址
 
 **权限**: 公开查询  
-**返回**: 当前Owner地址 (同owner())
+**返回**: 当前Admin地址 (拥有ADMIN_ROLE的地址)
+
+### Admin权限管理
+
+#### `isAdmin(address account) → bool`
+检查地址是否为Admin
+
+**权限**: 公开查询  
+**参数**: `account` - 要检查的地址  
+**返回**: true(是Admin) / false(不是Admin)
+
+#### `hasAdmin() → bool`
+检查是否有Admin
+
+**权限**: 公开查询  
+**返回**: true(有Admin) / false(没有Admin)
+
+#### `transferAdminRole(address newAdmin)`
+转移Admin权限
+
+**权限**: 仅Admin(onlyRole(ADMIN_ROLE))  
+**参数**: `newAdmin` - 新Admin地址 (不能为零地址，不能是自己，不能已有Admin权限)  
+**逻辑**: 
+1. 撤销当前Admin的ADMIN_ROLE
+2. 授予新Admin的ADMIN_ROLE
+
+**事件**: `AdminRoleTransferred(address indexed oldAdmin, address indexed newAdmin)`
 
 ### 角色管理
 
 #### `grantMinterRole(address account)`
 授予Minter角色
 
-**权限**: 仅Owner(onlyOwner)  
+**权限**: 仅Admin(onlyRole(ADMIN_ROLE))  
 **参数**: `account` - 要授予角色的地址  
 **事件**: `MinterRoleGranted(address indexed account, address indexed sender)`
 
 #### `revokeMinterRole(address account)`
 撤销Minter角色
 
-**权限**: 仅Owner(onlyOwner)  
+**权限**: 仅Admin(onlyRole(ADMIN_ROLE))  
 **参数**: `account` - 要撤销角色的地址  
 **事件**: `MinterRoleRevoked(address indexed account, address indexed sender)`
 
 #### `grantBurnerRole(address account)`
 授予Burner角色
 
-**权限**: 仅Owner(onlyOwner)  
+**权限**: 仅Admin(onlyRole(ADMIN_ROLE))  
 **参数**: `account` - 要授予角色的地址  
 **事件**: `BurnerRoleGranted(address indexed account, address indexed sender)`
 
 #### `revokeBurnerRole(address account)`
 撤销Burner角色
 
-**权限**: 仅Owner(onlyOwner)  
+**权限**: 仅Admin(onlyRole(ADMIN_ROLE))  
 **参数**: `account` - 要撤销角色的地址  
 **事件**: `BurnerRoleRevoked(address indexed account, address indexed sender)`
 
@@ -204,13 +194,13 @@ cast send --private-key $BURNER_KEY --rpc-url $RPC $PROXY_ADDRESS \
 #### `getMinterRoleCount() → uint256`
 获取拥有Minter角色的地址数量
 
-**权限**: 仅Owner(onlyOwner)  
+**权限**: 仅Admin(onlyRole(ADMIN_ROLE))  
 **返回**: Minter角色成员数量
 
 #### `getBurnerRoleCount() → uint256`
 获取拥有Burner角色的地址数量
 
-**权限**: 仅Owner(onlyOwner)  
+**权限**: 仅Admin(onlyRole(ADMIN_ROLE))  
 **返回**: Burner角色成员数量
 
 
@@ -218,20 +208,66 @@ cast send --private-key $BURNER_KEY --rpc-url $RPC $PROXY_ADDRESS \
 #### `getMintersPaginated(uint256 offset, uint256 limit) → address[]`
 分页获取Minter角色地址
 
-**权限**: 仅Owner(onlyOwner)  
+**权限**: 仅Admin(onlyRole(ADMIN_ROLE))  
 **参数**: 
 - `offset` - 起始索引
-- `limit` - 返回数量  
+- `limit` - 返回数量 (自动限制为MAX_WHITELIST_RETURN=100)  
 **返回**: 分页的Minter地址数组
 
 #### `getBurnersPaginated(uint256 offset, uint256 limit) → address[]`
 分页获取Burner角色地址
 
-**权限**: 仅Owner(onlyOwner)  
+**权限**: 仅Admin(onlyRole(ADMIN_ROLE))  
 **参数**: 
 - `offset` - 起始索引
-- `limit` - 返回数量  
+- `limit` - 返回数量 (自动限制为MAX_WHITELIST_RETURN=100)  
 **返回**: 分页的Burner地址数组
+
+---
+
+## ⚙️ 系统控制
+
+### 激活控制
+
+#### `setActivationBlock(uint256 _activationBlock)`
+设置激活区块
+
+**权限**: 仅Owner(onlyOwner)  
+**参数**: `_activationBlock` - 激活区块号  
+**事件**: `ActivationBlockSet(uint256 activationBlock)`
+
+#### `isActive() → bool`
+检查合约是否已激活
+
+**权限**: 公开查询  
+**返回**: true(已激活) / false(未激活)  
+**逻辑**: `block.number >= activationBlock && owner() != address(0)`
+
+#### `activationBlock() → uint256`
+获取激活区块号
+
+**权限**: 公开查询  
+**返回**: 激活区块号
+
+### 暂停控制
+
+#### `pause()`
+暂停合约 (紧急停止)
+
+**权限**: 仅Owner(onlyOwner)  
+**事件**: `ContractPaused(address indexed sender)`
+
+#### `unpause()`
+恢复合约
+
+**权限**: 仅Owner(onlyOwner)  
+**事件**: `ContractUnpaused(address indexed sender)`
+
+#### `paused() → bool`
+检查合约是否暂停
+
+**权限**: 公开查询  
+**返回**: true(已暂停) / false(正常运行)
 
 ---
 
@@ -242,22 +278,16 @@ cast send --private-key $BURNER_KEY --rpc-url $RPC $PROXY_ADDRESS \
 #### `addMintWhitelist(address account)`
 添加地址到mint白名单
 
-**权限**: 仅Owner(onlyOwner)  
+**权限**: 仅Admin(onlyRole(ADMIN_ROLE))  
 **参数**: `account` - 要添加的地址  
 **事件**: `MintWhitelistAdded(address indexed account, address indexed sender)`
 
 #### `removeMintWhitelist(address account)`
 从mint白名单移除地址
 
-**权限**: 仅Owner(onlyOwner)  
+**权限**: 仅Admin(onlyRole(ADMIN_ROLE))  
 **参数**: `account` - 要移除的地址  
 **事件**: `MintWhitelistRemoved(address indexed account, address indexed sender)`
-
-#### `batchAddMintWhitelist(address[] accounts)`
-批量添加地址到mint白名单
-
-**权限**: 仅Owner(onlyOwner)  
-**参数**: `accounts` - 地址数组 (最多20个)
 
 #### `getMintWhitelist(uint256 offset, uint256 limit) → (address[] addresses, uint256 total)`
 分页获取mint白名单地址
@@ -296,27 +326,9 @@ cast send --private-key $BURNER_KEY --rpc-url $RPC $PROXY_ADDRESS \
 - `mintWhitelist(address)`: 只查询映射值，不考虑白名单是否为空
 - `isMintAllowed(address)`: 包含"空白名单默认拒绝"的安全逻辑
 
-### Burn白名单
+### Burn白名单 (硬编码，无需管理)
 
-#### `addBurnWhitelist(address account)`
-添加地址到burn白名单
-
-**权限**: 仅Owner(onlyOwner)  
-**参数**: `account` - 要添加的地址 (支持零地址)  
-**事件**: `BurnWhitelistAdded(address indexed account, address indexed sender)`
-
-#### `removeBurnWhitelist(address account)`
-从burn白名单移除地址
-
-**权限**: 仅Owner(onlyOwner)  
-**参数**: `account` - 要移除的地址  
-**事件**: `BurnWhitelistRemoved(address indexed account, address indexed sender)`
-
-#### `batchAddBurnWhitelist(address[] accounts)`
-批量添加地址到burn白名单
-
-**权限**: 仅Owner(onlyOwner)  
-**参数**: `accounts` - 地址数组 (最多20个)
+**重要说明**: Burn白名单已硬编码到合约中，无法动态修改。这提高了安全性，防止误操作。
 
 #### `getBurnWhitelist(uint256 offset, uint256 limit) → (address[] addresses, uint256 total)`
 分页获取burn白名单地址
@@ -357,51 +369,7 @@ cast send --private-key $BURNER_KEY --rpc-url $RPC $PROXY_ADDRESS \
 
 ---
 
-## ⚡ 系统状态管理
 
-### 激活控制
-
-#### `setActivationBlock(uint256 activationBlock)`
-设置合约激活区块
-
-**权限**: 仅Owner(onlyOwner)  
-**参数**: `activationBlock` - 激活区块号  
-**事件**: `ActivationBlockSet(uint256 activationBlock)`
-
-#### `activationBlock() → uint256`
-获取激活区块号
-
-**权限**: 公开查询  
-**返回**: 激活区块号
-
-#### `isActive() → bool`
-检查合约是否已激活
-
-**权限**: 公开查询  
-**返回**: true(已激活) / false(未激活)  
-**条件**: 当前区块 >= 激活区块 且 有有效管理员
-
-### 暂停控制
-
-#### `pause()`
-暂停合约 (紧急停止)
-
-**权限**: 仅Owner(onlyOwner)  
-**效果**: 阻止所有mint/burn操作  
-**事件**: `ContractPaused(address indexed account)`
-
-#### `unpause()`
-恢复合约运行
-
-**权限**: 仅Owner(onlyOwner)  
-**效果**: 恢复所有操作  
-**事件**: `ContractUnpaused(address indexed account)`
-
-#### `paused() → bool`
-查询合约是否已暂停
-
-**权限**: 公开查询  
-**返回**: true(已暂停) / false(正常运行)
 
 ---
 
@@ -414,12 +382,6 @@ cast send --private-key $BURNER_KEY --rpc-url $RPC $PROXY_ADDRESS \
 **返回**: 版本字符串 "v1.0.0"
 
 #### 常量查询
-
-#### `MAX_BATCH_SIZE() → uint256`
-获取批量操作最大限制
-
-**权限**: 公开查询  
-**返回**: 20 (批量操作的最大数组长度)
 
 #### `MAX_WHITELIST_RETURN() → uint256`
 获取分页查询最大返回数量
@@ -485,8 +447,7 @@ event BurnWhitelistRemoved(address indexed account, address indexed sender);
 // 代币操作事件
 event TokenMinted(address indexed to, uint256 amount, address indexed minter);
 event TokenBurned(address indexed from, uint256 amount, address indexed burner);
-event BatchTokenMinted(address[] indexed recipients, uint256[] amounts, address indexed minter);
-event BatchTokenBurned(address[] indexed sources, uint256[] amounts, address indexed burner);
+
 ```
 
 ### OpenZeppelin 标准事件
@@ -552,7 +513,7 @@ event RoleRevoked(bytes32 indexed role, address indexed account, address indexed
 ./scripts/deploy_tokenmanager.sh
 
 # 2. 设置激活区块 (立即激活)
-cast send --private-key $ADMIN_KEY --rpc-url $RPC $PROXY_ADDRESS \
+cast send --private-key $OWNER_KEY --rpc-url $RPC $PROXY_ADDRESS \
   "setActivationBlock(uint256)" 0 --legacy
 ```
 
@@ -561,12 +522,12 @@ cast send --private-key $ADMIN_KEY --rpc-url $RPC $PROXY_ADDRESS \
 # 1. 查询当前Owner
 cast call --rpc-url $RPC $PROXY_ADDRESS "owner()"
 
-# 2. Owner授予Minter角色
-cast send --private-key $OWNER_KEY --rpc-url $RPC $PROXY_ADDRESS \
+# 2. Admin授予Minter角色
+cast send --private-key $ADMIN_KEY --rpc-url $RPC $PROXY_ADDRESS \
   "grantMinterRole(address)" $MINTER_ADDRESS --legacy
 
-# 3. Owner授予Burner角色  
-cast send --private-key $OWNER_KEY --rpc-url $RPC $PROXY_ADDRESS \
+# 3. Admin授予Burner角色  
+cast send --private-key $ADMIN_KEY --rpc-url $RPC $PROXY_ADDRESS \
   "grantBurnerRole(address)" $BURNER_ADDRESS --legacy
 
 # 4. 查询角色数量
@@ -583,10 +544,14 @@ cast call --rpc-url $RPC $PROXY_ADDRESS \
   "hasRole(bytes32,address)" 0x0000000000000000000000000000000000000000000000000000000000000000 $ADDRESS
 
 # 8. 撤销角色 (如果需要)
-cast send --private-key $OWNER_KEY --rpc-url $RPC $PROXY_ADDRESS \
+cast send --private-key $ADMIN_KEY --rpc-url $RPC $PROXY_ADDRESS \
   "revokeMinterRole(address)" $OLD_MINTER_ADDRESS --legacy
 
-# 9. 安全转移所有权 (自动管理ADMIN_ROLE)
+# 9. 转移Admin权限 (如果需要)
+cast send --private-key $ADMIN_KEY --rpc-url $RPC $PROXY_ADDRESS \
+  "transferAdminRole(address)" $NEW_ADMIN_ADDRESS --legacy
+
+# 10. 安全转移所有权 (Owner和Admin分离)
 cast send --private-key $OWNER_KEY --rpc-url $RPC $PROXY_ADDRESS \
   "transferOwnership(address)" $NEW_OWNER_ADDRESS --legacy
 
@@ -598,21 +563,11 @@ cast send --private-key $OWNER_KEY --rpc-url $RPC $PROXY_ADDRESS \
 
 ### 白名单管理
 ```bash
-# 单个添加白名单
-cast send --private-key $OWNER_KEY --rpc-url $RPC $PROXY_ADDRESS \
+# 单个添加mint白名单
+cast send --private-key $ADMIN_KEY --rpc-url $RPC $PROXY_ADDRESS \
   "addMintWhitelist(address)" $ADDRESS --legacy
 
-cast send --private-key $OWNER_KEY --rpc-url $RPC $PROXY_ADDRESS \
-  "addBurnWhitelist(address)" $ADDRESS --legacy
-
-# 批量添加白名单 (最多20个地址)
-cast send --private-key $OWNER_KEY --rpc-url $RPC $PROXY_ADDRESS \
-  "batchAddMintWhitelist(address[])" \
-  "[$ADDRESS1,$ADDRESS2,$ADDRESS3]" --legacy
-
-cast send --private-key $OWNER_KEY --rpc-url $RPC $PROXY_ADDRESS \
-  "batchAddBurnWhitelist(address[])" \
-  "[$ADDRESS1,$ADDRESS2,$ADDRESS3]" --legacy
+# 注意: burn白名单已硬编码，无法动态修改
 
 # 分页查询白名单 (最多返回100个)
 cast call --rpc-url $RPC $PROXY_ADDRESS \
@@ -632,22 +587,21 @@ cast call --rpc-url $RPC $PROXY_ADDRESS \
 cast call --rpc-url $RPC $PROXY_ADDRESS \
   "isBurnAllowed(address)" $ADDRESS
 
-# 移除白名单
-cast send --private-key $OWNER_KEY --rpc-url $RPC $PROXY_ADDRESS \
+# 移除mint白名单
+cast send --private-key $ADMIN_KEY --rpc-url $RPC $PROXY_ADDRESS \
   "removeMintWhitelist(address)" $ADDRESS --legacy
 
-cast send --private-key $OWNER_KEY --rpc-url $RPC $PROXY_ADDRESS \
-  "removeBurnWhitelist(address)" $ADDRESS --legacy
+# 注意: burn白名单已硬编码，无法移除
 ```
 
 ### 代币操作 (需要专门角色)
 ```bash
-# 1. 首先设置白名单 (Owner操作)
-cast send --private-key $OWNER_KEY --rpc-url $RPC $PROXY_ADDRESS \
+# 1. 首先设置mint白名单 (Admin操作)
+cast send --private-key $ADMIN_KEY --rpc-url $RPC $PROXY_ADDRESS \
   "addMintWhitelist(address)" $TO_ADDRESS --legacy
 
-cast send --private-key $OWNER_KEY --rpc-url $RPC $PROXY_ADDRESS \
-  "addBurnWhitelist(address)" $FROM_ADDRESS --legacy
+# 注意: burn白名单已硬编码，检查是否允许:
+cast call --rpc-url $RPC $PROXY_ADDRESS "isBurnAllowed(address)" $FROM_ADDRESS
 
 # 2. Minter铸造10个代币 (只有Minter可以操作)
 cast send --private-key $MINTER_KEY --rpc-url $RPC $PROXY_ADDRESS \
@@ -657,18 +611,7 @@ cast send --private-key $MINTER_KEY --rpc-url $RPC $PROXY_ADDRESS \
 cast send --private-key $BURNER_KEY --rpc-url $RPC $PROXY_ADDRESS \
   "burn(address,uint256)" $FROM_ADDRESS 5000000000000000000 --legacy
 
-# 4. 批量操作 (最多20个地址)
-# 批量铸造
-cast send --private-key $MINTER_KEY --rpc-url $RPC $PROXY_ADDRESS \
-  "batchMint(address[],uint256[])" \
-  "[$TO_ADDRESS1,$TO_ADDRESS2]" \
-  "[1000000000000000000,2000000000000000000]" --legacy
 
-# 批量销毁
-cast send --private-key $BURNER_KEY --rpc-url $RPC $PROXY_ADDRESS \
-  "batchBurn(address[],uint256[])" \
-  "[$FROM_ADDRESS1,$FROM_ADDRESS2]" \
-  "[500000000000000000,1000000000000000000]" --legacy
 
 # ❌ Owner无法直接mint/burn (会失败)
 cast send --private-key $OWNER_KEY --rpc-url $RPC $PROXY_ADDRESS \
@@ -691,11 +634,31 @@ cast call --rpc-url $RPC $PROXY_ADDRESS "paused()"
 cast call --rpc-url $RPC $PROXY_ADDRESS "isActive()"
 ```
 
+### 权限转移 (重要操作)
+```bash
+# Admin转移权限 (当前Admin执行)
+cast send --private-key $CURRENT_ADMIN_KEY --rpc-url $RPC $PROXY_ADDRESS \
+  "transferAdminRole(address)" $NEW_ADMIN_ADDRESS --legacy
+
+# Owner转移权限 (当前Owner执行)
+cast send --private-key $CURRENT_OWNER_KEY --rpc-url $RPC $PROXY_ADDRESS \
+  "transferOwnership(address)" $NEW_OWNER_ADDRESS --legacy
+
+# 验证权限转移结果
+cast call --rpc-url $RPC $PROXY_ADDRESS "owner()"
+cast call --rpc-url $RPC $PROXY_ADDRESS "getAdmin()"
+cast call --rpc-url $RPC $PROXY_ADDRESS "isAdmin(address)" $NEW_ADMIN_ADDRESS
+```
+
 ### 系统诊断
 ```bash
+# 查询权限信息
+cast call --rpc-url $RPC $PROXY_ADDRESS "owner()"
+cast call --rpc-url $RPC $PROXY_ADDRESS "getAdmin()"
+cast call --rpc-url $RPC $PROXY_ADDRESS "hasAdmin()"
+
 # 查询版本和常量
 cast call --rpc-url $RPC $PROXY_ADDRESS "VERSION()"
-cast call --rpc-url $RPC $PROXY_ADDRESS "MAX_BATCH_SIZE()"
 cast call --rpc-url $RPC $PROXY_ADDRESS "MAX_WHITELIST_RETURN()"
 
 # 查询角色标识符
