@@ -65,7 +65,7 @@ docker run -d -p 3000:8545 \
     --state $TMP_DIR/anvil \
     --fork-block-number 22688021
 
-
+echo "sleep 10 for anvil to start"
 sleep 10
 
 cast rpc --rpc-url http://127.0.0.1:3000 evm_setNextBlockTimestamp $(date +%s)
@@ -85,6 +85,7 @@ docker run -d --rm \
     ghcr.io/agglayer/agglayer:0.3.3 \
     prover --cfg /etc/agglayer/agglayer-prover-config.toml
 
+echo "sleep 10 for agglayer-prover to start"
 sleep 10
 
 docker run -d --rm \
@@ -96,6 +97,7 @@ docker run -d --rm \
     ghcr.io/agglayer/agglayer:0.3.3 \
     run --cfg /etc/agglayer/agglayer-config.toml
 
+echo "sleep 10 for agglayer-node to start"
 sleep 10
 
 cast rpc --rpc-url http://127.0.0.1:3000 anvil_impersonateAccount 0xa90b4c8b8807569980f6cc958c8905383136b5ea
@@ -160,7 +162,7 @@ cast send \
     $(jq -r '.timelockContractAddress' $TMP_DIR/agglayer-contracts/upgrade/upgrade-rollupManager-v0.3.1/upgrade_output.json) \
     $(jq -r '.scheduleData' $TMP_DIR/agglayer-contracts/tools/addRollupType/add_rollup_type_output.json)
 
-echo "sleep 60"
+echo "sleep 60 for timelock to schedule"
 sleep 60
 
 cast send \
@@ -178,7 +180,7 @@ cast send \
     $(jq -r '.timelockContractAddress' $TMP_DIR/agglayer-contracts/upgrade/upgrade-rollupManager-v0.3.1/upgrade_output.json) \
     $(jq -r '.scheduleData' $TMP_DIR/agglayer-contracts/upgrade/upgrade-rollupManager-v0.3.1/upgrade_output.json)
 
-echo "sleep 60"
+echo "sleep 60 for timelock to execute"
 sleep 60
 
 cast send \
