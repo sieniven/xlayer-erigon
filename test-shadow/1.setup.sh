@@ -57,12 +57,13 @@ cd "$CUR_DIR"
 docker run -d -p 3000:8545 \
     --name anvil \
     --network rpcs \
+    -v $TMP_DIR/anvil:/anvil-state \
     --entrypoint "anvil" \
     ghcr.io/foundry-rs/foundry:latest \
     --block-time 12 \
     --host 0.0.0.0 \
-    --fork-url  https://mainnet.gateway.tenderly.co/${L1_KEY} \
-    --state $TMP_DIR/anvil \
+    --fork-url https://mainnet.gateway.tenderly.co/${L1_KEY} \
+    --state /anvil-state \
     --fork-block-number 22688021
 
 echo "sleep 10 for anvil to start"
@@ -221,12 +222,12 @@ cast send \
 
 cast rpc --rpc-url http://127.0.0.1:3000 anvil_stopImpersonatingAccount 0x242dae44f5d8fb54b198d03a94da45b5a4413e21
 
-docker run \
-    --name aggkit \
-    --network rpcs \
-    -v $TMP_DIR/aggkit:/tmp \
-    -v $CUR_DIR/conf:/etc/aggkit \
-    aggkit:local run --cfg=/etc/aggkit/aggkit.toml --components=aggsender
+# docker run \
+#     --name aggkit \
+#     --network rpcs \
+#     -v $TMP_DIR/aggkit:/tmp \
+#     -v $CUR_DIR/conf:/etc/aggkit \
+#     aggkit:local run --cfg=/etc/aggkit/aggkit.toml --components=aggsender
 
 
 
