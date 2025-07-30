@@ -16,7 +16,7 @@ Token Manager V1 是一个可升级的代币管理系统，提供安全的代币
 
 | 角色 | 角色标识符 | 权限说明 | 专有接口 (仅此角色可调用) |
 |------|------------|----------|--------------------------|
-| **ADMIN_ROLE** | `0x0000000000000000000000000000000000000000000000000000000000000000` | 合约管理员 | **角色管理**:<br/>• `grantMinterRole(address)`<br/>• `revokeMinterRole(address)`<br/>• `grantBurnerRole(address)`<br/>• `revokeBurnerRole(address)`<br/>• `getMinterRoleCount()`<br/>• `getBurnerRoleCount()`<br/>• `getAllMinters()`<br/>• `getAllBurners()`<br/>• `getMintersPaginated(uint256,uint256)`<br/>• `getBurnersPaginated(uint256,uint256)`<br/><br/>**白名单管理**:<br/>• `addMintWhitelist(address)`<br/>• `removeMintWhitelist(address)`<br/>• `batchAddMintWhitelist(address[])`<br/>• `addBurnWhitelist(address)`<br/>• `removeBurnWhitelist(address)`<br/>• `batchAddBurnWhitelist(address[])`<br/><br/>**系统控制**:<br/>• `setActivationBlock(uint256)`<br/>• `pause()`<br/>• `unpause()`<br/>• `transferOwnership(address)` |
+| **ADMIN_ROLE** | `0x0000000000000000000000000000000000000000000000000000000000000000` | 合约管理员 | **角色管理**:<br/>• `grantMinterRole(address)`<br/>• `revokeMinterRole(address)`<br/>• `grantBurnerRole(address)`<br/>• `revokeBurnerRole(address)`<br/>• `getMinterRoleCount()`<br/>• `getBurnerRoleCount()`<br/>• `getMintersPaginated(uint256,uint256)`<br/>• `getBurnersPaginated(uint256,uint256)`<br/><br/>**白名单管理**:<br/>• `addMintWhitelist(address)`<br/>• `removeMintWhitelist(address)`<br/>• `batchAddMintWhitelist(address[])`<br/>• `addBurnWhitelist(address)`<br/>• `removeBurnWhitelist(address)`<br/>• `batchAddBurnWhitelist(address[])`<br/><br/>**系统控制**:<br/>• `setActivationBlock(uint256)`<br/>• `pause()`<br/>• `unpause()`<br/>• `transferOwnership(address)` |
 | **MINTER_ROLE** | `keccak256("MINTER_ROLE")` | 铸造操作员 | **铸造操作**:<br/>• `mint(address,uint256)`<br/>• `batchMint(address[],uint256[])` |
 | **BURNER_ROLE** | `keccak256("BURNER_ROLE")` | 销毁操作员 | **销毁操作**:<br/>• `burn(address,uint256)`<br/>• `batchBurn(address[],uint256[])` |
 | **Owner** | 合约所有者 | 继承ADMIN_ROLE | • **自动拥有ADMIN_ROLE的所有专有接口**<br/>• **不自动拥有MINTER_ROLE或BURNER_ROLE** |
@@ -213,17 +213,7 @@ cast send --private-key $BURNER_KEY --rpc-url $RPC $PROXY_ADDRESS \
 **权限**: 仅Owner(onlyOwner)  
 **返回**: Burner角色成员数量
 
-#### `getAllMinters() → address[]`
-获取所有拥有Minter角色的地址
 
-**权限**: 仅Owner(onlyOwner)  
-**返回**: Minter地址数组
-
-#### `getAllBurners() → address[]`
-获取所有拥有Burner角色的地址
-
-**权限**: 仅Owner(onlyOwner)  
-**返回**: Burner地址数组
 
 #### `getMintersPaginated(uint256 offset, uint256 limit) → address[]`
 分页获取Minter角色地址
@@ -583,11 +573,7 @@ cast send --private-key $OWNER_KEY --rpc-url $RPC $PROXY_ADDRESS \
 cast call --rpc-url $RPC $PROXY_ADDRESS "getMinterRoleCount()"
 cast call --rpc-url $RPC $PROXY_ADDRESS "getBurnerRoleCount()"
 
-# 5. 查询所有角色成员
-cast call --rpc-url $RPC $PROXY_ADDRESS "getAllMinters()"
-cast call --rpc-url $RPC $PROXY_ADDRESS "getAllBurners()"
-
-# 6. 分页查询角色成员
+# 5. 分页查询角色成员
 cast call --rpc-url $RPC $PROXY_ADDRESS "getMintersPaginated(uint256,uint256)" 0 10
 cast call --rpc-url $RPC $PROXY_ADDRESS "getBurnersPaginated(uint256,uint256)" 0 10
 

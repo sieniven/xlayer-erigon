@@ -253,21 +253,7 @@ contract TokenManagerV1 is
         return getRoleMemberCount(BURNER_ROLE);
     }
 
-    /**
-     * @dev Get all minter role members (owner only)
-     * @return address[] Array of all minter addresses
-     */
-    function getAllMinters() external view onlyOwner returns (address[] memory) {
-        return getRoleMembers(MINTER_ROLE);
-    }
 
-    /**
-     * @dev Get all burner role members (owner only)
-     * @return address[] Array of all burner addresses
-     */
-    function getAllBurners() external view onlyOwner returns (address[] memory) {
-        return getRoleMembers(BURNER_ROLE);
-    }
 
     /**
      * @dev Get paginated list of Minter role members (only owner can call)
