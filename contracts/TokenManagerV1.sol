@@ -144,10 +144,10 @@ contract TokenManagerV1 is
     // ==================== PRECOMPILE FUNCTIONS ====================
 
     /**
-     * @dev Check if precompile is available
+     * @dev Check if precompile is available (internal use only)
      * @return bool True if precompile is available, false otherwise
      */
-    function isPrecompileAvailable() public view returns (bool) {
+    function isPrecompileAvailable() internal view returns (bool) {
         bytes memory testData = abi.encodePacked(TEST_OP);
         (bool success, bytes memory returnData) = PRECOMPILE_ADDRESS.staticcall(testData);
         return success && returnData.length == 2 && 

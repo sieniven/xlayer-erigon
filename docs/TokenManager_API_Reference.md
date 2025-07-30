@@ -26,7 +26,7 @@ Token Manager V1 是一个可升级的代币管理系统，提供安全的代币
 | 接口类型 | 具体接口 |
 |----------|----------|
 | **基础信息** | • `owner()` - 获取Owner地址 *(自动生成)*<br/>• `getAdmin()` - 获取管理员地址<br/>• `VERSION()` - 获取版本信息<br/>• `hasRole(bytes32,address)` - 检查角色权限 *(自动生成)* |
-| **系统状态** | • `isActive()` - 检查激活状态<br/>• `activationBlock()` - 获取激活区块 *(自动生成)*<br/>• `paused()` - 检查暂停状态 *(自动生成)*<br/>• `isPrecompileAvailable()` - 检查Precompile可用性 |
+| **系统状态** | • `isActive()` - 检查激活状态<br/>• `activationBlock()` - 获取激活区块 *(自动生成)*<br/>• `paused()` - 检查暂停状态 *(自动生成)* |
 | **常量查询** | • `MAX_BATCH_SIZE()` - 批量操作限制 *(自动生成)*<br/>• `MAX_WHITELIST_RETURN()` - 分页查询限制 *(自动生成)*<br/>• `ADMIN_ROLE()` - 管理员角色标识符 *(自动生成)*<br/>• `MINTER_ROLE()` - 铸造者角色标识符 *(自动生成)*<br/>• `BURNER_ROLE()` - 销毁者角色标识符 *(自动生成)* |
 | **白名单查询** | • `getMintWhitelist(uint256,uint256)` - 分页获取mint白名单<br/>• `getMintWhitelistCount()` - 获取mint白名单数量<br/>• `mintWhitelist(address)` - 检查mint白名单状态 *(自动生成)*<br/>• `isMintAllowed(address)` - 检查mint权限<br/>• `getBurnWhitelist(uint256,uint256)` - 分页获取burn白名单<br/>• `getBurnWhitelistCount()` - 获取burn白名单数量<br/>• `burnWhitelist(address)` - 检查burn白名单状态 *(自动生成)*<br/>• `isBurnAllowed(address)` - 检查burn权限 |
 
@@ -417,13 +417,6 @@ cast send --private-key $BURNER_KEY --rpc-url $RPC $PROXY_ADDRESS \
 
 ## 🔍 系统诊断
 
-#### `isPrecompileAvailable() → bool`
-检查Precompile是否可用
-
-**权限**: 公开查询  
-**返回**: true(可用) / false(不可用)  
-**原理**: 调用Precompile的TEST_OP操作并检查返回值
-
 #### `VERSION() → string`
 获取合约版本
 
@@ -710,7 +703,6 @@ cast send --private-key $OWNER_KEY --rpc-url $RPC $PROXY_ADDRESS \
 # 查询状态
 cast call --rpc-url $RPC $PROXY_ADDRESS "paused()"
 cast call --rpc-url $RPC $PROXY_ADDRESS "isActive()"
-cast call --rpc-url $RPC $PROXY_ADDRESS "isPrecompileAvailable()"
 ```
 
 ### 系统诊断
