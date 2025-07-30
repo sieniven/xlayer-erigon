@@ -287,6 +287,14 @@ contract TokenManagerV1 is Initializable, OwnableUpgradeable, PausableUpgradeabl
     }
     
     /**
+     * @dev Override renounceOwnership to prevent accidental loss of control
+     * This function is disabled to prevent the contract from becoming permanently unusable
+     */
+    function renounceOwnership() public virtual override {
+        revert("TokenManager: renounceOwnership is disabled for security");
+    }
+    
+    /**
      * @dev Get contract version
      * @return string Contract version
      */
