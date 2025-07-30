@@ -2,6 +2,11 @@ set -e
 
 source .env
 
+if [ $(docker ps -aq | wc -l) -gt 0 ]; then
+    docker stop $(docker ps -aq)
+    docker rm $(docker ps -aq)
+fi
+
 CUR_DIR=$(pwd)
 
 if ! docker network ls | grep -q "rpcs"; then
@@ -12,6 +17,8 @@ else
 fi
 
 TMP_DIR=$CUR_DIR/tmp
+CODE_DIR=$CUR_DIR/code
+rm -rf $TMP_DIR
 if [ ! -d "$TMP_DIR" ]; then
     echo "Creating working directory structure..."
     mkdir  -p "$TMP_DIR/anvil"
@@ -19,7 +26,8 @@ if [ ! -d "$TMP_DIR" ]; then
     mkdir  -p "$TMP_DIR/aggkit"
     chmod -R 777 "$TMP_DIR"
 fi
-cd "$TMP_DIR"
+
+cd "$CODE_DIR"
 if [ ! -d "aggkit-code" ]; then
     git clone git@github.com:okx/aggkit.git aggkit-code
     cd aggkit-code
@@ -31,7 +39,7 @@ else
     git pull
     make build-docker
 fi
-cd "$TMP_DIR"
+cd "$CODE_DIR"
 
 if [ ! -d "agglayer-contracts" ]; then
     git clone git@github.com:agglayer/agglayer-contracts.git
@@ -44,7 +52,7 @@ else
     git reset --hard; 
     git checkout v11.0.0-rc.0
 fi
-cd "$TMP_DIR"
+cd "$CUR_DIR"
 
 docker run -d -p 3000:8545 \
     --rm --name anvil \
@@ -62,9 +70,6 @@ sleep 10
 
 cast rpc --rpc-url http://127.0.0.1:3000 evm_setNextBlockTimestamp $(date +%s)
 cast rpc --rpc-url http://127.0.0.1:3000 anvil_setStorageAt 0xEf1462451C30Ea7aD8555386226059Fe837CA4EF $(cast to-uint256 2) $(cast to-uint256 1)
-
-cast wallet import --private-key 0x9cef1f40624aba3fa6a24c587dde060ab9aa823fef108db63fd0ba5f0a4ba830 --keystore-dir config/ agglayer.keystore
-cast wallet import --private-key 0x452e72182077e2bc90ad9a53afc1dc4476fa429cec9fc6a437fb95b791045d43 --keystore-dir config/ sequencer.keystore
 
 cd $CUR_DIR
 
@@ -108,7 +113,7 @@ cast rpc --rpc-url http://127.0.0.1:3000 anvil_stopImpersonatingAccount 0x242daE
 
 cast rpc --rpc-url http://127.0.0.1:3000 anvil_setBalance 0xaff8Ed903d079cD0E7fE29138b37B6AC8fFe4AdF 1000000000000000000
 
-cd $TMP_DIR/agglayer-contracts/upgrade/upgrade-rollupManager-v0.3.1/
+cd $CODE_DIR/agglayer-contracts/upgrade/upgrade-rollupManager-v0.3.1/
 
 jq '.tagSCPreviousVersion = "FEP-v10.0.0-rc.0"' upgrade_parameters.json.example > _t; mv _t upgrade_parameters.json
 jq '.rollupManagerAddress = "0x5132A183E9F3CB7C848b0AAC5Ae0c4f0491B7aB2"' upgrade_parameters.json > _t; mv _t upgrade_parameters.json
@@ -117,10 +122,10 @@ jq '.timelockSalt = "0x000000000000000000000000000000000000000000000000000000000
 jq '.test = true' upgrade_parameters.json > _t; mv _t upgrade_parameters.json
 
 
-cd $TMP_DIR/agglayer-contracts
-mkdir $TMP_DIR/agglayer-contracts/.openzeppelin
-cp upgrade/upgradePessimistic/mainnet-info/mainnet.json $TMP_DIR/agglayer-contracts/.openzeppelin/mainnet.json
-git config --global --add safe.directory $TMP_DIR/agglayer-contracts
+cd $CODE_DIR/agglayer-contracts
+mkdir $CODE_DIR/agglayer-contracts/.openzeppelin
+cp upgrade/upgradePessimistic/mainnet-info/mainnet.json $CODE_DIR/agglayer-contracts/.openzeppelin/mainnet.json
+git config --global --add safe.directory $CODE_DIR/agglayer-contracts
 npm i
 
 export MAINNET_PROVIDER=http://127.0.0.1:3000

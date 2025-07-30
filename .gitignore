@@ -135,3 +135,4 @@ zk/debug_tools/rpc-cache/rpc-cache
 test-shadow-fork/tmp
 test-shadow-fork/mainnet-rpc
 test-shadow/tmp
+test-shadow/code
