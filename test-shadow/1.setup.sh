@@ -160,8 +160,8 @@ cast send \
     --unlocked \
     --from 0x242dae44f5d8fb54b198d03a94da45b5a4413e21 \
     --rpc-url http://127.0.0.1:3000 \
-    $(jq -r '.timelockContractAddress' $TMP_DIR/agglayer-contracts/upgrade/upgrade-rollupManager-v0.3.1/upgrade_output.json) \
-    $(jq -r '.scheduleData' $TMP_DIR/agglayer-contracts/tools/addRollupType/add_rollup_type_output.json)
+    $(jq -r '.timelockContractAddress' $CODE_DIR/agglayer-contracts/upgrade/upgrade-rollupManager-v0.3.1/upgrade_output.json) \
+    $(jq -r '.scheduleData' $CODE_DIR/agglayer-contracts/tools/addRollupType/add_rollup_type_output.json)
 
 echo "sleep 60 for timelock to schedule"
 sleep 60
@@ -170,16 +170,16 @@ cast send \
     --unlocked \
     --from 0x242dae44f5d8fb54b198d03a94da45b5a4413e21 \
     --rpc-url http://127.0.0.1:3000 \
-    $(jq -r '.timelockContractAddress' $TMP_DIR/agglayer-contracts/upgrade/upgrade-rollupManager-v0.3.1/upgrade_output.json) \
-    $(jq -r '.executeData' $TMP_DIR/agglayer-contracts/tools/addRollupType/add_rollup_type_output.json)
+    $(jq -r '.timelockContractAddress' $CODE_DIR/agglayer-contracts/upgrade/upgrade-rollupManager-v0.3.1/upgrade_output.json) \
+    $(jq -r '.executeData' $CODE_DIR/agglayer-contracts/tools/addRollupType/add_rollup_type_output.json)
 
 
 cast send \
     --unlocked \
     --from 0x242dae44f5d8fb54b198d03a94da45b5a4413e21 \
     --rpc-url http://127.0.0.1:3000 \
-    $(jq -r '.timelockContractAddress' $TMP_DIR/agglayer-contracts/upgrade/upgrade-rollupManager-v0.3.1/upgrade_output.json) \
-    $(jq -r '.scheduleData' $TMP_DIR/agglayer-contracts/upgrade/upgrade-rollupManager-v0.3.1/upgrade_output.json)
+    $(jq -r '.timelockContractAddress' $CODE_DIR/agglayer-contracts/upgrade/upgrade-rollupManager-v0.3.1/upgrade_output.json) \
+    $(jq -r '.scheduleData' $CODE_DIR/agglayer-contracts/upgrade/upgrade-rollupManager-v0.3.1/upgrade_output.json)
 
 echo "sleep 60 for timelock to execute"
 sleep 60
@@ -188,8 +188,8 @@ cast send \
     --unlocked \
     --from 0x242dae44f5d8fb54b198d03a94da45b5a4413e21 \
     --rpc-url http://127.0.0.1:3000 \
-    $(jq -r '.timelockContractAddress' $TMP_DIR/agglayer-contracts/upgrade/upgrade-rollupManager-v0.3.1/upgrade_output.json) \
-    $(jq -r '.executeData' $TMP_DIR/agglayer-contracts/upgrade/upgrade-rollupManager-v0.3.1/upgrade_output.json)
+    $(jq -r '.timelockContractAddress' $CODE_DIR/agglayer-contracts/upgrade/upgrade-rollupManager-v0.3.1/upgrade_output.json) \
+    $(jq -r '.executeData' $CODE_DIR/agglayer-contracts/upgrade/upgrade-rollupManager-v0.3.1/upgrade_output.json)
 
 
 cast rpc --rpc-url http://127.0.0.1:3000 anvil_stopImpersonatingAccount 0x242dae44f5d8fb54b198d03a94da45b5a4413e21
