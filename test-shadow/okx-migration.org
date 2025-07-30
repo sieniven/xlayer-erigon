@@ -148,7 +148,7 @@ cast wallet new
 # Address:     0xaff8Ed903d079cD0E7fE29138b37B6AC8fFe4AdF
 # Private key: 0x9cef1f40624aba3fa6a24c587dde060ab9aa823fef108db63fd0ba5f0a4ba830
 
-cast wallet import --private-key 0x9cef1f40624aba3fa6a24c587dde060ab9aa823fef108db63fd0ba5f0a4ba830 --keystore-dir config/ agglayer.keystore
+cast wallet import --private-key 0x9cef1f40624aba3fa6a24c587dde060ab9aa823fef108db63fd0ba5f0a4ba830 --keystore-dir conf/ agglayer.keystore
 
 # Create the Sequencer test account
 cast wallet new
@@ -156,7 +156,7 @@ cast wallet new
 # Address:     0x8Ad44b2b5368a3043901ee373dC6D400c6A2e83F
 # Private key: 0x452e72182077e2bc90ad9a53afc1dc4476fa429cec9fc6a437fb95b791045d43
 
-cast wallet import --private-key 0x452e72182077e2bc90ad9a53afc1dc4476fa429cec9fc6a437fb95b791045d43 --keystore-dir config/ sequencer.keystore
+cast wallet import --private-key 0x452e72182077e2bc90ad9a53afc1dc4476fa429cec9fc6a437fb95b791045d43 --keystore-dir conf/ sequencer.keystore
 #+end_src
 
 * Agglayer Services
@@ -167,13 +167,13 @@ At this point, we should be good to startup the Agglayer and Agglayer Prover.
 
 #+begin_src bash
 # you will need an SP1 network key to run the agglayer-prover
-sp1_key=$(cat config/sp1.key)
+sp1_key=$(cat conf/sp1.key)
 
 # Start the Agglayer Prover
 docker run -d --rm \
     --name agglayer-prover \
     --network rpcs \
-    -v "$PWD/config:/etc/agglayer:ro" \
+    -v "$PWD/conf:/etc/agglayer:ro" \
     -e "SP1_PRIVATE_KEY=$sp1_key" \
     -e "NETWORK_RPC_URL=https://rpc.production.succinct.xyz" \
     -e "RUST_BACKTRACE=1" \
@@ -186,7 +186,7 @@ docker run -d --rm \
 docker run -d --rm \
     --name agglayer-node \
     --network rpcs \
-    -v "$PWD/config:/etc/agglayer:ro" \
+    -v "$PWD/conf:/etc/agglayer:ro" \
     -v "$tdir/agglayer:/var/agglayer" \
     --entrypoint agglayer \
     ghcr.io/agglayer/agglayer:0.3.3 \
@@ -240,7 +240,7 @@ Run upgrade scripts in the contracts repository:
 docker run \
     --network rpcs \
     -v $tdir/agglayer-contracts:/agglayer-contracts \
-    -v $PWD/config:/etc/config:ro \
+    -v $PWD/conf:/etc/conf:ro \
     -it node:22-bookworm /bin/bash
 
 # The rest of these commands would run within the docker shell
@@ -390,7 +390,7 @@ docker run \
     --name aggkit \
     --network rpcs \
     -v $tdir/aggkit:/tmp \
-    -v $PWD/config:/etc/aggkit \
+    -v $PWD/conf:/etc/aggkit \
     aggkit:local run --cfg=/etc/aggkit/aggkit.toml --components=aggsender,bridge
 #+end_src
 
