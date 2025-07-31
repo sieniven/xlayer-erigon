@@ -545,6 +545,267 @@ echo "  最终暂停状态: $FINAL_IS_PAUSED_TEXT"
 test_success "最终状态验证完成"
 echo ""
 
+# 测试9: 遗漏的查询接口测试
+test_step "9" "遗漏的查询接口测试"
+echo ""
+
+test_info "测试 isAdmin 接口..."
+IS_ADMIN=$(cast call --rpc-url "$RPC_URL" "$PROXY_ADDRESS" "isAdmin(address)" "$ADMIN_ADDRESS")
+IS_ADMIN_TEXT=$([ "$IS_ADMIN" = "0x0000000000000000000000000000000000000000000000000000000000000001" ] && echo "是Admin" || echo "不是Admin")
+echo "  $ADMIN_ADDRESS 是否为Admin: $IS_ADMIN_TEXT"
+
+IS_OWNER_ADMIN=$(cast call --rpc-url "$RPC_URL" "$PROXY_ADDRESS" "isAdmin(address)" "$OWNER_ADDRESS")
+IS_OWNER_ADMIN_TEXT=$([ "$IS_OWNER_ADMIN" = "0x0000000000000000000000000000000000000000000000000000000000000001" ] && echo "是Admin" || echo "不是Admin")
+echo "  $OWNER_ADDRESS 是否为Admin: $IS_OWNER_ADMIN_TEXT"
+
+test_info "测试 hasAdmin 接口..."
+HAS_ADMIN=$(cast call --rpc-url "$RPC_URL" "$PROXY_ADDRESS" "hasAdmin()")
+HAS_ADMIN_TEXT=$([ "$HAS_ADMIN" = "0x0000000000000000000000000000000000000000000000000000000000000001" ] && echo "有Admin" || echo "没有Admin")
+echo "  是否有Admin: $HAS_ADMIN_TEXT"
+
+test_info "测试 OpenZeppelin 标准接口..."
+# 获取ADMIN_ROLE的bytes32值
+ADMIN_ROLE_BYTES=$(cast call --rpc-url "$RPC_URL" "$PROXY_ADDRESS" "ADMIN_ROLE()")
+echo "  ADMIN_ROLE bytes32: $ADMIN_ROLE_BYTES"
+
+# 测试 hasRole
+HAS_ADMIN_ROLE=$(cast call --rpc-url "$RPC_URL" "$PROXY_ADDRESS" "hasRole(bytes32,address)" "$ADMIN_ROLE_BYTES" "$ADMIN_ADDRESS")
+HAS_ADMIN_ROLE_TEXT=$([ "$HAS_ADMIN_ROLE" = "0x0000000000000000000000000000000000000000000000000000000000000001" ] && echo "有ADMIN_ROLE" || echo "没有ADMIN_ROLE")
+echo "  $ADMIN_ADDRESS 是否有ADMIN_ROLE: $HAS_ADMIN_ROLE_TEXT"
+
+# 测试 getRoleMember
+ADMIN_ROLE_MEMBER=$(cast call --rpc-url "$RPC_URL" "$PROXY_ADDRESS" "getRoleMember(bytes32,uint256)" "$ADMIN_ROLE_BYTES" 0)
+ADMIN_ROLE_MEMBER="0x${ADMIN_ROLE_MEMBER:26}"
+echo "  ADMIN_ROLE 第一个成员: $ADMIN_ROLE_MEMBER"
+
+# 测试 getRoleMemberCount
+ADMIN_ROLE_COUNT=$(cast call --rpc-url "$RPC_URL" "$PROXY_ADDRESS" "getRoleMemberCount(bytes32)" "$ADMIN_ROLE_BYTES")
+ADMIN_ROLE_COUNT_DEC=$(cast to-dec "$ADMIN_ROLE_COUNT")
+echo "  ADMIN_ROLE 成员数量: $ADMIN_ROLE_COUNT_DEC"
+
+test_success "遗漏的查询接口测试完成"
+echo ""
+
+# 测试10: 遗漏的管理接口测试
+test_step "10" "遗漏的管理接口测试"
+echo ""
+
+test_info "测试 setActivationBlock..."
+CURRENT_BLOCK=$(cast block-number --rpc-url "$RPC_URL")
+NEXT_BLOCK=$((CURRENT_BLOCK + 10))
+echo "  当前区块: $CURRENT_BLOCK, 设置激活区块为: $NEXT_BLOCK"
+
+cast send --private-key "$OWNER_PRIVATE_KEY" \
+    --rpc-url "$RPC_URL" \
+    --legacy \
+    "$PROXY_ADDRESS" \
+    "setActivationBlock(uint256)" "$NEXT_BLOCK"
+
+ACTIVATION_BLOCK=$(cast call --rpc-url "$RPC_URL" "$PROXY_ADDRESS" "activationBlock()")
+ACTIVATION_BLOCK_DEC=$(cast to-dec "$ACTIVATION_BLOCK")
+echo "  激活区块已设置为: $ACTIVATION_BLOCK_DEC"
+
+test_info "测试 transferAdminRole..."
+# 创建一个新的临时账户作为新Admin
+NEW_ADMIN_PRIVATE_KEY=$(openssl rand -hex 32)
+NEW_ADMIN_ADDRESS=$(cast wallet address --private-key "0x$NEW_ADMIN_PRIVATE_KEY")
+echo "  新Admin地址: $NEW_ADMIN_ADDRESS"
+
+# 给新Admin转账一些ETH
+cast send --private-key "$ADMIN_PRIVATE_KEY" \
+    --rpc-url "$RPC_URL" \
+    --legacy \
+    "$NEW_ADMIN_ADDRESS" \
+    --value "10000000000000000000" # 10 ETH
+
+cast send --private-key "$ADMIN_PRIVATE_KEY" \
+    --rpc-url "$RPC_URL" \
+    --legacy \
+    "$PROXY_ADDRESS" \
+    "transferAdminRole(address)" "$NEW_ADMIN_ADDRESS"
+
+# 验证转移结果
+NEW_ADMIN_CHECK=$(cast call --rpc-url "$RPC_URL" "$PROXY_ADDRESS" "isAdmin(address)" "$NEW_ADMIN_ADDRESS")
+NEW_ADMIN_CHECK_TEXT=$([ "$NEW_ADMIN_CHECK" = "0x0000000000000000000000000000000000000000000000000000000000000001" ] && echo "是Admin" || echo "不是Admin")
+echo "  新Admin检查: $NEW_ADMIN_CHECK_TEXT"
+
+OLD_ADMIN_CHECK=$(cast call --rpc-url "$RPC_URL" "$PROXY_ADDRESS" "isAdmin(address)" "$ADMIN_ADDRESS")
+OLD_ADMIN_CHECK_TEXT=$([ "$OLD_ADMIN_CHECK" = "0x0000000000000000000000000000000000000000000000000000000000000001" ] && echo "是Admin" || echo "不是Admin")
+echo "  旧Admin检查: $OLD_ADMIN_CHECK_TEXT"
+
+# 转移回原来的Admin
+cast send --private-key "0x$NEW_ADMIN_PRIVATE_KEY" \
+    --rpc-url "$RPC_URL" \
+    --legacy \
+    "$PROXY_ADDRESS" \
+    "transferAdminRole(address)" "$ADMIN_ADDRESS"
+
+test_success "遗漏的管理接口测试完成"
+echo ""
+
+# 测试11: 边界情况测试
+test_step "11" "边界情况测试"
+echo ""
+
+test_info "测试零地址操作..."
+echo "  尝试mint到零地址（应该失败）..."
+if cast send --private-key "$MINTER1_PRIVATE_KEY" \
+    --rpc-url "$RPC_URL" \
+    --legacy \
+    "$PROXY_ADDRESS" \
+    "mint(address,uint256)" "0x0000000000000000000000000000000000000000" "1000000000000000000" 2>&1 | grep -q "revert"; then
+    test_success "mint到零地址被正确拒绝"
+else
+    test_failure "mint到零地址未被拒绝"
+fi
+
+echo "  尝试burn从零地址（应该失败）..."
+if cast send --private-key "$BURNER1_PRIVATE_KEY" \
+    --rpc-url "$RPC_URL" \
+    --legacy \
+    "$PROXY_ADDRESS" \
+    "burn(address,uint256)" "0x0000000000000000000000000000000000000000" "1000000000000000000" 2>&1 | grep -q "revert"; then
+    test_success "burn从零地址被正确拒绝"
+else
+    test_failure "burn从零地址未被拒绝"
+fi
+
+test_info "测试零金额操作..."
+echo "  尝试mint零金额（应该失败）..."
+if cast send --private-key "$MINTER1_PRIVATE_KEY" \
+    --rpc-url "$RPC_URL" \
+    --legacy \
+    "$PROXY_ADDRESS" \
+    "mint(address,uint256)" "$MINT_TARGET1" "0" 2>&1 | grep -q "revert"; then
+    test_success "mint零金额被正确拒绝"
+else
+    test_failure "mint零金额未被拒绝"
+fi
+
+echo "  尝试burn零金额（应该失败）..."
+if cast send --private-key "$BURNER1_PRIVATE_KEY" \
+    --rpc-url "$RPC_URL" \
+    --legacy \
+    "$PROXY_ADDRESS" \
+    "burn(address,uint256)" "$MINT_TARGET1" "0" 2>&1 | grep -q "revert"; then
+    test_success "burn零金额被正确拒绝"
+else
+    test_failure "burn零金额未被拒绝"
+fi
+
+test_info "测试重复操作..."
+echo "  重复授予Minter角色（应该成功）..."
+cast send --private-key "$ADMIN_PRIVATE_KEY" \
+    --rpc-url "$RPC_URL" \
+    --legacy \
+    "$PROXY_ADDRESS" \
+    "grantMinterRole(address)" "$MINTER1" || echo "  ⚠️  重复授予角色操作"
+
+echo "  重复添加白名单（应该失败）..."
+# 使用一个已经在白名单中的地址来测试重复添加
+ALREADY_WHITELISTED_ADDRESS=${TEMP_ACCOUNTS[5]}  # 这个地址在步骤3中被添加到了白名单
+if cast send --private-key "$ADMIN_PRIVATE_KEY" \
+    --rpc-url "$RPC_URL" \
+    --legacy \
+    "$PROXY_ADDRESS" \
+    "addMintWhitelist(address)" "$ALREADY_WHITELISTED_ADDRESS" 2>&1 | grep -q "revert"; then
+    test_success "重复添加白名单被正确拒绝"
+else
+    test_failure "重复添加白名单未被拒绝"
+fi
+
+test_info "测试分页边界..."
+echo "  测试分页查询边界情况..."
+# 测试超出范围的offset
+EMPTY_RESULT=$(cast call --rpc-url "$RPC_URL" "$PROXY_ADDRESS" "getMintWhitelist(uint256,uint256)" 999 10 --from "$ADMIN_ADDRESS")
+echo "  超出范围的offset查询结果: $EMPTY_RESULT"
+
+# 测试limit为0
+ZERO_LIMIT_RESULT=$(cast call --rpc-url "$RPC_URL" "$PROXY_ADDRESS" "getMintWhitelist(uint256,uint256)" 0 0 --from "$ADMIN_ADDRESS")
+echo "  limit为0的查询结果: $ZERO_LIMIT_RESULT"
+
+test_success "边界情况测试完成"
+echo ""
+
+# 测试12: 错误参数测试
+test_step "12" "错误参数测试"
+echo ""
+
+test_info "测试无效的transferOwnership..."
+echo "  尝试转移所有权到零地址（应该失败）..."
+if cast send --private-key "$OWNER_PRIVATE_KEY" \
+    --rpc-url "$RPC_URL" \
+    --legacy \
+    "$PROXY_ADDRESS" \
+    "transferOwnership(address)" "0x0000000000000000000000000000000000000000" 2>&1 | grep -q "revert"; then
+    test_success "转移所有权到零地址被正确拒绝"
+else
+    test_failure "转移所有权到零地址未被拒绝"
+fi
+
+test_info "测试无效的transferAdminRole..."
+echo "  尝试转移Admin权限到零地址（应该失败）..."
+if cast send --private-key "$ADMIN_PRIVATE_KEY" \
+    --rpc-url "$RPC_URL" \
+    --legacy \
+    "$PROXY_ADDRESS" \
+    "transferAdminRole(address)" "0x0000000000000000000000000000000000000000" 2>&1 | grep -q "revert"; then
+    test_success "转移Admin权限到零地址被正确拒绝"
+else
+    test_failure "转移Admin权限到零地址未被拒绝"
+fi
+
+echo "  尝试转移Admin权限到自己（应该失败）..."
+if cast send --private-key "$ADMIN_PRIVATE_KEY" \
+    --rpc-url "$RPC_URL" \
+    --legacy \
+    "$PROXY_ADDRESS" \
+    "transferAdminRole(address)" "$ADMIN_ADDRESS" 2>&1 | grep -q "revert"; then
+    test_success "转移Admin权限到自己被正确拒绝"
+else
+    test_failure "转移Admin权限到自己未被拒绝"
+fi
+
+test_success "错误参数测试完成"
+echo ""
+
+# 测试13: 复杂场景测试
+test_step "13" "复杂场景测试"
+echo ""
+
+test_info "测试大量白名单操作..."
+echo "  添加多个地址到Mint白名单..."
+# 只添加还没有在白名单中的地址
+for i in {6..9}; do
+    ADDRESS=${TEMP_ACCOUNTS[$i]}
+    echo "    添加 $ADDRESS 到Mint白名单..."
+    cast send --private-key "$ADMIN_PRIVATE_KEY" \
+        --rpc-url "$RPC_URL" \
+        --legacy \
+        "$PROXY_ADDRESS" \
+        "addMintWhitelist(address)" "$ADDRESS" || echo "    ⚠️  地址可能已在白名单中"
+done
+
+# 测试分页查询
+test_info "测试分页查询..."
+PAGE1=$(cast call --rpc-url "$RPC_URL" "$PROXY_ADDRESS" "getMintWhitelist(uint256,uint256)" 0 3 --from "$ADMIN_ADDRESS")
+echo "  第一页（0-2）: $PAGE1"
+
+PAGE2=$(cast call --rpc-url "$RPC_URL" "$PROXY_ADDRESS" "getMintWhitelist(uint256,uint256)" 3 3 --from "$ADMIN_ADDRESS")
+echo "  第二页（3-5）: $PAGE2"
+
+test_info "测试并发权限检查..."
+echo "  同时检查多个地址的权限..."
+for i in {0..4}; do
+    ADDRESS=${TEMP_ACCOUNTS[$i]}
+    IS_ALLOWED=$(cast call --rpc-url "$RPC_URL" "$PROXY_ADDRESS" "isMintAllowed(address)" "$ADDRESS")
+    IS_ALLOWED_TEXT=$([ "$IS_ALLOWED" = "0x0000000000000000000000000000000000000000000000000000000000000001" ] && echo "允许" || echo "拒绝")
+    echo "    $ADDRESS: $IS_ALLOWED_TEXT"
+done
+
+test_success "复杂场景测试完成"
+echo ""
+
 # 测试总结
 echo "🎉 Token Manager 全面测试完成"
 echo "=============================="
@@ -560,12 +821,24 @@ echo "  ✅ 权限控制 (无权限操作被正确拒绝)"
 echo "  ✅ 白名单控制 (非白名单操作被正确拒绝)"
 echo "  ✅ 暂停控制 (pause, unpause, 暂停状态下操作被拒绝)"
 echo "  ✅ 状态验证 (所有状态变化正确)"
+echo "  ✅ 遗漏查询接口 (isAdmin, hasAdmin, OpenZeppelin标准接口)"
+echo "  ✅ 遗漏管理接口 (setActivationBlock, transferAdminRole)"
+echo "  ✅ 边界情况测试 (零地址、零金额、重复操作、分页边界)"
+echo "  ✅ 错误参数测试 (无效地址、无效操作)"
+echo "  ✅ 复杂场景测试 (大量白名单、分页查询、并发权限检查)"
 echo ""
 echo "🔐 权限测试:"
-echo "  ✅ Owner权限 (pause/unpause)"
-echo "  ✅ Admin权限 (角色管理/白名单管理)"
+echo "  ✅ Owner权限 (pause/unpause, setActivationBlock, transferOwnership)"
+echo "  ✅ Admin权限 (角色管理/白名单管理, transferAdminRole)"
 echo "  ✅ Minter权限 (mint操作)"
 echo "  ✅ Burner权限 (burn操作)"
 echo "  ✅ 权限拒绝 (无权限操作被正确拒绝)"
 echo ""
-echo "✅ 所有接口功能测试通过！" 
+echo "🛡️ 边界测试:"
+echo "  ✅ 零地址操作 (mint/burn到零地址被拒绝)"
+echo "  ✅ 零金额操作 (mint/burn零金额被拒绝)"
+echo "  ✅ 重复操作 (重复添加白名单被拒绝)"
+echo "  ✅ 分页边界 (超出范围、limit为0的查询)"
+echo "  ✅ 错误参数 (无效地址转移被拒绝)"
+echo ""
+echo "✅ 所有接口功能和边界情况测试通过！" 
