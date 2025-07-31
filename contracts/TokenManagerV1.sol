@@ -60,15 +60,7 @@ contract TokenManagerV1 is
     // System Events
     event Initialized(address indexed owner, address indexed admin, uint256 activationBlock);
     event ActivationBlockSet(uint256 activationBlock);
-    event ContractPaused(address indexed account);
-    event ContractUnpaused(address indexed account);
     event AdminRoleTransferred(address indexed oldAdmin, address indexed newAdmin);
-    
-    // Role Management Events
-    event MinterRoleGranted(address indexed account, address indexed sender);
-    event MinterRoleRevoked(address indexed account, address indexed sender);
-    event BurnerRoleGranted(address indexed account, address indexed sender);
-    event BurnerRoleRevoked(address indexed account, address indexed sender);
     
     // Whitelist Management Events (only for mint whitelist)
     event MintWhitelistAdded(address indexed account, address indexed sender);
@@ -181,18 +173,20 @@ contract TokenManagerV1 is
     
     /**
      * @dev Pause the contract (emergency stop)
+     * Note: PausableUpgradeable only provides internal _pause(), so we need this public function
+     * _pause() already emits Paused event from PausableUpgradeable
      */
     function pause() external onlyOwner {
         _pause();
-        emit ContractPaused(_msgSender());
     }
     
     /**
      * @dev Unpause the contract
+     * Note: PausableUpgradeable only provides internal _unpause(), so we need this public function
+     * _unpause() already emits Unpaused event from PausableUpgradeable
      */
     function unpause() external onlyOwner {
         _unpause();
-        emit ContractUnpaused(_msgSender());
     }
 
     // ==================== ROLE MANAGEMENT ====================
@@ -200,45 +194,37 @@ contract TokenManagerV1 is
     /**
      * @dev Grant minter role to an account (only admin can call)
      * @param account Address to grant role to
+     * Note: grantRole() already includes permission checks and emits RoleGranted event
      */
-    function grantMinterRole(address account) external onlyRole(ADMIN_ROLE) {
-        if (!hasRole(MINTER_ROLE, account)) {
-            _grantRole(MINTER_ROLE, account);
-            emit MinterRoleGranted(account, _msgSender());
-        }
+    function grantMinterRole(address account) external {
+        grantRole(MINTER_ROLE, account);
     }
 
     /**
      * @dev Revoke minter role from an account (only admin can call)
      * @param account Address to revoke role from
+     * Note: revokeRole() already includes permission checks and emits RoleRevoked event
      */
-    function revokeMinterRole(address account) external onlyRole(ADMIN_ROLE) {
-        if (hasRole(MINTER_ROLE, account)) {
-            _revokeRole(MINTER_ROLE, account);
-            emit MinterRoleRevoked(account, _msgSender());
-        }
+    function revokeMinterRole(address account) external {
+        revokeRole(MINTER_ROLE, account);
     }
 
     /**
      * @dev Grant burner role to an account (only admin can call)
      * @param account Address to grant role to
+     * Note: grantRole() already includes permission checks and emits RoleGranted event
      */
-    function grantBurnerRole(address account) external onlyRole(ADMIN_ROLE) {
-        if (!hasRole(BURNER_ROLE, account)) {
-            _grantRole(BURNER_ROLE, account);
-            emit BurnerRoleGranted(account, _msgSender());
-        }
+    function grantBurnerRole(address account) external {
+        grantRole(BURNER_ROLE, account);
     }
 
     /**
      * @dev Revoke burner role from an account (only admin can call)
      * @param account Address to revoke role from
+     * Note: revokeRole() already includes permission checks and emits RoleRevoked event
      */
-    function revokeBurnerRole(address account) external onlyRole(ADMIN_ROLE) {
-        if (hasRole(BURNER_ROLE, account)) {
-            _revokeRole(BURNER_ROLE, account);
-            emit BurnerRoleRevoked(account, _msgSender());
-        }
+    function revokeBurnerRole(address account) external {
+        revokeRole(BURNER_ROLE, account);
     }
 
     // ==================== ADMIN ROLE MANAGEMENT ====================

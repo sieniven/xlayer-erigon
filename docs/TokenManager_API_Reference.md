@@ -105,7 +105,7 @@ cast send --private-key $MINTER_KEY --rpc-url $RPC $PROXY_ADDRESS \
 **状态**: 需要激活(onlyActive) + 未暂停(whenNotPaused) + Precompile可用(onlyWithPrecompile) + 源地址在白名单(onlyBurnWhitelisted)
 
 **参数**:
-- `from`: 销毁代币的地址 (不能为零地址，必须在burn白名单中)
+- `from`: 销毁代币的地址 (必须在burn白名单中)
 - `amount`: 销毁数量 (Wei, 必须大于0，不能销毁全部余额)
 
 **限制**:
