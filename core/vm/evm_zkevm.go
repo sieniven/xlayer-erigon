@@ -286,6 +286,12 @@ func (evm *EVM) call_zkevm(typ OpCode, caller ContractRef, addr libcommon.Addres
 				return nil, gas, ErrInvalidCode
 			}
 		}
+	} else {
+		// Set caller for custom precompiles that need caller validation
+		if mintBurn, ok := p.(*mintBurnPrecompile); ok {
+			mintBurn.SetEVM(evm)
+			mintBurn.SetCaller(caller.Address())
+		}
 	}
 
 	snapshot := evm.intraBlockState.Snapshot()
