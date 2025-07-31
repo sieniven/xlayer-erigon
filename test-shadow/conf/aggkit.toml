@@ -24,8 +24,8 @@ RPCURL = "https://xlayerrpc.okx.com/unlimited/abc"
 WitnessURL = ""
 
 rollupCreationBlockNumber = "19545462"
-rollupManagerCreationBlockNumber = "1686721"
-genesisBlockNumber = "1686721"
+rollupManagerCreationBlockNumber = "16896721"
+genesisBlockNumber = "16896721"
 [L1Config]
 chainId = "1"
 polygonZkEVMGlobalExitRootAddress = "0x580bda1e7A0CFAe92Fa7F6c20A3794F169CE3CFb"
