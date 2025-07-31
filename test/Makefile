@@ -14,6 +14,7 @@ DOCKER_BRIDGE_UI := xlayer-bridge-ui
 DOCKER_PROVER := xlayer-prover
 DOCKER_APPROVE := xlayer-approve
 DOCKER_SEQ := xlayer-seq
+DOCKER_SEQ2 := xlayer-seq-2
 DOCKER_RPC := xlayer-rpc
 DOCKER_L1_NETWORK := xlayer-mock-l1-network
 DOCKER_DATA_AVAILABILITY := xlayer-da
@@ -49,6 +50,7 @@ RUN_DOCKER_BRIDGE_UI := $(DOCKER_COMPOSE) up -d $(DOCKER_BRIDGE_UI)
 RUN_DOCKER_PROVER := $(DOCKER_COMPOSE) up -d $(DOCKER_PROVER)
 RUN_DOCKER_APPROVE := $(DOCKER_COMPOSE) up -d $(DOCKER_APPROVE)
 RUN_DOCKER_SEQ := $(DOCKER_COMPOSE) up -d $(DOCKER_SEQ)
+RUN_DOCKER_SEQ2 := $(DOCKER_COMPOSE) up -d $(DOCKER_SEQ2)
 RUN_DOCKER_RPC := $(DOCKER_COMPOSE) up -d $(DOCKER_RPC)
 RUN_DOCKER_MAINNET_SEQ := $(DOCKER_COMPOSE) up -d $(DOCKER_MAINNET_SEQ)
 RUN_DOCKER_MAINNET_RPC := $(DOCKER_COMPOSE) up -d $(DOCKER_MAINNET_RPC)
@@ -73,7 +75,7 @@ RUN_DOCKER_APOLLO_RPC := $(DOCKER_COMPOSE_APOLLO) up -d $(DOCKER_RPC)
 
 STOP_DOCKER_SEQ := $(DOCKER_COMPOSE) stop $(DOCKER_SEQ)
 STOP_DOCKER_RPC := $(DOCKER_COMPOSE) stop $(DOCKER_RPC)
-STOP := $(DOCKER_COMPOSE) down --remove-orphans; sleep 3; rm -rf data
+STOP := $(DOCKER_COMPOSE) down --remove-orphans; sleep 3
 
 .PHONY: build-docker
 build-docker: ## Build cdk-erigoin for sequencer and rpc
@@ -152,13 +154,12 @@ stop: ## Stops all services
 .PHONY: min-run
 min-run: build-docker ## Runs a minimal node
 	$(RUN_DOCKER_L1_NETWORK)
-	sleep 3
+	sleep 5
 	$(RUN_DOCKER_SEQ)
-	$(RUN_DOCKER_PROMETHEUS)
-	$(RUN_DOCKER_GRAFANA)
+	$(RUN_DOCKER_SEQ2)
 
 .PHONY: test # Run all tests on Linux, but some are not supported on Mac
-test: 
+test:
 	@echo "Starting tests at $$(date)"
 	@ERROR_COUNT=0; \
 	FAILED_TESTS=""; \
@@ -204,7 +205,7 @@ test-unwind-default:
 .PHONY: test-unwind-split-db
 test-unwind-split-db:
 	cd ../ && make test-unwind-split-db
-	kill 
+	kill
 	echo "Unwind tests passed"
 
 .PHONY: check_chinese_characters
@@ -293,7 +294,7 @@ apollo:  build-docker
 	# monitoring services
 	$(RUN_DOCKER_PROMETHEUS)
 	$(RUN_DOCKER_GRAFANA)
-	
+
 
 # Target to add data loss testing logic
 .PHONY: test-data-loss
@@ -556,9 +557,9 @@ mainnet: build-docker
 	$(RUN_DOCKER_PROMETHEUS)
 	$(RUN_DOCKER_GRAFANA)
 
-mainnet-executor: 
+mainnet-executor:
 	chmod +x ./scripts/mainnet-executor.sh
-	./scripts/mainnet-executor.sh 
+	./scripts/mainnet-executor.sh
 	$(RUN_DOCKER_STATELESS_EXECUTOR)
 	$(RUN_DOCKER_STATELESS_EXECUTOR_2)
 	$(RUN_DOCKER_STATELESS_EXECUTOR_3)
@@ -577,3 +578,6 @@ vmtouch-evict:
 vmtouch-check:
 	docker exec -it xlayer-seq sh -c "vmtouch /home/erigon/data/chaindata/mdbx.dat"
 	docker exec -it xlayer-seq sh -c "vmtouch /home/erigon/data/smt/mdbx.dat"
+
+clean:
+	rm -rf data data2
