@@ -2,6 +2,11 @@ set -e
 
 source .env
 
+if [ -z "$L1_URL" ] || [ -z "$SP1_KEY" ] ; then
+    echo "L1_URL, SP1_KEY must be set"
+    exit 1
+fi
+
 if [ $(docker ps -aq | wc -l) -gt 0 ]; then
     docker stop $(docker ps -aq)
     docker rm $(docker ps -aq)
