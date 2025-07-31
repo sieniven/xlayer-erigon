@@ -24,7 +24,6 @@ fi
 TMP_DIR=$CUR_DIR/tmp
 CODE_DIR=$CUR_DIR/code
 
-rm -rf $TMP_DIR
 if [ ! -d "$TMP_DIR" ]; then
     echo "Creating working directory structure..."
     mkdir  -p "$TMP_DIR/anvil"

@@ -38,7 +38,7 @@ GlobalExitRootAddr = "0xa40d5f56745a118d0906a34e69aec8c0db1cb8fa"
 
 [Log]
 Environment = "development"
-Level = "info"
+Level = "debug"
 Outputs = ["stderr"]
 
 [RPC]
@@ -93,7 +93,7 @@ DBPath = "/tmp/reorgdetectorl2.sqlite"
 FinalizedBlock="FinalizedBlock"
 
 [L1InfoTreeSync]
-InitialBlock = "36"
+InitialBlock = "16896721"
 BlockFinality = "LatestBlock"
 
 [LastGERSync]

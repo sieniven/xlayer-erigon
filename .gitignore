@@ -137,3 +137,4 @@ test-shadow-fork/mainnet-rpc
 test-shadow/tmp
 test-shadow/code
 test-shadow/rpc
+test-shadow/data
