@@ -295,22 +295,22 @@ contract TokenManagerV1 is
     }
 
     /**
-     * @dev Get paginated list of Minter role members (only admin can call)
+     * @dev Get paginated list of Minter role members (public access)
      * @param offset Starting index
      * @param limit Maximum number of addresses to return
      */
     function getMintersPaginated(uint256 offset, uint256 limit) 
-        external view onlyRole(ADMIN_ROLE) returns (address[] memory) {
+        external view returns (address[] memory) {
         return getRoleMembersPaginated(MINTER_ROLE, offset, limit);
     }
 
     /**
-     * @dev Get paginated list of Burner role members (only admin can call)
+     * @dev Get paginated list of Burner role members (public access)
      * @param offset Starting index
      * @param limit Maximum number of addresses to return
      */
     function getBurnersPaginated(uint256 offset, uint256 limit) 
-        external view onlyRole(ADMIN_ROLE) returns (address[] memory) {
+        external view returns (address[] memory) {
         return getRoleMembersPaginated(BURNER_ROLE, offset, limit);
     }
 

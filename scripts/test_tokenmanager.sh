@@ -192,10 +192,10 @@ echo "  Burner数量: $BURNER_COUNT_AFTER_DEC"
 
 # 查询角色成员
 test_info "查询角色成员..."
-MINTERS=$(cast call --rpc-url "$RPC_URL" "$PROXY_ADDRESS" "getMintersPaginated(uint256,uint256)" 0 10 --from "$ADMIN_ADDRESS")
+MINTERS=$(cast call --rpc-url "$RPC_URL" "$PROXY_ADDRESS" "getMintersPaginated(uint256,uint256)" 0 10)
 echo "  Minters: $MINTERS"
 
-BURNERS=$(cast call --rpc-url "$RPC_URL" "$PROXY_ADDRESS" "getBurnersPaginated(uint256,uint256)" 0 10 --from "$ADMIN_ADDRESS")
+BURNERS=$(cast call --rpc-url "$RPC_URL" "$PROXY_ADDRESS" "getBurnersPaginated(uint256,uint256)" 0 10)
 echo "  Burners: $BURNERS"
 
 test_success "角色管理接口测试完成"

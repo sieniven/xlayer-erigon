@@ -32,7 +32,7 @@ Token Manager V1 是一个可升级的代币管理系统，提供安全的代币
 | grantMinterRole/revokeMinterRole | ❌ | ✅ | ❌ | ❌ |
 | grantBurnerRole/revokeBurnerRole | ❌ | ✅ | ❌ | ❌ |
 | transferAdminRole | ❌ | ✅ | ❌ | ❌ |
-| getMintersPaginated/getBurnersPaginated | ❌ | ✅ | ❌ | ❌ |
+| getMintersPaginated/getBurnersPaginated | ✅ | ✅ | ✅ | ✅ |
 | **白名单管理** |||||
 | addMintWhitelist/removeMintWhitelist | ❌ | ✅ | ❌ | ❌ |
 | **核心操作** |||||
@@ -49,7 +49,7 @@ Token Manager V1 是一个可升级的代币管理系统，提供安全的代币
 | 角色 | 角色标识符 | 权限说明 | 专有接口 (仅此角色可调用) |
 |------|------------|----------|--------------------------|
 | **Owner** | 合约所有者 | 系统级权限 | **系统控制**:<br/>• `pause()`<br/>• `unpause()`<br/>• `setActivationBlock(uint256)`<br/>• `transferOwnership(address)`<br/>• *合约升级权限 (通过ProxyAdmin)* |
-| **ADMIN_ROLE** | `0x0000000000000000000000000000000000000000000000000000000000000000` | 业务管理员 | **角色管理**:<br/>• `grantMinterRole(address)`<br/>• `revokeMinterRole(address)`<br/>• `grantBurnerRole(address)`<br/>• `revokeBurnerRole(address)`<br/>• `getMintersPaginated(uint256,uint256)`<br/>• `getBurnersPaginated(uint256,uint256)`<br/>• `transferAdminRole(address)`<br/><br/>**白名单管理**:<br/>• `addMintWhitelist(address)`<br/>• `removeMintWhitelist(address)`<br/>• *(burn白名单已硬编码，无需管理)* |
+| **ADMIN_ROLE** | `0x0000000000000000000000000000000000000000000000000000000000000000` | 业务管理员 | **角色管理**:<br/>• `grantMinterRole(address)`<br/>• `revokeMinterRole(address)`<br/>• `grantBurnerRole(address)`<br/>• `revokeBurnerRole(address)`<br/>• `transferAdminRole(address)`<br/><br/>**白名单管理**:<br/>• `addMintWhitelist(address)`<br/>• `removeMintWhitelist(address)`<br/>• *(burn白名单已硬编码，无需管理)* |
 | **MINTER_ROLE** | `keccak256("MINTER_ROLE")` | 铸造操作员 | **铸造操作**:<br/>• `mint(address,uint256)` |
 | **BURNER_ROLE** | `keccak256("BURNER_ROLE")` | 销毁操作员 | **销毁操作**:<br/>• `burn(address,uint256)` |
 
@@ -61,7 +61,7 @@ Token Manager V1 是一个可升级的代币管理系统，提供安全的代币
 | **系统状态** | • `isActive()` - 检查激活状态<br/>• `activationBlock()` - 获取激活区块 *(自动生成)*<br/>• `paused()` - 检查暂停状态 *(自动生成)* |
 | **常量查询** | • `MAX_WHITELIST_RETURN()` - 分页查询限制 *(自动生成)*<br/>• `ADMIN_ROLE()` - 管理员角色标识符 *(自动生成)*<br/>• `MINTER_ROLE()` - 铸造者角色标识符 *(自动生成)*<br/>• `BURNER_ROLE()` - 销毁者角色标识符 *(自动生成)* |
 | **OpenZeppelin标准接口** | • `hasRole(bytes32,address)` - 检查角色权限 *(自动生成)*<br/>• `getRoleMember(bytes32,uint256)` - 获取角色成员 *(自动生成)*<br/>• `getRoleMemberCount(bytes32)` - 获取角色成员数量 *(自动生成)*<br/>• `getRoleMembersPaginated(bytes32,uint256,uint256)` - 分页获取角色成员 *(自动生成)* |
-| **角色查询** | • `getMinterRoleCount()` - 获取Minter角色数量<br/>• `getBurnerRoleCount()` - 获取Burner角色数量 |
+| **角色查询** | • `getMinterRoleCount()` - 获取Minter角色数量<br/>• `getBurnerRoleCount()` - 获取Burner角色数量<br/>• `getMintersPaginated(uint256,uint256)` - 分页获取Minter成员列表<br/>• `getBurnersPaginated(uint256,uint256)` - 分页获取Burner成员列表 |
 | **白名单查询** | • `getMintWhitelist(uint256,uint256)` - 分页获取mint白名单<br/>• `getMintWhitelistCount()` - 获取mint白名单数量<br/>• `mintWhitelist(address)` - 检查mint白名单状态 *(自动生成)*<br/>• `isMintAllowed(address)` - 检查mint权限<br/>• `getBurnWhitelist(uint256,uint256)` - 分页获取burn白名单<br/>• `getBurnWhitelistCount()` - 获取burn白名单数量<br/>• `burnWhitelist(address)` - 检查burn白名单状态 *(自动生成)*<br/>• `isBurnAllowed(address)` - 检查burn权限 |
 
 **重要说明**:
@@ -275,7 +275,7 @@ cast send --private-key $BURNER_KEY --rpc-url $RPC $PROXY_ADDRESS \
 #### `getMintersPaginated(uint256 offset, uint256 limit) → address[]`
 分页获取Minter角色成员列表
 
-**权限**: 仅Admin(onlyRole(ADMIN_ROLE))  
+**权限**: 公开查询(无权限限制)  
 **参数**: 
 - `offset` - 起始索引
 - `limit` - 返回数量限制 (最大100)
@@ -284,7 +284,7 @@ cast send --private-key $BURNER_KEY --rpc-url $RPC $PROXY_ADDRESS \
 #### `getBurnersPaginated(uint256 offset, uint256 limit) → address[]`
 分页获取Burner角色成员列表
 
-**权限**: 仅Admin(onlyRole(ADMIN_ROLE))  
+**权限**: 公开查询(无权限限制)  
 **参数**: 
 - `offset` - 起始索引
 - `limit` - 返回数量限制 (最大100)
