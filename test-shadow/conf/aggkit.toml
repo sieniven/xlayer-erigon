@@ -51,6 +51,7 @@ CheckStatusCertificateInterval = "1s"
 Mode="PessimisticProof"
 UseAgglayerTLS = false
 MaxCertSize = 0
+DryRun = true
 MaxL2BlockNumber = 17428134
 StopOnFinishedSendingAllCertificates = true
 
