@@ -8,6 +8,14 @@ Token Manager V1 是一个可升级的代币管理系统，提供安全的代币
 **Precompile地址**: `0x0000000000000000000000000000000000008888`  
 **版本**: v1.0.0
 
+### 🚨 系统限制
+
+| 限制项 | 数值 | 说明 |
+|--------|------|------|
+| **Mint白名单最大容量** | 500个地址 | 防止Gas耗尽(OOG)，确保`removeMintWhitelist`操作正常 |
+| **分页查询最大返回数** | 100个地址 | 防止单次查询OOG |
+| **Burn余额保护** | 必须保留≥1 wei | 防止地址余额被完全清零 |
+
 ---
 
 ## 🔐 角色权限表
@@ -293,8 +301,14 @@ cast send --private-key $BURNER_KEY --rpc-url $RPC $PROXY_ADDRESS \
 
 **权限**: 仅Admin(onlyRole(ADMIN_ROLE))  
 **参数**: `account` - 要添加的地址  
-**限制**: 地址不能已在白名单中  
+**限制**: 
+- 地址不能已在白名单中
+- **🚨 白名单最大容量限制: 500个地址** (防止OOG)  
 **事件**: `MintWhitelistAdded(address indexed account, address indexed sender)`
+
+**错误信息**:
+- `"Address is already in mint whitelist"` - 地址已存在
+- `"Whitelist size limit reached"` - 已达到500个地址上限
 
 #### `removeMintWhitelist(address account)`
 从Mint白名单移除地址

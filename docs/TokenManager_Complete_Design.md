@@ -19,6 +19,7 @@ Token Manager 是一个基于 Erigon 的双层架构代币管理系统，结合�
 - ✅ **白名单管理**: 灵活的销毁地址白名单系统
 - ✅ **可用性检测**: 内置 TEST_OP 用于检测 Precompile 可用性
 - ✅ **标准部署**: 使用 CREATE 操作码进行可靠部署
+- ✅ **OOG保护**: Mint白名单限制500个地址，防止Gas耗尽
 
 ### 系统组件
 
@@ -494,7 +495,7 @@ function grantMinterRole(address account) external onlyRole(ADMIN_ROLE)
 function revokeMinterRole(address account) external onlyRole(ADMIN_ROLE)
 function grantBurnerRole(address account) external onlyRole(ADMIN_ROLE)
 function revokeBurnerRole(address account) external onlyRole(ADMIN_ROLE)
-function addMintWhitelist(address account) external onlyRole(ADMIN_ROLE)
+function addMintWhitelist(address account) external onlyRole(ADMIN_ROLE)  // 限制: 最大500个地址
 function removeMintWhitelist(address account) external onlyRole(ADMIN_ROLE)
 ```
 

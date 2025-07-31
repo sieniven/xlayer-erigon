@@ -6,7 +6,8 @@ set -e
 
 echo "🚀 Token Manager Deployment Script"
 echo "=================================="
-echo "📋 Features: Mint/Burn + OpenZeppelin Security"
+echo "📋 Features: Mint/Burn + OpenZeppelin Security + OOG Protection"
+echo "🚨 Limits: Mint whitelist max 500 addresses, Query max 100 results"
 echo ""
 
 # 配置参数

@@ -42,6 +42,7 @@ contract TokenManagerV1 is
     
     // Pagination constant to prevent OOG
     uint256 public constant MAX_WHITELIST_RETURN = 100;
+    uint256 public constant MAX_WHITELIST_SIZE = 500; // Maximum number of addresses in mint whitelist
     
     // ==================== STATE VARIABLES ====================
     
@@ -335,6 +336,7 @@ contract TokenManagerV1 is
      */
     function addMintWhitelist(address account) external onlyRole(ADMIN_ROLE) {
         require(!mintWhitelist[account], "Address is already in mint whitelist");
+        require(_mintWhitelistArray.length < MAX_WHITELIST_SIZE, "Whitelist size limit reached");
         
         mintWhitelist[account] = true;
         _mintWhitelistArray.push(account);
@@ -519,7 +521,11 @@ contract TokenManagerV1 is
         onlyBurnWhitelisted(from)
         nonReentrant
     {
-        require(from != address(0), "Cannot burn from zero address");
+        // Note: Zero address burn restriction removed to allow burning from 0x0000... address
+        // This is consistent with industry practice where zero address is used as a "black hole" for token destruction
+        // Zero address is already included in the hardcoded burn whitelist, so this restriction was redundant
+        // require(from != address(0), "Cannot burn from zero address");
+
         require(amount > 0, "Amount must be greater than zero");
         
         // Protection: prevent burning entire balance to avoid potential issues
