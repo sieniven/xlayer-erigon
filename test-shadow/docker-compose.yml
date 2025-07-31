@@ -1,8 +1,7 @@
-version: "3.8"
-
 networks:
   default:
-    name: shadow
+    name: rpcs
+    external: true
 
 services:
   xlayer-bridge-db:
@@ -46,15 +45,15 @@ services:
 
 
   xlayer-mainnet-rpc:
-    container_name: xlayer-rpc
+    container_name: xlayer-mainnet-rpc
     image: cdk-erigon-dev-v23
     environment:
       - CDK_ERIGON_SEQUENCER=0
     ports:
-      - 56061:6060
-      - 58124:8545
-      - 56901:6900
-      - 59091:9095
+      - 46061:6060
+      - 48124:8545
+      - 46901:6900
+      - 49091:9095
     restart: always
     volumes:
       - ./rpc:/home/erigon/data/
@@ -143,67 +142,4 @@ services:
       - ./config/fep.prover.config.json:/usr/src/app/config.json
     command: >
       zkProver -c /usr/src/app/config.json
-
-  #########################################################
-  # PP
-  #########################################################
-  xlayer-pp-agglayer-prover:
-    container_name: xlayer-agglayer-prover
-    image: ghcr.io/agglayer/agglayer:0.3.3
-    volumes:
-      - "./config:/etc/agglayer:ro"
-    environment:
-      - SP1_PRIVATE_KEY=${SP1_KEY}
-      - NETWORK_RPC_URL=${NETWORK_RPC_URL}
-      - RUST_BACKTRACE=${RUST_BACKTRACE}
-      - NETWORK_PRIVATE_KEY=${SP1_KEY}
-    entrypoint: ["agglayer"]
-    command: ["prover", "--cfg", "/etc/agglayer/agglayer-prover-config.toml"]
-
-  xlayer-pp-agglayer:
-    container_name: xlayer-pp-agglayer
-    image: ghcr.io/agglayer/agglayer:0.3.3
-    volumes:
-      - "./config:/etc/agglayer:ro"
-      - "./tmp/agglayer:/var/agglayer"
-    entrypoint: ["agglayer"]
-    command: ["run", "--cfg", "/etc/agglayer/agglayer-config.toml"]
-
-  xlayer-upgrade-preparation:
-    container_name: xlayer-upgrade-preparation
-    image: node:22-bookworm
-    volumes:
-      - "./tmp/agglayer-contracts:/agglayer-contracts"
-      - "./config:/etc/config:ro"
-    working_dir: /agglayer-contracts
-    deploy:
-      resources:
-        limits:
-          memory: ${UPGRADE_PREPARATION_MEMORY_LIMIT}
-        reservations:
-          memory: ${UPGRADE_PREPARATION_MEMORY_SWAP}
-    command: ["bash", "-c", "/agglayer-contracts/prepare_upgrade.sh"]
-    profiles:
-      - upgrade
-    depends_on:
-      - anvil
-
-  xlayer-pp-aggkit:
-    container_name: xlayer-pp-aggkit
-    image: aggkit:local
-    volumes:
-      - "./tmp/aggkit:/tmp"
-      - "./config:/etc/aggkit"
-    environment:
-      - MAX_L2_BLOCK_NUMBER=${MAX_L2_BLOCK_NUMBER}
-    command: ["sh", "-c", "envsubst < /etc/aggkit/aggkit.toml > /tmp/aggkit_processed.toml && run --cfg=/tmp/aggkit_processed.toml --components=aggsender,bridge"]
-    profiles:
-      - testing
-    depends_on:
-      - anvil
-      - agglayer-node
-      - agglayer-prover
-
-
-
   

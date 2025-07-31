@@ -136,3 +136,4 @@ test-shadow-fork/tmp
 test-shadow-fork/mainnet-rpc
 test-shadow/tmp
 test-shadow/code
+test-shadow/rpc
