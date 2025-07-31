@@ -37,6 +37,67 @@ Token Manager 是一个基于 Erigon 的双层架构代币管理系统，结合�
 
 ## 架构设计
 
+### 整体架构图
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                              外部用户层                                      │
+│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐        │
+│  │    Owner    │  │    Admin    │  │   Minter    │  │   Burner    │        │
+│  │  (系统控制)  │  │  (业务管理)  │  │  (铸造操作)  │  │  (销毁操作)  │        │
+│  └─────────────┘  └─────────────┘  └─────────────┘  └─────────────┘        │
+└─────────────────────────────────────────────────────────────────────────────┘
+                                    │
+                                    ▼
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                             智能合约层                                       │
+│  ┌─────────────────────────────────────────────────────────────────────────┐ │
+│  │                    TokenManagerProxy (代理合约)                         │ │
+│  │                    地址: 0x1FdC273F90e3Eba11D2b20561F233B11424Fcfab     │ │
+│  └─────────────────────────────────────────────────────────────────────────┘ │
+│                                    │                                         │
+│                                    ▼                                         │
+│  ┌─────────────────────────────────────────────────────────────────────────┐ │
+│  │                   TokenManagerV1 (实现合约)                             │ │
+│  │  ┌─────────────────┐  ┌─────────────────┐  ┌─────────────────┐         │ │
+│  │  │   权限控制模块   │  │   业务逻辑模块   │  │   白名单管理模块  │         │ │
+│  │  │ • Owner权限     │  │ • 激活检查      │  │ • Mint白名单     │         │ │
+│  │  │ • Admin权限     │  │ • 暂停机制      │  │ • Burn白名单     │         │ │
+│  │  │ • Minter权限    │  │ • 重入保护      │  │ • 动态管理       │         │ │
+│  │  │ • Burner权限    │  │ • 事件发射      │  │ • 硬编码保护     │         │ │
+│  │  └─────────────────┘  └─────────────────┘  └─────────────────┘         │ │
+│  └─────────────────────────────────────────────────────────────────────────┘ │
+└─────────────────────────────────────────────────────────────────────────────┘
+                                    │
+                                    ▼
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                             区块链层                                         │
+│  ┌─────────────────────────────────────────────────────────────────────────┐ │
+│  │                              EVM                                        │ │
+│  │  ┌─────────────────┐  ┌─────────────────┐  ┌─────────────────┐         │ │
+│  │  │   状态存储       │  │   执行引擎       │  │   预编译合约     │         │ │
+│  │  │ • 账户余额       │  │ • 交易执行      │  │ • 地址: 0x8888  │         │ │
+│  │  │ • 合约状态       │  │ • Gas计算       │  │ • Mint操作      │         │ │
+│  │  │ • 事件日志       │  │ • 权限验证      │  │ • Burn操作      │         │ │
+│  │  │ • 白名单数据     │  │ • 错误处理      │  │ • 测试操作      │         │ │
+│  │  └─────────────────┘  └─────────────────┘  └─────────────────┘         │ │
+│  └─────────────────────────────────────────────────────────────────────────┘ │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+### 调用流程
+
+```
+用户操作流程:
+Owner/Admin/Minter/Burner → TokenManagerProxy → TokenManagerV1 → EVM → Precompile → 状态更新
+
+权限验证流程:
+调用者身份 → 角色检查 → 白名单验证 → 状态检查 → 操作执行 → 事件记录
+
+升级流程:
+ProxyAdmin → TokenManagerProxy → 新实现合约 (保持状态不变)
+```
+
 ### 三层架构
 
 #### 1. Precompile 层 (0x8888)
@@ -266,45 +327,73 @@ cast call --rpc-url $RPC_URL $PROXY_ADDRESS "isPrecompileAvailable()"
 
 #### 权限管理
 ```bash
-# 转移所有权
-cast send --private-key $ADMIN_KEY --rpc-url $RPC_URL --legacy \
+# 转移所有权 (仅Owner)
+cast send --private-key $OWNER_KEY --rpc-url $RPC_URL --legacy \
   --to $PROXY_ADDRESS "transferOwnership(address)" $NEW_OWNER
 
-# 暂停合约
-cast send --private-key $ADMIN_KEY --rpc-url $RPC_URL --legacy \
+# 暂停合约 (仅Owner)
+cast send --private-key $OWNER_KEY --rpc-url $RPC_URL --legacy \
   --to $PROXY_ADDRESS "pause()"
 
-# 恢复合约
-cast send --private-key $ADMIN_KEY --rpc-url $RPC_URL --legacy \
+# 恢复合约 (仅Owner)
+cast send --private-key $OWNER_KEY --rpc-url $RPC_URL --legacy \
   --to $PROXY_ADDRESS "unpause()"
+
+# 设置激活区块 (仅Owner)
+cast send --private-key $OWNER_KEY --rpc-url $RPC_URL --legacy \
+  --to $PROXY_ADDRESS "setActivationBlock(uint256)" $BLOCK_NUMBER
 ```
 
-#### 铸造操作
+#### 角色管理 (仅Admin)
 ```bash
-# 铸造代币
+# 授予Minter角色
 cast send --private-key $ADMIN_KEY --rpc-url $RPC_URL --legacy \
+  --to $PROXY_ADDRESS "grantMinterRole(address)" $MINTER_ADDRESS
+
+# 授予Burner角色
+cast send --private-key $ADMIN_KEY --rpc-url $RPC_URL --legacy \
+  --to $PROXY_ADDRESS "grantBurnerRole(address)" $BURNER_ADDRESS
+
+# 撤销角色
+cast send --private-key $ADMIN_KEY --rpc-url $RPC_URL --legacy \
+  --to $PROXY_ADDRESS "revokeMinterRole(address)" $MINTER_ADDRESS
+
+# 转移Admin权限
+cast send --private-key $ADMIN_KEY --rpc-url $RPC_URL --legacy \
+  --to $PROXY_ADDRESS "transferAdminRole(address)" $NEW_ADMIN_ADDRESS
+```
+
+#### 铸造操作 (仅Minter)
+```bash
+# 铸造代币 (需要Minter角色 + 目标在白名单)
+cast send --private-key $MINTER_KEY --rpc-url $RPC_URL --legacy \
   --to $PROXY_ADDRESS "mint(address,uint256)" $TARGET_ADDRESS $AMOUNT
-
-# 批量铸造
-cast send --private-key $ADMIN_KEY --rpc-url $RPC_URL --legacy \
-  
 ```
 
-#### 白名单管理
+#### 销毁操作 (仅Burner)
 ```bash
-# 添加到销毁白名单
+# 销毁代币 (需要Burner角色 + 源地址在白名单)
+cast send --private-key $BURNER_KEY --rpc-url $RPC_URL --legacy \
+  --to $PROXY_ADDRESS "burn(address,uint256)" $SOURCE_ADDRESS $AMOUNT
+```
+
+#### 白名单管理 (仅Admin)
+```bash
+# 添加Mint白名单
 cast send --private-key $ADMIN_KEY --rpc-url $RPC_URL --legacy \
-  --to $PROXY_ADDRESS "addBurnWhitelist(address)" $TARGET_ADDRESS
+  --to $PROXY_ADDRESS "addMintWhitelist(address)" $TARGET_ADDRESS
+
+# 移除Mint白名单
+cast send --private-key $ADMIN_KEY --rpc-url $RPC_URL --legacy \
+  --to $PROXY_ADDRESS "removeMintWhitelist(address)" $TARGET_ADDRESS
 
 # 查询白名单状态
-cast call --rpc-url $RPC_URL $PROXY_ADDRESS "isBurnAllowed(address)" $TARGET_ADDRESS
+cast call --rpc-url $RPC_URL $PROXY_ADDRESS "isMintAllowed(address)" $TARGET_ADDRESS
+cast call --rpc-url $RPC_URL $PROXY_ADDRESS "isBurnAllowed(address)" $SOURCE_ADDRESS
 
-# 获取所有白名单地址
-cast call --rpc-url $RPC_URL $PROXY_ADDRESS "getBurnWhitelist()"
-
-# 销毁代币
-cast send --private-key $ADMIN_KEY --rpc-url $RPC_URL --legacy \
-  --to $PROXY_ADDRESS "burn(address,uint256)" $TARGET_ADDRESS $AMOUNT
+# 获取白名单信息
+cast call --rpc-url $RPC_URL $PROXY_ADDRESS "getMintWhitelist(uint256,uint256)" 0 10
+cast call --rpc-url $RPC_URL $PROXY_ADDRESS "getBurnWhitelist(uint256,uint256)" 0 10
 ```
 
 ## 安全考虑
@@ -320,6 +409,7 @@ cast send --private-key $ADMIN_KEY --rpc-url $RPC_URL --legacy \
 │ • setActivationBlock()                             │ 
 │ • transferOwnership()                              │
 │ • 合约升级权限 (通过ProxyAdmin)                      │
+│ • 默认不拥有任何业务权限                             │
 └─────────────────────────────────────────────────────┘
                            │ 完全分离
                            ▼
@@ -329,14 +419,29 @@ cast send --private-key $ADMIN_KEY --rpc-url $RPC_URL --legacy \
 │ • grantBurnerRole() / revokeBurnerRole()           │
 │ • addMintWhitelist() / removeMintWhitelist()       │
 │ • transferAdminRole()                              │
-│ • 角色成员查询权限                                   │
+│ • getMintersPaginated() / getBurnersPaginated()    │
+│ • 角色和白名单管理权限                               │
 └─────────────────────────────────────────────────────┘
             │                          │
             ▼                          ▼
 ┌─────────────────┐            ┌──────────────────┐
 │   MINTER_ROLE   │            │   BURNER_ROLE    │
 │ • mint()        │            │ • burn()         │
+│ (需要目标在白名单) │            │ (需要源地址在白名单) │
 └─────────────────┘            └──────────────────┘
+```
+
+#### 公开查询接口
+```
+┌─────────────────────────────────────────────────────┐
+│                公开查询接口                          │
+│ • owner() / getAdmin() / isAdmin() / hasAdmin()    │
+│ • getMinterRoleCount() / getBurnerRoleCount()      │
+│ • isActive() / paused() / activationBlock()        │
+│ • isMintAllowed() / isBurnAllowed()                │
+│ • getMintWhitelist() / getBurnWhitelist()          │
+│ • VERSION() / MAX_WHITELIST_RETURN()               │
+└─────────────────────────────────────────────────────┘
 ```
 
 #### 核心安全特性

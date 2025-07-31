@@ -500,7 +500,7 @@ cast send --private-key "$ADMIN_PRIVATE_KEY" \
 # 验证移除后的Mint操作（应该失败）
 test_info "验证移除后的Mint操作（应该失败）..."
 echo "  从白名单移除后尝试Mint（应该失败）..."
-if ! cast send --private-key "$ADMIN_PRIVATE_KEY" \
+if cast send --private-key "$MINTER1_PRIVATE_KEY" \
     --rpc-url "$RPC_URL" \
     --legacy \
     "$PROXY_ADDRESS" \

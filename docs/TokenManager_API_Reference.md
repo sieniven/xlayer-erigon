@@ -12,12 +12,36 @@ Token Manager V1 是一个可升级的代币管理系统，提供安全的代币
 
 ## 🔐 角色权限表
 
+### 权限矩阵
+
+| 功能/接口 | Owner | ADMIN_ROLE | MINTER_ROLE | BURNER_ROLE |
+|-----------|:-----:|:----------:|:-----------:|:-----------:|
+| **系统控制** |||||
+| pause/unpause | ✅ | ❌ | ❌ | ❌ |
+| setActivationBlock | ✅ | ❌ | ❌ | ❌ |
+| transferOwnership | ✅ | ❌ | ❌ | ❌ |
+| **角色管理** |||||
+| grantMinterRole/revokeMinterRole | ❌ | ✅ | ❌ | ❌ |
+| grantBurnerRole/revokeBurnerRole | ❌ | ✅ | ❌ | ❌ |
+| transferAdminRole | ❌ | ✅ | ❌ | ❌ |
+| getMintersPaginated/getBurnersPaginated | ❌ | ✅ | ❌ | ❌ |
+| **白名单管理** |||||
+| addMintWhitelist/removeMintWhitelist | ❌ | ✅ | ❌ | ❌ |
+| **核心操作** |||||
+| mint | ❌ | ❌ | ✅ | ❌ |
+| burn | ❌ | ❌ | ❌ | ✅ |
+| **查询接口** |||||
+| getMinterRoleCount/getBurnerRoleCount | ✅ | ✅ | ✅ | ✅ |
+| getMintWhitelist/getBurnWhitelist | ✅ | ✅ | ✅ | ✅ |
+| isMintAllowed/isBurnAllowed | ✅ | ✅ | ✅ | ✅ |
+| 基础查询接口（owner/getAdmin/hasAdmin等） | ✅ | ✅ | ✅ | ✅ |
+
 ### 详细接口权限分配
 
 | 角色 | 角色标识符 | 权限说明 | 专有接口 (仅此角色可调用) |
 |------|------------|----------|--------------------------|
 | **Owner** | 合约所有者 | 系统级权限 | **系统控制**:<br/>• `pause()`<br/>• `unpause()`<br/>• `setActivationBlock(uint256)`<br/>• `transferOwnership(address)`<br/>• *合约升级权限 (通过ProxyAdmin)* |
-| **ADMIN_ROLE** | `0x0000000000000000000000000000000000000000000000000000000000000000` | 业务管理员 | **角色管理**:<br/>• `grantMinterRole(address)`<br/>• `revokeMinterRole(address)`<br/>• `grantBurnerRole(address)`<br/>• `revokeBurnerRole(address)`<br/>• `getMinterRoleCount()`<br/>• `getBurnerRoleCount()`<br/>• `getMintersPaginated(uint256,uint256)`<br/>• `getBurnersPaginated(uint256,uint256)`<br/>• `transferAdminRole(address)`<br/><br/>**白名单管理**:<br/>• `addMintWhitelist(address)`<br/>• `removeMintWhitelist(address)`<br/>• *(burn白名单已硬编码，无需管理)* |
+| **ADMIN_ROLE** | `0x0000000000000000000000000000000000000000000000000000000000000000` | 业务管理员 | **角色管理**:<br/>• `grantMinterRole(address)`<br/>• `revokeMinterRole(address)`<br/>• `grantBurnerRole(address)`<br/>• `revokeBurnerRole(address)`<br/>• `getMintersPaginated(uint256,uint256)`<br/>• `getBurnersPaginated(uint256,uint256)`<br/>• `transferAdminRole(address)`<br/><br/>**白名单管理**:<br/>• `addMintWhitelist(address)`<br/>• `removeMintWhitelist(address)`<br/>• *(burn白名单已硬编码，无需管理)* |
 | **MINTER_ROLE** | `keccak256("MINTER_ROLE")` | 铸造操作员 | **铸造操作**:<br/>• `mint(address,uint256)` |
 | **BURNER_ROLE** | `keccak256("BURNER_ROLE")` | 销毁操作员 | **销毁操作**:<br/>• `burn(address,uint256)` |
 
@@ -28,6 +52,8 @@ Token Manager V1 是一个可升级的代币管理系统，提供安全的代币
 | **基础信息** | • `owner()` - 获取Owner地址 *(自动生成)*<br/>• `getAdmin()` - 获取Admin地址<br/>• `isAdmin(address)` - 检查是否为Admin<br/>• `hasAdmin()` - 检查是否有Admin<br/>• `VERSION()` - 获取版本信息<br/>• `hasRole(bytes32,address)` - 检查角色权限 *(自动生成)* |
 | **系统状态** | • `isActive()` - 检查激活状态<br/>• `activationBlock()` - 获取激活区块 *(自动生成)*<br/>• `paused()` - 检查暂停状态 *(自动生成)* |
 | **常量查询** | • `MAX_WHITELIST_RETURN()` - 分页查询限制 *(自动生成)*<br/>• `ADMIN_ROLE()` - 管理员角色标识符 *(自动生成)*<br/>• `MINTER_ROLE()` - 铸造者角色标识符 *(自动生成)*<br/>• `BURNER_ROLE()` - 销毁者角色标识符 *(自动生成)* |
+| **OpenZeppelin标准接口** | • `hasRole(bytes32,address)` - 检查角色权限 *(自动生成)*<br/>• `getRoleMember(bytes32,uint256)` - 获取角色成员 *(自动生成)*<br/>• `getRoleMemberCount(bytes32)` - 获取角色成员数量 *(自动生成)*<br/>• `getRoleMembersPaginated(bytes32,uint256,uint256)` - 分页获取角色成员 *(自动生成)* |
+| **角色查询** | • `getMinterRoleCount()` - 获取Minter角色数量<br/>• `getBurnerRoleCount()` - 获取Burner角色数量 |
 | **白名单查询** | • `getMintWhitelist(uint256,uint256)` - 分页获取mint白名单<br/>• `getMintWhitelistCount()` - 获取mint白名单数量<br/>• `mintWhitelist(address)` - 检查mint白名单状态 *(自动生成)*<br/>• `isMintAllowed(address)` - 检查mint权限<br/>• `getBurnWhitelist(uint256,uint256)` - 分页获取burn白名单<br/>• `getBurnWhitelistCount()` - 获取burn白名单数量<br/>• `burnWhitelist(address)` - 检查burn白名单状态 *(自动生成)*<br/>• `isBurnAllowed(address)` - 检查burn权限 |
 
 **重要说明**:
@@ -38,6 +64,7 @@ Token Manager V1 是一个可升级的代币管理系统，提供安全的代币
 - 每个角色可以授予给多个地址
 - ADMIN_ROLE可以管理其他所有角色
 - 转移Owner时，Admin权限保持不变
+- 角色数量查询(`getMinterRoleCount`, `getBurnerRoleCount`)为公开接口，所有用户可调用
 
 ---
 
@@ -75,7 +102,11 @@ cast send --private-key $MINTER_KEY --rpc-url $RPC $PROXY_ADDRESS \
 
 **限制**:
 - 地址必须在burn白名单中
-- 不能销毁地址的全部余额
+- <span style="color: #fff; background: #d32f2f; font-weight: bold; padding: 2px 4px; border-radius: 2px;">不能销毁地址的全部余额（必须保留至少1 wei）</span>
+
+**错误处理**:
+- `"Insufficient balance for burn"` - 余额不足
+- `"Cannot burn entire balance, must leave at least 1 wei"` - 尝试销毁全部余额
 
 **事件**: `TokenBurned(address indexed from, uint256 amount, address indexed burner)`
 
@@ -84,8 +115,6 @@ cast send --private-key $MINTER_KEY --rpc-url $RPC $PROXY_ADDRESS \
 cast send --private-key $BURNER_KEY --rpc-url $RPC $PROXY_ADDRESS \
   "burn(address,uint256)" $FROM_ADDRESS $AMOUNT --legacy
 ```
-
-
 
 ---
 
@@ -157,6 +186,7 @@ cast send --private-key $BURNER_KEY --rpc-url $RPC $PROXY_ADDRESS \
 
 **权限**: 仅Admin(onlyRole(ADMIN_ROLE))  
 **参数**: `account` - 要授予角色的地址  
+**逻辑**: 如果地址还没有该角色，则授予
 **事件**: `MinterRoleGranted(address indexed account, address indexed sender)`
 
 #### `revokeMinterRole(address account)`
@@ -164,6 +194,7 @@ cast send --private-key $BURNER_KEY --rpc-url $RPC $PROXY_ADDRESS \
 
 **权限**: 仅Admin(onlyRole(ADMIN_ROLE))  
 **参数**: `account` - 要撤销角色的地址  
+**逻辑**: 如果地址拥有该角色，则撤销
 **事件**: `MinterRoleRevoked(address indexed account, address indexed sender)`
 
 #### `grantBurnerRole(address account)`
@@ -171,6 +202,7 @@ cast send --private-key $BURNER_KEY --rpc-url $RPC $PROXY_ADDRESS \
 
 **权限**: 仅Admin(onlyRole(ADMIN_ROLE))  
 **参数**: `account` - 要授予角色的地址  
+**逻辑**: 如果地址还没有该角色，则授予
 **事件**: `BurnerRoleGranted(address indexed account, address indexed sender)`
 
 #### `revokeBurnerRole(address account)`
@@ -178,6 +210,7 @@ cast send --private-key $BURNER_KEY --rpc-url $RPC $PROXY_ADDRESS \
 
 **权限**: 仅Admin(onlyRole(ADMIN_ROLE))  
 **参数**: `account` - 要撤销角色的地址  
+**逻辑**: 如果地址拥有该角色，则撤销
 **事件**: `BurnerRoleRevoked(address indexed account, address indexed sender)`
 
 #### `hasRole(bytes32 role, address account) → bool`
@@ -189,43 +222,184 @@ cast send --private-key $BURNER_KEY --rpc-url $RPC $PROXY_ADDRESS \
 - `account` - 要检查的地址  
 **返回**: true(拥有角色) / false(没有角色)
 
+### OpenZeppelin 标准接口 (AccessControlEnumerableUpgradeable)
+
+#### `getRoleMember(bytes32 role, uint256 index) → address`
+获取指定角色的成员地址 (OpenZeppelin 标准)
+
+**权限**: 公开查询  
+**参数**: 
+- `role` - 角色标识符
+- `index` - 成员索引 (从0开始)
+**返回**: 角色成员地址
+
+#### `getRoleMemberCount(bytes32 role) → uint256`
+获取指定角色的成员数量 (OpenZeppelin 标准)
+
+**权限**: 公开查询  
+**参数**: `role` - 角色标识符  
+**返回**: 角色成员数量
+
+#### `getRoleMembersPaginated(bytes32 role, uint256 offset, uint256 limit) → address[]`
+分页获取指定角色的成员列表 (OpenZeppelin 标准)
+
+**权限**: 公开查询  
+**参数**: 
+- `role` - 角色标识符
+- `offset` - 起始索引
+- `limit` - 返回数量限制
+**返回**: 角色成员地址数组
+
 ### 角色查询 (基于 AccessControlEnumerable)
 
 #### `getMinterRoleCount() → uint256`
 获取拥有Minter角色的地址数量
 
-**权限**: 仅Admin(onlyRole(ADMIN_ROLE))  
+**权限**: 公开查询  
 **返回**: Minter角色成员数量
 
 #### `getBurnerRoleCount() → uint256`
 获取拥有Burner角色的地址数量
 
-**权限**: 仅Admin(onlyRole(ADMIN_ROLE))  
+**权限**: 公开查询  
 **返回**: Burner角色成员数量
 
-
-
 #### `getMintersPaginated(uint256 offset, uint256 limit) → address[]`
-分页获取Minter角色地址
+分页获取Minter角色成员列表
 
 **权限**: 仅Admin(onlyRole(ADMIN_ROLE))  
 **参数**: 
 - `offset` - 起始索引
-- `limit` - 返回数量 (自动限制为MAX_WHITELIST_RETURN=100)  
-**返回**: 分页的Minter地址数组
+- `limit` - 返回数量限制 (最大100)
+**返回**: Minter角色成员地址数组
 
 #### `getBurnersPaginated(uint256 offset, uint256 limit) → address[]`
-分页获取Burner角色地址
+分页获取Burner角色成员列表
 
 **权限**: 仅Admin(onlyRole(ADMIN_ROLE))  
 **参数**: 
 - `offset` - 起始索引
-- `limit` - 返回数量 (自动限制为MAX_WHITELIST_RETURN=100)  
-**返回**: 分页的Burner地址数组
+- `limit` - 返回数量限制 (最大100)
+**返回**: Burner角色成员地址数组
 
 ---
 
-## ⚙️ 系统控制
+## 📋 白名单管理
+
+### Mint白名单管理 (动态)
+
+#### `addMintWhitelist(address account)`
+添加地址到Mint白名单
+
+**权限**: 仅Admin(onlyRole(ADMIN_ROLE))  
+**参数**: `account` - 要添加的地址  
+**限制**: 地址不能已在白名单中  
+**事件**: `MintWhitelistAdded(address indexed account, address indexed sender)`
+
+#### `removeMintWhitelist(address account)`
+从Mint白名单移除地址
+
+**权限**: 仅Admin(onlyRole(ADMIN_ROLE))  
+**参数**: `account` - 要移除的地址  
+**限制**: 地址必须在白名单中  
+**逻辑**: 先验证数组操作成功，再更新映射状态
+**事件**: `MintWhitelistRemoved(address indexed account, address indexed sender)`
+
+#### `getMintWhitelist(uint256 offset, uint256 limit) → (address[], uint256)`
+分页获取Mint白名单
+
+**权限**: 公开查询  
+**参数**: 
+- `offset` - 起始索引
+- `limit` - 返回数量限制 (最大100)
+**返回**: 
+- `addresses` - 白名单地址数组
+- `total` - 总数量
+
+#### `getMintWhitelistCount() → uint256`
+获取Mint白名单总数量
+
+**权限**: 公开查询  
+**返回**: 白名单地址总数
+
+#### `mintWhitelist(address account) → bool`
+检查地址是否在Mint白名单中
+
+**权限**: 公开查询  
+**参数**: `account` - 要检查的地址  
+**返回**: true(在白名单中) / false(不在白名单中)
+
+#### `isMintAllowed(address account) → bool`
+检查地址是否有Mint权限
+
+**权限**: 公开查询  
+**参数**: `account` - 要检查的地址  
+**返回**: true(有权限) / false(无权限)  
+**逻辑**: 如果白名单为空则拒绝所有，否则检查地址是否在白名单中
+
+### Burn白名单管理 (硬编码)
+
+#### `getBurnWhitelist(uint256 offset, uint256 limit) → (address[], uint256)`
+分页获取Burn白名单
+
+**权限**: 公开查询  
+**参数**: 
+- `offset` - 起始索引
+- `limit` - 返回数量限制 (最大100)
+**返回**: 
+- `addresses` - 白名单地址数组
+- `total` - 总数量
+
+**硬编码地址**:
+- `0x000000000000000000000000000000000000dEaD` (Burn地址)
+- `0x0000000000000000000000000000000000000000` (零地址)
+
+#### `getBurnWhitelistCount() → uint256`
+获取Burn白名单总数量
+
+**权限**: 公开查询  
+**返回**: 白名单地址总数 (固定为2)
+
+#### `burnWhitelist(address account) → bool`
+检查地址是否在Burn白名单中
+
+**权限**: 公开查询  
+**参数**: `account` - 要检查的地址  
+**返回**: true(在白名单中) / false(不在白名单中)
+
+#### `isBurnAllowed(address account) → bool`
+检查地址是否有Burn权限
+
+**权限**: 公开查询  
+**参数**: `account` - 要检查的地址  
+**返回**: true(有权限) / false(无权限)  
+**逻辑**: 检查地址是否在硬编码的burn白名单中
+
+---
+
+## 🛑 系统控制
+
+### 暂停机制
+
+#### `pause()`
+暂停合约操作
+
+**权限**: 仅Owner(onlyOwner)  
+**状态**: 暂停所有mint/burn操作  
+**事件**: `ContractPaused(address indexed account)`
+
+#### `unpause()`
+恢复合约操作
+
+**权限**: 仅Owner(onlyOwner)  
+**状态**: 恢复所有mint/burn操作  
+**事件**: `ContractUnpaused(address indexed account)`
+
+#### `paused() → bool`
+检查合约是否暂停
+
+**权限**: 公开查询  
+**返回**: true(已暂停) / false(运行中)
 
 ### 激活控制
 
@@ -237,11 +411,11 @@ cast send --private-key $BURNER_KEY --rpc-url $RPC $PROXY_ADDRESS \
 **事件**: `ActivationBlockSet(uint256 activationBlock)`
 
 #### `isActive() → bool`
-检查合约是否已激活
+检查合约是否激活
 
 **权限**: 公开查询  
 **返回**: true(已激活) / false(未激活)  
-**逻辑**: `block.number >= activationBlock && owner() != address(0)`
+**逻辑**: 当前区块 >= 激活区块 且 Owner不为零地址
 
 #### `activationBlock() → uint256`
 获取激活区块号
@@ -249,450 +423,99 @@ cast send --private-key $BURNER_KEY --rpc-url $RPC $PROXY_ADDRESS \
 **权限**: 公开查询  
 **返回**: 激活区块号
 
-### 暂停控制
-
-#### `pause()`
-暂停合约 (紧急停止)
-
-**权限**: 仅Owner(onlyOwner)  
-**事件**: `ContractPaused(address indexed sender)`
-
-#### `unpause()`
-恢复合约
-
-**权限**: 仅Owner(onlyOwner)  
-**事件**: `ContractUnpaused(address indexed sender)`
-
-#### `paused() → bool`
-检查合约是否暂停
-
-**权限**: 公开查询  
-**返回**: true(已暂停) / false(正常运行)
-
 ---
 
-## 📋 白名单管理
-
-### Mint白名单
-
-#### `addMintWhitelist(address account)`
-添加地址到mint白名单
-
-**权限**: 仅Admin(onlyRole(ADMIN_ROLE))  
-**参数**: `account` - 要添加的地址  
-**事件**: `MintWhitelistAdded(address indexed account, address indexed sender)`
-
-#### `removeMintWhitelist(address account)`
-从mint白名单移除地址
-
-**权限**: 仅Admin(onlyRole(ADMIN_ROLE))  
-**参数**: `account` - 要移除的地址  
-**事件**: `MintWhitelistRemoved(address indexed account, address indexed sender)`
-
-#### `getMintWhitelist(uint256 offset, uint256 limit) → (address[] addresses, uint256 total)`
-分页获取mint白名单地址
-
-**权限**: 公开查询  
-**参数**: 
-- `offset` - 起始索引
-- `limit` - 返回数量 (最多100个，受MAX_WHITELIST_RETURN限制)  
-**返回**: 地址数组和总数
-
-#### `getMintWhitelistCount() → uint256`
-获取mint白名单地址数量
-
-**权限**: 公开查询  
-**返回**: 白名单中的地址数量
-
-#### `mintWhitelist(address) → bool`
-直接查询地址在mint白名单映射中的状态
-
-**权限**: 公开查询  
-**参数**: 要检查的地址  
-**返回**: true(在白名单映射中) / false(不在白名单映射中)  
-**注意**: 这是自动生成的public mapping getter函数
-
-#### `isMintAllowed(address account) → bool`
-检查地址是否真正允许mint操作 (推荐使用)
-
-**权限**: 公开查询  
-**参数**: 要检查的地址  
-**返回**: true(允许) / false(不允许)  
-**逻辑**: 
-1. 如果白名单为空 → 返回false (安全优先)
-2. 如果白名单不为空 → 返回 `mintWhitelist[account]`
-
-**与mintWhitelist(address)的区别**:
-- `mintWhitelist(address)`: 只查询映射值，不考虑白名单是否为空
-- `isMintAllowed(address)`: 包含"空白名单默认拒绝"的安全逻辑
-
-### Burn白名单 (硬编码，无需管理)
-
-**重要说明**: Burn白名单已硬编码到合约中，无法动态修改。这提高了安全性，防止误操作。
-
-#### `getBurnWhitelist(uint256 offset, uint256 limit) → (address[] addresses, uint256 total)`
-分页获取burn白名单地址
-
-**权限**: 公开查询  
-**参数**: 
-- `offset` - 起始索引
-- `limit` - 返回数量 (最多100个，受MAX_WHITELIST_RETURN限制)  
-**返回**: 地址数组和总数
-
-#### `getBurnWhitelistCount() → uint256`
-获取burn白名单地址数量
-
-**权限**: 公开查询  
-**返回**: 白名单中的地址数量
-
-#### `burnWhitelist(address) → bool`
-直接查询地址在burn白名单映射中的状态
-
-**权限**: 公开查询  
-**参数**: 要检查的地址  
-**返回**: true(在白名单映射中) / false(不在白名单映射中)  
-**注意**: 这是自动生成的public mapping getter函数
-
-#### `isBurnAllowed(address account) → bool`
-检查地址是否真正允许burn操作 (推荐使用)
-
-**权限**: 公开查询  
-**参数**: 要检查的地址  
-**返回**: true(允许) / false(不允许)  
-**逻辑**: 
-1. 如果白名单为空 → 返回false (安全优先)
-2. 如果白名单不为空 → 返回 `burnWhitelist[account]`
-
-**与burnWhitelist(address)的区别**:
-- `burnWhitelist(address)`: 只查询映射值，不考虑白名单是否为空
-- `isBurnAllowed(address)`: 包含"空白名单默认拒绝"的安全逻辑
-
----
-
-
-
----
-
-## 🔍 系统诊断
+## 🔧 工具函数
 
 #### `VERSION() → string`
 获取合约版本
 
 **权限**: 公开查询  
-**返回**: 版本字符串 "v1.0.0"
-
-#### 常量查询
+**返回**: 版本字符串 ("v1.0.0")
 
 #### `MAX_WHITELIST_RETURN() → uint256`
-获取分页查询最大返回数量
+获取分页查询限制
 
 **权限**: 公开查询  
-**返回**: 100 (分页查询的最大返回数量)
-
-#### `ADMIN_ROLE() → bytes32`
-获取管理员角色标识符
-
-**权限**: 公开查询  
-**返回**: `0x0000000000000000000000000000000000000000000000000000000000000000`
-
-#### `MINTER_ROLE() → bytes32`
-获取铸造者角色标识符
-
-**权限**: 公开查询  
-**返回**: `keccak256("MINTER_ROLE")`
-
-#### `BURNER_ROLE() → bytes32`
-获取销毁者角色标识符
-
-**权限**: 公开查询  
-**返回**: `keccak256("BURNER_ROLE")`
+**返回**: 最大返回数量 (100)
 
 ---
 
-## 📤 事件列表
+## 📊 事件列表
 
 ### 系统事件
-```solidity
-// 初始化事件
-event Initialized(address indexed owner, uint256 activationBlock);
-
-// 激活控制事件
-event ActivationBlockSet(uint256 activationBlock);
-
-// 系统控制事件
-event ContractPaused(address indexed account);
-event ContractUnpaused(address indexed account);
-```
-
-### 角色管理事件
-```solidity
-// 角色管理事件
-event MinterRoleGranted(address indexed account, address indexed sender);
-event MinterRoleRevoked(address indexed account, address indexed sender);
-event BurnerRoleGranted(address indexed account, address indexed sender);
-event BurnerRoleRevoked(address indexed account, address indexed sender);
-```
-
-### 白名单管理事件
-```solidity
-// 白名单管理事件
-event MintWhitelistAdded(address indexed account, address indexed sender);
-event MintWhitelistRemoved(address indexed account, address indexed sender);
-event BurnWhitelistAdded(address indexed account, address indexed sender);
-event BurnWhitelistRemoved(address indexed account, address indexed sender);
-```
-
-### 代币操作事件
-```solidity
-// 代币操作事件
-event TokenMinted(address indexed to, uint256 amount, address indexed minter);
-event TokenBurned(address indexed from, uint256 amount, address indexed burner);
-
-```
+- `Initialized(address indexed owner, address indexed admin, uint256 activationBlock)`
+- `ActivationBlockSet(uint256 activationBlock)`
+- `ContractPaused(address indexed account)`
+- `ContractUnpaused(address indexed account)`
+- `AdminRoleTransferred(address indexed oldAdmin, address indexed newAdmin)`
 
 ### OpenZeppelin 标准事件
-```solidity
-// OpenZeppelin 标准事件
-event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);
-event Paused(address account);
-event Unpaused(address account);
-event RoleGranted(bytes32 indexed role, address indexed account, address indexed sender);
-event RoleRevoked(bytes32 indexed role, address indexed account, address indexed sender);
-```
+- `OwnershipTransferred(address indexed previousOwner, address indexed newOwner)` *(OwnableUpgradeable)*
+- `Paused(address account)` *(PausableUpgradeable)*
+- `Unpaused(address account)` *(PausableUpgradeable)*
+- `RoleGranted(bytes32 indexed role, address indexed account, address indexed sender)` *(AccessControlEnumerableUpgradeable)*
+- `RoleRevoked(bytes32 indexed role, address indexed account, address indexed sender)` *(AccessControlEnumerableUpgradeable)*
 
----
+### 角色管理事件
+- `MinterRoleGranted(address indexed account, address indexed sender)`
+- `MinterRoleRevoked(address indexed account, address indexed sender)`
+- `BurnerRoleGranted(address indexed account, address indexed sender)`
+- `BurnerRoleRevoked(address indexed account, address indexed sender)`
 
-## 🛡️ 访问控制修饰符
+### 白名单管理事件
+- `MintWhitelistAdded(address indexed account, address indexed sender)`
+- `MintWhitelistRemoved(address indexed account, address indexed sender)`
 
-- **`onlyOwner`**: 仅Owner可调用
-- **`onlyRole(ADMIN_ROLE)`**: 仅Admin角色可调用
-- **`onlyRole(MINTER_ROLE)`**: 仅Minter角色可调用
-- **`onlyRole(BURNER_ROLE)`**: 仅Burner角色可调用
-- **`onlyActive`**: 合约必须已激活
-- **`whenNotPaused`**: 合约必须未暂停
-- **`onlyWithPrecompile`**: Precompile必须可用
-- **`nonReentrant`**: 重入保护
-- **`onlyMintWhitelisted(address)`**: 地址必须在mint白名单
-- **`onlyBurnWhitelisted(address)`**: 地址必须在burn白名单
-
----
-
-## 🚨 错误处理
-
-### 常见错误信息
-
-- `"OwnableUnauthorizedAccount"` - 非Owner调用仅Owner函数
-- `"AccessControlUnauthorizedAccount"` - 账户缺少必要角色
-- `"Token Manager is not active"` - 合约未激活
-- `"EnforcedPause"` - 合约已暂停
-- `"Precompile is not available"` - Precompile不可用
-- `"Cannot mint to zero address"` - 铸造到零地址
-- `"Cannot burn from zero address"` - 从零地址销毁
-- `"Amount must be greater than zero"` - 数量必须大于0
-- `"Address is not in mint whitelist"` - 地址不在mint白名单
-- `"Address is not in burn whitelist"` - 地址不在burn白名单
-- `"Cannot burn entire balance"` - 不能销毁全部余额
-- `"Address is already in mint whitelist"` - 地址已在mint白名单
-- `"Address is already in burn whitelist"` - 地址已在burn白名单
-- `"Too many recipients"` - 批量操作超过数量限制
-- `"Too many sources"` - 批量操作超过数量限制
-- `"Too many addresses"` - 批量添加白名单超过数量限制
-- `"Array length mismatch"` - 数组长度不匹配
-- `"Empty arrays"` - 数组为空
-- `"ReentrancyGuardReentrantCall"` - 重入攻击
-- `"TokenManager: renounceOwnership is disabled for security"` - 禁用放弃所有权操作
-- `"New owner cannot be zero address"` - 新Owner不能为零地址
-
----
-
-## 📝 使用示例
-
-### 初始化部署
-```bash
-# 1. 部署并初始化
-./scripts/deploy_tokenmanager.sh
-
-# 2. 设置激活区块 (立即激活)
-cast send --private-key $OWNER_KEY --rpc-url $RPC $PROXY_ADDRESS \
-  "setActivationBlock(uint256)" 0 --legacy
-```
-
-### 角色设置和权限管理
-```bash
-# 1. 查询当前Owner
-cast call --rpc-url $RPC $PROXY_ADDRESS "owner()"
-
-# 2. Admin授予Minter角色
-cast send --private-key $ADMIN_KEY --rpc-url $RPC $PROXY_ADDRESS \
-  "grantMinterRole(address)" $MINTER_ADDRESS --legacy
-
-# 3. Admin授予Burner角色  
-cast send --private-key $ADMIN_KEY --rpc-url $RPC $PROXY_ADDRESS \
-  "grantBurnerRole(address)" $BURNER_ADDRESS --legacy
-
-# 4. 查询角色数量
-cast call --rpc-url $RPC $PROXY_ADDRESS "getMinterRoleCount()"
-cast call --rpc-url $RPC $PROXY_ADDRESS "getBurnerRoleCount()"
-
-# 5. 分页查询角色成员
-cast call --rpc-url $RPC $PROXY_ADDRESS "getMintersPaginated(uint256,uint256)" 0 10
-cast call --rpc-url $RPC $PROXY_ADDRESS "getBurnersPaginated(uint256,uint256)" 0 10
-
-# 7. 检查角色权限
-# ADMIN_ROLE = 0x0000000000000000000000000000000000000000000000000000000000000000
-cast call --rpc-url $RPC $PROXY_ADDRESS \
-  "hasRole(bytes32,address)" 0x0000000000000000000000000000000000000000000000000000000000000000 $ADDRESS
-
-# 8. 撤销角色 (如果需要)
-cast send --private-key $ADMIN_KEY --rpc-url $RPC $PROXY_ADDRESS \
-  "revokeMinterRole(address)" $OLD_MINTER_ADDRESS --legacy
-
-# 9. 转移Admin权限 (如果需要)
-cast send --private-key $ADMIN_KEY --rpc-url $RPC $PROXY_ADDRESS \
-  "transferAdminRole(address)" $NEW_ADMIN_ADDRESS --legacy
-
-# 10. 安全转移所有权 (Owner和Admin分离)
-cast send --private-key $OWNER_KEY --rpc-url $RPC $PROXY_ADDRESS \
-  "transferOwnership(address)" $NEW_OWNER_ADDRESS --legacy
-
-# ❌ 禁用操作 - 会失败
-cast send --private-key $OWNER_KEY --rpc-url $RPC $PROXY_ADDRESS \
-  "renounceOwnership()" --legacy
-# Error: TokenManager: renounceOwnership is disabled for security
-```
-
-### 白名单管理
-```bash
-# 单个添加mint白名单
-cast send --private-key $ADMIN_KEY --rpc-url $RPC $PROXY_ADDRESS \
-  "addMintWhitelist(address)" $ADDRESS --legacy
-
-# 注意: burn白名单已硬编码，无法动态修改
-
-# 分页查询白名单 (最多返回100个)
-cast call --rpc-url $RPC $PROXY_ADDRESS \
-  "getMintWhitelist(uint256,uint256)" 0 50
-
-cast call --rpc-url $RPC $PROXY_ADDRESS \
-  "getBurnWhitelist(uint256,uint256)" 0 50
-
-# 查询白名单数量
-cast call --rpc-url $RPC $PROXY_ADDRESS "getMintWhitelistCount()"
-cast call --rpc-url $RPC $PROXY_ADDRESS "getBurnWhitelistCount()"
-
-# 检查地址权限
-cast call --rpc-url $RPC $PROXY_ADDRESS \
-  "isMintAllowed(address)" $ADDRESS
-
-cast call --rpc-url $RPC $PROXY_ADDRESS \
-  "isBurnAllowed(address)" $ADDRESS
-
-# 移除mint白名单
-cast send --private-key $ADMIN_KEY --rpc-url $RPC $PROXY_ADDRESS \
-  "removeMintWhitelist(address)" $ADDRESS --legacy
-
-# 注意: burn白名单已硬编码，无法移除
-```
-
-### 代币操作 (需要专门角色)
-```bash
-# 1. 首先设置mint白名单 (Admin操作)
-cast send --private-key $ADMIN_KEY --rpc-url $RPC $PROXY_ADDRESS \
-  "addMintWhitelist(address)" $TO_ADDRESS --legacy
-
-# 注意: burn白名单已硬编码，检查是否允许:
-cast call --rpc-url $RPC $PROXY_ADDRESS "isBurnAllowed(address)" $FROM_ADDRESS
-
-# 2. Minter铸造10个代币 (只有Minter可以操作)
-cast send --private-key $MINTER_KEY --rpc-url $RPC $PROXY_ADDRESS \
-  "mint(address,uint256)" $TO_ADDRESS 10000000000000000000 --legacy
-
-# 3. Burner销毁5个代币 (只有Burner可以操作)
-cast send --private-key $BURNER_KEY --rpc-url $RPC $PROXY_ADDRESS \
-  "burn(address,uint256)" $FROM_ADDRESS 5000000000000000000 --legacy
-
-
-
-# ❌ Owner无法直接mint/burn (会失败)
-cast send --private-key $OWNER_KEY --rpc-url $RPC $PROXY_ADDRESS \
-  "mint(address,uint256)" $TO_ADDRESS 1000000000000000000 --legacy
-# Error: AccessControlUnauthorizedAccount: account ... is missing role ...
-```
-
-### 紧急控制
-```bash
-# 暂停合约
-cast send --private-key $OWNER_KEY --rpc-url $RPC $PROXY_ADDRESS \
-  "pause()" --legacy
-
-# 恢复合约
-cast send --private-key $OWNER_KEY --rpc-url $RPC $PROXY_ADDRESS \
-  "unpause()" --legacy
-
-# 查询状态
-cast call --rpc-url $RPC $PROXY_ADDRESS "paused()"
-cast call --rpc-url $RPC $PROXY_ADDRESS "isActive()"
-```
-
-### 权限转移 (重要操作)
-```bash
-# Admin转移权限 (当前Admin执行)
-cast send --private-key $CURRENT_ADMIN_KEY --rpc-url $RPC $PROXY_ADDRESS \
-  "transferAdminRole(address)" $NEW_ADMIN_ADDRESS --legacy
-
-# Owner转移权限 (当前Owner执行)
-cast send --private-key $CURRENT_OWNER_KEY --rpc-url $RPC $PROXY_ADDRESS \
-  "transferOwnership(address)" $NEW_OWNER_ADDRESS --legacy
-
-# 验证权限转移结果
-cast call --rpc-url $RPC $PROXY_ADDRESS "owner()"
-cast call --rpc-url $RPC $PROXY_ADDRESS "getAdmin()"
-cast call --rpc-url $RPC $PROXY_ADDRESS "isAdmin(address)" $NEW_ADMIN_ADDRESS
-```
-
-### 系统诊断
-```bash
-# 查询权限信息
-cast call --rpc-url $RPC $PROXY_ADDRESS "owner()"
-cast call --rpc-url $RPC $PROXY_ADDRESS "getAdmin()"
-cast call --rpc-url $RPC $PROXY_ADDRESS "hasAdmin()"
-
-# 查询版本和常量
-cast call --rpc-url $RPC $PROXY_ADDRESS "VERSION()"
-cast call --rpc-url $RPC $PROXY_ADDRESS "MAX_WHITELIST_RETURN()"
-
-# 查询角色标识符
-cast call --rpc-url $RPC $PROXY_ADDRESS "ADMIN_ROLE()"
-cast call --rpc-url $RPC $PROXY_ADDRESS "MINTER_ROLE()"
-cast call --rpc-url $RPC $PROXY_ADDRESS "BURNER_ROLE()"
-
-# 查询激活状态
-cast call --rpc-url $RPC $PROXY_ADDRESS "activationBlock()"
-cast call --rpc-url $RPC $PROXY_ADDRESS "isActive()"
-```
+### 代币操作事件
+- `TokenMinted(address indexed to, uint256 amount, address indexed minter)`
+- `TokenBurned(address indexed from, uint256 amount, address indexed burner)`
 
 ---
 
 ## ⚠️ 重要注意事项
 
-1. **角色分离**: 严格的角色分离设计，Owner不自动拥有mint/burn权限
-2. **权限管理**: Owner权限非常重要，务必安全保管私钥
-3. **激活机制**: 合约必须先激活才能进行mint/burn操作
-4. **白名单限制**: mint/burn操作都需要地址在相应白名单中
-5. **白名单默认拒绝**: 白名单为空时默认禁止所有操作(安全优先)
-6. **余额保护**: 不能销毁地址的全部余额
-7. **批量限制**: 批量操作最多20个地址，白名单查询最多返回100个
-8. **重入保护**: mint/burn操作都有重入保护
-9. **暂停功能**: 可用于紧急情况下停止所有操作
-10. **升级能力**: 通过代理合约支持未来升级
-11. **所有权安全**: `renounceOwnership()` 已被禁用，防止合约失去管理员
-12. **角色枚举**: 支持查询和枚举所有角色成员
-13. **安全转移**: 转移Owner时自动管理ADMIN_ROLE
+### 安全特性
+1. **Owner和Admin分离**: Owner只负责系统级操作，Admin负责业务操作
+2. **重入保护**: 所有mint/burn操作都有重入保护
+3. **暂停机制**: 紧急情况下可以暂停所有操作
+4. **白名单控制**: 严格的mint/burn白名单控制
+5. **余额保护**: burn操作不能销毁全部余额
 
----
+### 使用限制
+1. **Precompile依赖**: 需要precompile可用才能进行mint/burn操作
+2. **激活检查**: 合约必须激活才能进行操作
+3. **分页限制**: 查询接口有分页限制，防止OOG
+4. **硬编码burn白名单**: burn白名单不可修改，确保安全性
 
-## 🔗 相关文档
+### 错误处理
+- 所有操作都有明确的错误信息
+- 权限检查失败会抛出AccessControlUnauthorizedAccount错误
+- 状态检查失败会抛出相应的错误信息
 
-- [完整设计文档](TokenManager_Complete_Design.md)
-- [部署脚本使用说明](../scripts/deploy_tokenmanager.sh)
-- [OpenZeppelin Contracts 文档](https://docs.openzeppelin.com/contracts/) 
+### OpenZeppelin 标准接口说明
+
+Token Manager 合约基于 OpenZeppelin 标准合约构建，继承了以下标准接口：
+
+#### AccessControlEnumerableUpgradeable 标准接口
+- `hasRole(bytes32, address)` - 检查角色权限
+- `getRoleMember(bytes32, uint256)` - 获取角色成员
+- `getRoleMemberCount(bytes32)` - 获取角色成员数量
+- `getRoleMembersPaginated(bytes32, uint256, uint256)` - 分页获取角色成员
+
+#### OwnableUpgradeable 标准接口
+- `owner()` - 获取合约所有者
+- `transferOwnership(address)` - 转移所有权
+- `renounceOwnership()` - 放弃所有权 (已禁用)
+
+#### PausableUpgradeable 标准接口
+- `paused()` - 检查暂停状态
+- `pause()` - 暂停合约
+- `unpause()` - 恢复合约
+
+#### 标准事件
+- `OwnershipTransferred(address, address)` - 所有权转移事件
+- `Paused(address)` / `Unpaused(address)` - 暂停/恢复事件
+- `RoleGranted(bytes32, address, address)` / `RoleRevoked(bytes32, address, address)` - 角色授予/撤销事件
+
+**重要说明**: 这些标准接口提供了与 OpenZeppelin 生态系统的完全兼容性，开发者可以使用标准的 OpenZeppelin 工具和库来与合约交互。 

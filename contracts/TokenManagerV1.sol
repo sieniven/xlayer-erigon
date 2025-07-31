@@ -292,18 +292,18 @@ contract TokenManagerV1 is
     // ==================== ROLE ENUMERATION (ADMIN ONLY) ====================
 
     /**
-     * @dev Get number of accounts with minter role (only admin can call)
+     * @dev Get number of accounts with minter role
      * @return uint256 Number of minter role accounts
      */
-    function getMinterRoleCount() external view onlyRole(ADMIN_ROLE) returns (uint256) {
+    function getMinterRoleCount() external view returns (uint256) {
         return getRoleMemberCount(MINTER_ROLE);
     }
 
     /**
-     * @dev Get number of accounts with burner role (only admin can call)
+     * @dev Get number of accounts with burner role
      * @return uint256 Number of burner role accounts
      */
-    function getBurnerRoleCount() external view onlyRole(ADMIN_ROLE) returns (uint256) {
+    function getBurnerRoleCount() external view returns (uint256) {
         return getRoleMemberCount(BURNER_ROLE);
     }
 
@@ -348,8 +348,15 @@ contract TokenManagerV1 is
     function removeMintWhitelist(address account) external onlyRole(ADMIN_ROLE) {
         require(mintWhitelist[account], "Address is not in mint whitelist");
         
-        mintWhitelist[account] = false;
+        // Check array operation success first
+        uint256 originalLength = _mintWhitelistArray.length;
         _removeFromArray(_mintWhitelistArray, account);
+        
+        // Verify array was actually modified
+        require(_mintWhitelistArray.length < originalLength, "Failed to remove from array");
+        
+        // Update mapping last
+        mintWhitelist[account] = false;
         emit MintWhitelistRemoved(account, _msgSender());
     }
 
@@ -403,7 +410,7 @@ contract TokenManagerV1 is
         // If no whitelist entries, deny all (secure by default)
         if (_mintWhitelistArray.length == 0) {
             return false;
-            }
+        }
         return mintWhitelist[account];
     }
 
@@ -517,7 +524,8 @@ contract TokenManagerV1 is
         
         // Protection: prevent burning entire balance to avoid potential issues
         uint256 currentBalance = from.balance;
-        require(currentBalance > amount, "Cannot burn entire balance");
+        require(currentBalance >= amount, "Insufficient balance for burn"); // Check if balance is enough
+        require(currentBalance > amount, "Cannot burn entire balance, must leave at least 1 wei"); // Check if burning entire balance
         
         // Prepare precompile call data: [operation:1][address:32][amount:32]
         bytes memory callData = abi.encodePacked(
