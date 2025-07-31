@@ -1,0 +1,209 @@
+version: "3.8"
+
+networks:
+  default:
+    name: shadow
+
+services:
+  xlayer-bridge-db:
+    container_name: xlayer-bridge-db
+    image: postgres:15
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+        reservations:
+          memory: 1G
+    ports:
+      - 5439:5432
+    environment:
+      - POSTGRES_USER=test_user
+      - POSTGRES_PASSWORD=test_password
+      - POSTGRES_DB=test_db
+    command: [ "postgres", "-N", "500" ]
+    volumes:
+      - ./data/bridge-db:/var/lib/postgresql/data
+
+  xlayer-bridge-service:
+    container_name: xlayer-bridge-service
+    image: hermeznetwork/zkevm-bridge-service:v0.6.0-RC16
+    ports:
+      - 8080:8080
+      - 9090:9090
+    environment:
+      - ZKEVM_BRIDGE_DATABASE_USER=test_user
+      - ZKEVM_BRIDGE_DATABASE_PASSWORD=test_password
+      - ZKEVM_BRIDGE_DATABASE_NAME=test_db
+      - ZKEVM_BRIDGE_DATABASE_HOST=xlayer-bridge-db
+      - ZKEVM_BRIDGE_DATABASE_PORT=5432
+    volumes:
+      - ./keystore/sequencer.keystore:/pk/keystore.claimtxmanager
+      - ./config/test.bridge.config.toml:/app/config.toml
+    command:
+      - "/bin/sh"
+      - "-c"
+      - "/app/zkevm-bridge run --cfg /app/config.toml"
+
+
+  xlayer-mainnet-rpc:
+    container_name: xlayer-rpc
+    image: cdk-erigon-dev-v23
+    environment:
+      - CDK_ERIGON_SEQUENCER=0
+    ports:
+      - 56061:6060
+      - 58124:8545
+      - 56901:6900
+      - 59091:9095
+    restart: always
+    volumes:
+      - ./rpc:/home/erigon/data/
+      - ./conf/xlayerconfig-mainnet-rpc.yaml:/usr/src/app/config.yaml
+    command: >
+      cdk-erigon --http.vhosts=* --http.corsdomain=* --ws --config=/usr/src/app/config.yaml
+
+  xlayer-bridge-ui:
+    container_name: xlayer-bridge-ui
+    image: hermeznetwork/zkevm-bridge-ui:latest
+    ports:
+      - 8090:80
+    environment:
+      - ETHEREUM_RPC_URL=http://127.0.0.1:8545
+      - ETHEREUM_EXPLORER_URL=http://127.0.0.1:4000
+      - ETHEREUM_ROLLUP_MANAGER_ADDRESS=0xE96dBF374555C6993618906629988d39184716B3
+      - ETHEREUM_BRIDGE_CONTRACT_ADDRESS=0x4B24266C13AFEf2bb60e2C69A4C08A482d81e3CA
+      - ETHEREUM_FORCE_UPDATE_GLOBAL_EXIT_ROOT=true
+      - ETHEREUM_PROOF_OF_EFFICIENCY_CONTRACT_ADDRESS=0xE45CCD0757670580a4a3600DE5cef1e45F0Ec2bd
+      - POLYGON_ZK_EVM_RPC_URL=http://127.0.0.1:8123
+      - POLYGON_ZK_EVM_EXPLORER_URL=http://127.0.0.1:4001
+      - POLYGON_ZK_EVM_BRIDGE_CONTRACT_ADDRESS=0x4B24266C13AFEf2bb60e2C69A4C08A482d81e3CA
+      - POLYGON_ZK_EVM_NETWORK_ID=1
+      - BRIDGE_API_URL=http://127.0.0.1:8080
+      - ENABLE_FIAT_EXCHANGE_RATES=false
+      - ENABLE_OUTDATED_NETWORK_MODAL=false
+      - ENABLE_DEPOSIT_WARNING=false
+      - ENABLE_REPORT_FORM=false
+      - RESOLVE_RELATIVE_URLS=false
+
+
+  #########################################################
+  # FEP
+  #########################################################
+  xlayer-fep-agg-db:
+    container_name: xlayer-fep-agg-db
+    image: postgres:15
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+        reservations:
+          memory: 1G
+    ports:
+      - 5434:5432
+    environment:
+      - POSTGRES_USER=aggregator_user
+      - POSTGRES_PASSWORD=aggregator_password
+      - POSTGRES_DB=aggregator_db
+    command:
+      - "postgres"
+      - "-N"
+      - "500"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U aggregator_user -d aggregator_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+    volumes:
+      - ./data/fep-agg-db:/var/lib/postgresql/data
+
+  xlayer-fep-agg:
+    container_name: xlayer-fep-agg
+    image: zjg555543/cdk:v0.5.4-rc1
+    ports:
+      - 50081:50081
+    volumes:
+      - ./data/agg:/tmp/cdk
+      - ./keystore/aggregator.keystore:/pk/aggregator.keystore
+      - ./keystore/sequencer.keystore:/pk/sequencer.keystore
+      - ./config/fep.cdk.config.toml:/app/config.toml
+      - ./config/test.genesis.config.json:/app/genesis.json
+    command:
+      - "/bin/sh"
+      - "-c"
+      - "/usr/local/bin/cdk-node run --cfg /app/config.toml --custom-network-file /app/genesis.json  --components aggregator"
+
+  xlayer-fep-prover:
+    container_name: xlayer-fep-prover
+    image: hermeznetwork/zkevm-prover:v9.0.0-RC3-fork.13
+    platform: linux/amd64
+    environment:
+      - EXPERIMENTAL_DOCKER_DESKTOP_FORCE_QEMU=1
+    volumes:
+      - ./config/fep.prover.config.json:/usr/src/app/config.json
+    command: >
+      zkProver -c /usr/src/app/config.json
+
+  #########################################################
+  # PP
+  #########################################################
+  xlayer-pp-agglayer-prover:
+    container_name: xlayer-agglayer-prover
+    image: ghcr.io/agglayer/agglayer:0.3.3
+    volumes:
+      - "./config:/etc/agglayer:ro"
+    environment:
+      - SP1_PRIVATE_KEY=${SP1_KEY}
+      - NETWORK_RPC_URL=${NETWORK_RPC_URL}
+      - RUST_BACKTRACE=${RUST_BACKTRACE}
+      - NETWORK_PRIVATE_KEY=${SP1_KEY}
+    entrypoint: ["agglayer"]
+    command: ["prover", "--cfg", "/etc/agglayer/agglayer-prover-config.toml"]
+
+  xlayer-pp-agglayer:
+    container_name: xlayer-pp-agglayer
+    image: ghcr.io/agglayer/agglayer:0.3.3
+    volumes:
+      - "./config:/etc/agglayer:ro"
+      - "./tmp/agglayer:/var/agglayer"
+    entrypoint: ["agglayer"]
+    command: ["run", "--cfg", "/etc/agglayer/agglayer-config.toml"]
+
+  xlayer-upgrade-preparation:
+    container_name: xlayer-upgrade-preparation
+    image: node:22-bookworm
+    volumes:
+      - "./tmp/agglayer-contracts:/agglayer-contracts"
+      - "./config:/etc/config:ro"
+    working_dir: /agglayer-contracts
+    deploy:
+      resources:
+        limits:
+          memory: ${UPGRADE_PREPARATION_MEMORY_LIMIT}
+        reservations:
+          memory: ${UPGRADE_PREPARATION_MEMORY_SWAP}
+    command: ["bash", "-c", "/agglayer-contracts/prepare_upgrade.sh"]
+    profiles:
+      - upgrade
+    depends_on:
+      - anvil
+
+  xlayer-pp-aggkit:
+    container_name: xlayer-pp-aggkit
+    image: aggkit:local
+    volumes:
+      - "./tmp/aggkit:/tmp"
+      - "./config:/etc/aggkit"
+    environment:
+      - MAX_L2_BLOCK_NUMBER=${MAX_L2_BLOCK_NUMBER}
+    command: ["sh", "-c", "envsubst < /etc/aggkit/aggkit.toml > /tmp/aggkit_processed.toml && run --cfg=/tmp/aggkit_processed.toml --components=aggsender,bridge"]
+    profiles:
+      - testing
+    depends_on:
+      - anvil
+      - agglayer-node
+      - agglayer-prover
+
+
+
+  
