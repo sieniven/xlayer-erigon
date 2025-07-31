@@ -501,7 +501,7 @@ services:
     command:
       - /app/op-node/bin/op-node
       - --log.level=debug
-      - --l2=http://op-geth-rpc:8545
+      - --l2=http://op-geth-rpc:8552
       - --l2.jwt-secret=/jwt.txt
       - --verifier.l1-confs=4
       - --rollup.config=/rollup.json
