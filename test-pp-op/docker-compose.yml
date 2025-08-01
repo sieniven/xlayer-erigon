@@ -459,7 +459,8 @@ services:
       - --authrpc.addr=0.0.0.0
       - --authrpc.port=8552
       - --authrpc.jwtsecret=/jwt.txt
-      - --rollup.sequencerhttp=http://op-seq:9545
+      - --rollup.sequencerhttp=http://op-geth-seq:8545
+      - --rollup.enabletxpooladmission
 
   op-seq:
     image: "${OP_STACK_IMAGE_TAG}"
@@ -498,6 +499,9 @@ services:
       - ./config-op/rollup.json:/rollup.json
       - ./config-op/jwt.txt:/jwt.txt
       - ./data/op-rpc:/data
+    ports:
+      - "9546:9545"
+      - "7071:7070"
     command:
       - /app/op-node/bin/op-node
       - --log.level=debug

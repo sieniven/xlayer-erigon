@@ -149,7 +149,7 @@ add_game_type_via_transactor() {
       "
 }
 
-docker compose up -d op-batcher
+docker compose up -d op-batcher op-rpc
 
 sleep 10
 # TODO, we need to reseach and fix it,  0 block hash mismatch
@@ -159,7 +159,7 @@ if echo "$LOG_OUTPUT" | grep -q "expected L2 genesis hash to match L2 block at g
     if [ -n "$CORRECT_HASH" ]; then
         echo "Fixing genesis hash: $CORRECT_HASH"
         sed_inplace '/\"l2\":/,/}/ s/\"hash\": \"0x[a-fA-F0-9]*\"/\"hash\": \"'$CORRECT_HASH'\"/' ./config-op/rollup.json
-        docker compose restart op-seq
+        docker compose restart op-seq op-rpc
     fi
 fi
 
@@ -316,4 +316,4 @@ docker run --rm \
 export GAME_TYPE=0
 
 sleep $TEMP_GAME_WINDOW
-docker compose up -d op-proposer op-challenger op-dispute-mon op-rpc
+docker compose up -d op-proposer op-challenger op-dispute-mon
