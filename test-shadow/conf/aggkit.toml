@@ -1,126 +1,80 @@
-PathRWData = "/tmp/"
-L1URL="https://rpc.ankr.com/eth/578c95407e7831f0ac1ef79cacae294dc9bf8307121ca9fffaf1e556a5cca662"
+[Log]
+Environment = "production"
+Level = "debug"
 
-L2URL="https://xlayerrpc.okx.com/unlimited/abc"
+[NetworkConfig.L1]
+URL = "http://anvil:8545"
+ChainID = 1
+ZkEVMAddr = "0x2B0ee28D4D51bC9aDde5E58E295873F61F4a0507"
+RollupManagerAddr = "0x5132a183e9f3cb7c848b0aac5ae0c4f0491b7ab2"
+POLTokenAddr = "0x455e53CBB86018Ac2B8092FdCd39d8444aFFC3F6"
+GlobalExitRootManagerAddr = "0x580bda1e7A0CFAe92Fa7F6c20A3794F169CE3CFb"
 
-AggLayerURL="agglayer-node:4443"
+[Etherman]
+URL = "http://anvil:8545"
+ForkIDChunkSize = 0
+[Etherman.EthermanConfig]
+URL = "http://anvil:8545"
+MultiGasProvider = false
+L1ChainID = 1
 
-ForkId = 13
+[Common]
+NetworkID = 3
 ContractVersions = "banana"
 IsValidiumMode = true
-NetworkID = 1
-
-L2Coinbase =  "0x8Ad44b2b5368a3043901ee373dC6D400c6A2e83F"
-SequencerPrivateKeyPath = ""
-SequencerPrivateKeyPassword  = ""
-
-AggregatorPrivateKeyPath = ""
-AggregatorPrivateKeyPassword  = ""
-SenderProofToL1Addr = "0x70997970c51812dc3a010c7d01b50e0d17dc79c8"
-polygonBridgeAddr = "0x2a3DD3EB832aF982ec71669E178424b10Dca2EDe"
-
-RPCURL = "https://xlayerrpc.okx.com/unlimited/abc"
-
-WitnessURL = ""
-
-rollupCreationBlockNumber = "19545462"
-rollupManagerCreationBlockNumber = "16896721"
-genesisBlockNumber = "16896721"
-[L1Config]
-chainId = "1"
-polygonZkEVMGlobalExitRootAddress = "0x580bda1e7A0CFAe92Fa7F6c20A3794F169CE3CFb"
-polygonRollupManagerAddress = "0x5132a183e9f3cb7c848b0aac5ae0c4f0491b7ab2"
-polTokenAddress = "0x455e53CBB86018Ac2B8092FdCd39d8444aFFC3F6"
-polygonZkEVMAddress = "0x2B0ee28D4D51bC9aDde5E58E295873F61F4a0507"
-
-[L2Config]
-GlobalExitRootAddr = "0xa40d5f56745a118d0906a34e69aec8c0db1cb8fa"
-
-[Log]
-Environment = "development"
-Level = "debug"
-Outputs = ["stderr"]
-
-[RPC]
-Port = 5576
+[Common.L2RPC]
+URL = "https://xlayerrpc.okx.com/unlimited/abc"
+Mode = "basic"
 
 [AggSender]
-StoragePath = "/tmp/aggsender.sqlite"
-AggsenderPrivateKey = {Path = "/etc/aggkit/sequencer.keystore", Password = "randompassword"}
-CheckStatusCertificateInterval = "1s"
-Mode="PessimisticProof"
-UseAgglayerTLS = false
+KeepCertificatesHistory = true
 MaxCertSize = 0
-DryRun = true
 MaxL2BlockNumber = 17425494
 StopOnFinishedSendingAllCertificates = true
+DryRun = false
 
-[AggSender.MaxSubmitCertificateRate]
-NumRequests = 20
-Interval = "1m"
-BlockFinality = "LatestBlock"
-SaveCertificatesToFilesPath = "/tmp/certificates"
-KeepCertificatesHistory = true
-[AggOracle]
+AggsenderPrivateKey = {Path = "/etc/aggkit/sequencer.keystore", Password = "randompassword"}
+
+AggLayerURL = "agglayer-node:4443" 
+UseAgglayerTLS = false
+StoragePath = "/tmp/aggsender.sqlite"
 BlockFinality = "FinalizedBlock"
-WaitPeriodNextGER = "10s"
+EpochNotificationPercentage = 0
+MaxRetriesStoreCertificate = 0 # 0 means infinitie
+EnableRPC = false
+Mode = "PessimisticProof"
+CheckStatusCertificateInterval = "1s"
+MaxSubmitCertificateRate = { NumRequests = 20, Interval = "10m" }
+GlobalExitRootL2Addr = "0xa40d5f56745a118d0906a34e69aec8c0db1cb8fa"
+RequireNoFEPBlockGap = false
 
-[AggOracle.EVMSender]
-GlobalExitRootL2 = "0xa40d5f56745a118d0906a34e69aec8c0db1cb8fa"
-WaitPeriodMonitorTx = "10s"
+[ReorgDetectorL1] # needed by L1InfoTreeSync
+DBPath = "/tmp/reorgdetectorl1.sqlite" 
+CheckReorgsInterval = "30s"
+FinalizedBlock = "FinalizedBlock"
 
-[AggOracle.EVMSender.EthTxManager]
-PrivateKeys = [{Path = "/etc/aggkit/aggoracle.keystore", Password = ""}]
-[AggOracle.EVMSender.EthTxManager.Etherman]
-L1ChainID = "1"
-
-[BridgeL1Sync]
-BlockFinality = "LatestBlock"
-
-[BridgeL2Sync]
-BridgeAddr = "0x2a3DD3EB832aF982ec71669E178424b10Dca2EDe"
-
-DBPath = "/tmp/bridgel2sync.sqlite"
-BlockFinality = "FinalizedBlock"
-
-SyncBlockChunkSize = 1000
-
-[ReorgDetectorL1]
-DBPath = "/tmp/reorgdetectorl1.sqlite"
-FinalizedBlock="FinalizedBlock"
-
-[ReorgDetectorL2]
+[ReorgDetectorL2] # needed by BridgeL2Sync
 DBPath = "/tmp/reorgdetectorl2.sqlite"
-FinalizedBlock="FinalizedBlock"
+CheckReorgsInterval = "30s"
+FinalizedBlock = "FinalizedBlock"
 
 [L1InfoTreeSync]
-InitialBlock = "16896721"
-BlockFinality = "LatestBlock"
+DBPath = "/tmp/L1InfoTreeSync.sqlite"
+GlobalExitRootAddr = "0x580bda1e7A0CFAe92Fa7F6c20A3794F169CE3CFb"
+RollupManagerAddr = "0x5132a183e9f3cb7c848b0aac5ae0c4f0491b7ab2"
+BlockFinality = "FinalizedBlock"
+URLRPCL1 = "http://anvil:8545"
+InitialBlock = 16896721
 
-[LastGERSync]
-BlockFinality = "LatestBlock"
+[BridgeL2Sync]
+DBPath = "/tmp/BridgeL2Sync.sqlite" 
+BlockFinality = "FinalizedBlock"
+InitialBlockNum = 0
+BridgeAddr = "0x2a3DD3EB832aF982ec71669E178424b10Dca2EDe"
+SyncBlockChunkSize = 1000
 
-[ClaimSponsor]
-DBPath = "/tmp/claimsponsor.sqlite"
-Enabled = false
-
-SenderAddr = "0x5f5dB0D4D58310F53713eF4Df80ba6717868A9f8"
-
-BridgeAddrL2 = "0x2a3DD3EB832aF982ec71669E178424b10Dca2EDe"
-
-[ClaimSponsor.EthTxManager]
-PrivateKeys = [
-    {Path = "/etc/aggkit/claimtxmanager.keystore", Password = ""},
-]
-
-StoragePath = ""
-
-[ClaimSponsor.EthTxManager.Etherman]
-URL = ""
-
-L1ChainID = "195"
-
-[Profiling]
-ProfilingHost = "0.0.0.0"
-
-ProfilingPort = 6060
+[SqliteAPI]
+Enabled = true
+Host = "0.0.0.0"
+Port = 7001
+MaxRequestsPerIPAndSecond = 10
