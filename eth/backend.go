@@ -137,6 +137,7 @@ import (
 	"github.com/ledgerwatch/erigon/zk/realtime"
 	realtimeCache "github.com/ledgerwatch/erigon/zk/realtime/cache"
 	realtimeKafka "github.com/ledgerwatch/erigon/zk/realtime/kafka"
+	kafkaTypes "github.com/ledgerwatch/erigon/zk/realtime/kafka/types"
 	"github.com/ledgerwatch/erigon/zk/realtime/realtimeapi"
 	realtimeSub "github.com/ledgerwatch/erigon/zk/realtime/subscription"
 	realtimeTypes "github.com/ledgerwatch/erigon/zk/realtime/types"
@@ -260,8 +261,8 @@ type Ethereum struct {
 	kafkaProducer *realtimeKafka.KafkaProducer
 	kafkaConsumer *realtimeKafka.KafkaConsumer
 	realtimeCache *realtimeCache.RealtimeCache
-	blockInfoChan chan *realtimeTypes.BlockInfo
-	txInfoChan    chan *state.TxInfo
+	blockInfoChan chan kafkaTypes.BlockMessage
+	txInfoChan    chan state.TxInfo
 	finishChan    chan realtimeTypes.FinishedEntry
 	realtimeSub   *realtimeSub.RealtimeSubscription
 }
@@ -1242,8 +1243,8 @@ func New(ctx context.Context, stack *node.Node, config *ethconfig.Config, logger
 				} else {
 					backend.kafkaEnabled = true
 					backend.kafkaProducer = kafkaProducer
-					backend.blockInfoChan = make(chan *realtimeTypes.BlockInfo, realtimeKafka.DefaultKafkaBufferSize)
-					backend.txInfoChan = make(chan *state.TxInfo, realtimeKafka.DefaultKafkaBufferSize)
+					backend.blockInfoChan = make(chan kafkaTypes.BlockMessage, realtimeKafka.DefaultKafkaBufferSize)
+					backend.txInfoChan = make(chan state.TxInfo, realtimeKafka.DefaultKafkaBufferSize)
 
 					// Send error trigger message on sequencer restart
 					if err := backend.kafkaProducer.SendKafkaErrorTrigger(0); err != nil {

@@ -19,6 +19,7 @@ import (
 	"github.com/ledgerwatch/erigon/zk/datastream/server"
 	"github.com/ledgerwatch/erigon/zk/l1infotree"
 	realtimeCache "github.com/ledgerwatch/erigon/zk/realtime/cache"
+	kafkaTypes "github.com/ledgerwatch/erigon/zk/realtime/kafka/types"
 	realtimeTypes "github.com/ledgerwatch/erigon/zk/realtime/types"
 	zkStages "github.com/ledgerwatch/erigon/zk/stages"
 	"github.com/ledgerwatch/erigon/zk/syncer"
@@ -116,8 +117,8 @@ func NewSequencerZkStages(ctx context.Context,
 	txPoolDb kv.RwDB,
 	infoTreeUpdater *l1infotree.Updater,
 	hook *Hook,
-	kafkaBlockInfoChan chan *realtimeTypes.BlockInfo,
-	kafkaTxInfoChan chan *state2.TxInfo,
+	kafkaBlockInfoChan chan kafkaTypes.BlockMessage,
+	kafkaTxInfoChan chan state2.TxInfo,
 ) []*stagedsync.Stage {
 	dirs := cfg.Dirs
 	blockReader := freezeblocks.NewBlockReader(snapshots, nil)
