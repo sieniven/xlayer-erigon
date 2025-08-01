@@ -60,6 +60,32 @@ echo ""
 echo "🔬 步骤 1: Operator角色管理测试"
 echo "----------------------------------------"
 
+echo "ℹ️  检查当前Admin并清除现有Operator..."
+# 检查当前Admin是谁
+CURRENT_ADMIN_RESULT=$(cast call --rpc-url "$RPC_URL" "$PROXY_ADDRESS" "getAdmin()")
+CURRENT_ADMIN_ADDR="0x${CURRENT_ADMIN_RESULT:26}"
+CURRENT_ADMIN_ADDR=$(cast to-check-sum-address "$CURRENT_ADMIN_ADDR")
+
+# 确定使用哪个Admin私钥
+if [ "$CURRENT_ADMIN_ADDR" = "$(cast to-check-sum-address "$ADMIN")" ]; then
+    ACTIVE_ADMIN_KEY="$ADMIN_PRIVATE_KEY"
+    echo "  当前Admin: $ADMIN (使用ADMIN私钥)"
+elif [ "$CURRENT_ADMIN_ADDR" = "$(cast to-check-sum-address "$NEW_ADMIN")" ]; then
+    ACTIVE_ADMIN_KEY="$NEW_ADMIN_PRIVATE_KEY"
+    echo "  当前Admin: $NEW_ADMIN (使用NEW_ADMIN私钥)"
+    # 先转回原来的Admin以便测试
+    cast send --private-key "$NEW_ADMIN_PRIVATE_KEY" --rpc-url "$RPC_URL" --legacy \
+        "$PROXY_ADDRESS" "transferAdminRole(address)" "$ADMIN" >/dev/null 2>&1
+    ACTIVE_ADMIN_KEY="$ADMIN_PRIVATE_KEY"
+    echo "  已转回原Admin: $ADMIN"
+else
+    echo "❌ 未识别的Admin地址: $CURRENT_ADMIN_ADDR"
+    exit 1
+fi
+
+cast send --private-key "$ACTIVE_ADMIN_KEY" --rpc-url "$RPC_URL" --legacy \
+    "$PROXY_ADDRESS" "removeOperator()" >/dev/null 2>&1
+
 echo "ℹ️  设置Operator..."
 cast send --private-key "$ADMIN_PRIVATE_KEY" --rpc-url "$RPC_URL" --legacy \
     "$PROXY_ADDRESS" "setOperator(address)" "$OPERATOR" >/dev/null 2>&1
@@ -296,12 +322,30 @@ if [ "$CURRENT_ADMIN" != "$NEW_ADMIN_CHECKSUM" ]; then
     exit 1
 fi
 
-# 验证权限转移
+# 验证权限转移：测试旧admin失去权限，新admin获得权限
+# 先获取当前operator，然后使用不同的地址进行测试
+CURRENT_OP_RESULT=$(cast call --rpc-url "$RPC_URL" "$PROXY_ADDRESS" "getCurrentOperator()")
+CURRENT_OP="0x${CURRENT_OP_RESULT:26}"
+CURRENT_OP=$(cast to-check-sum-address "$CURRENT_OP")
+
+# 选择一个不同的测试地址（确保不是当前operator）
+if [ "$CURRENT_OP" = "$(cast to-check-sum-address "$OWNER")" ]; then
+    TEST_OP_ADDRESS="$NEW_OWNER"
+else
+    TEST_OP_ADDRESS="$OWNER"
+fi
+
+# 测试旧admin权限失效
 if ! cast send --private-key "$ADMIN_PRIVATE_KEY" --rpc-url "$RPC_URL" --legacy \
-    "$PROXY_ADDRESS" "setOperator(address)" "$OPERATOR" >/dev/null 2>&1; then
+    "$PROXY_ADDRESS" "setOperator(address)" "$TEST_OP_ADDRESS" >/dev/null 2>&1; then
+    # 测试新admin权限生效
     if cast send --private-key "$NEW_ADMIN_PRIVATE_KEY" --rpc-url "$RPC_URL" --legacy \
-        "$PROXY_ADDRESS" "setOperator(address)" "$OPERATOR" >/dev/null 2>&1; then
+        "$PROXY_ADDRESS" "setOperator(address)" "$TEST_OP_ADDRESS" >/dev/null 2>&1; then
         echo "✅ 管理员角色转移成功"
+        
+        # 恢复原来的operator
+        cast send --private-key "$NEW_ADMIN_PRIVATE_KEY" --rpc-url "$RPC_URL" --legacy \
+            "$PROXY_ADDRESS" "setOperator(address)" "$CURRENT_OP" >/dev/null 2>&1
     else
         echo "❌ 新管理员权限未生效"
         exit 1
