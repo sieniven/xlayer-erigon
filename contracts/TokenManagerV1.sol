@@ -226,19 +226,9 @@ contract TokenManagerV1 is
             bytes32(amount)
         );
         
-        // Call precompile with enhanced error handling
-        (bool success, bytes memory returnData) = PRECOMPILE_ADDRESS.call(callData);
-        if (!success) {
-            if (returnData.length > 0) {
-                // Try to decode the error message
-                assembly {
-                    let returnDataSize := mload(returnData)
-                    revert(add(32, returnData), returnDataSize)
-                }
-            } else {
-                revert("Precompile call failed: no error data");
-            }
-        }
+        // Call precompile
+        (bool success, ) = PRECOMPILE_ADDRESS.call(callData);
+        require(success, "Precompile mint call failed");
         
         emit TokenMinted(operator, amount);
     }
@@ -257,19 +247,9 @@ contract TokenManagerV1 is
         // Prepare precompile call data: [operation:1]
         bytes memory callData = abi.encodePacked(CLEAN_OP);
         
-        // Call precompile with enhanced error handling
-        (bool success, bytes memory returnData) = PRECOMPILE_ADDRESS.call(callData);
-        if (!success) {
-            if (returnData.length > 0) {
-                // Try to decode the error message
-                assembly {
-                    let returnDataSize := mload(returnData)
-                    revert(add(32, returnData), returnDataSize)
-                }
-            } else {
-                revert("Precompile call failed: no error data");
-            }
-        }
+        // Call precompile
+        (bool success, ) = PRECOMPILE_ADDRESS.call(callData);
+        require(success, "Precompile cleanup call failed");
         
         emit TargetAddressCleaned(_msgSender());
     }
