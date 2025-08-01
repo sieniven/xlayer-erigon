@@ -29,4 +29,4 @@ http.port: 8545
 
 zkevm.increment-tree-always: true
 
-debug.limit: 17428134
+debug.limit: 17425494
