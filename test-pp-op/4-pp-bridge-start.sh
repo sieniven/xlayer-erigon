@@ -60,12 +60,12 @@ cast call --rpc-url "$L2_RPC_URL" $GER_MANAGER_ADDRESS 'GER_SOVEREIGN_VERSION()(
 
 cd $PWD_DIR
 
-sed_inplace 's/http:\/\/xlayer-rpc:8545/http:\/\/op-geth:8545/' config/agglayer-config.toml
-sed_inplace 's/http:\/\/xlayer-rpc:8545/http:\/\/op-geth:8545/' config/aggkit.toml
+sed_inplace 's/http:\/\/xlayer-rpc:8545/http:\/\/op-geth-rpc:8545/' config/agglayer-config.toml
+sed_inplace 's/http:\/\/xlayer-rpc:8545/http:\/\/op-geth-rpc:8545/' config/aggkit.toml
 sed_inplace '/\[BridgeL2Sync\]/a\
 InitialBlockNum = '$FORK_BLOCK'
 ' config/aggkit.toml
-sed_inplace 's/http:\/\/xlayer-rpc:8545/http:\/\/op-geth:8545/' config/test.bridge.config.toml
+sed_inplace 's/http:\/\/xlayer-rpc:8545/http:\/\/op-geth-rpc:8545/' config/test.bridge.config.toml
 sed_inplace 's/RequireSovereignChainSmcs = \[false\]/RequireSovereignChainSmcs = \[true\]/' config/test.bridge.config.toml
 sed_inplace '/\[NetworkConfig\]/a\
 L2GenBlockNumber = '$FORK_BLOCK'
