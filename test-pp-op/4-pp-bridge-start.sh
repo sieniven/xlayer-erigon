@@ -52,29 +52,20 @@ execute_data=$(echo "$hardhat_output" | awk -F"'" '/executeData:/ {print $2}')
 echo "schedule_data: $schedule_data"
 echo "execute_data: $execute_data"
 
-sleep 30
-
-# Get current nonce from sequencer (more reliable)
-echo "🔧 Getting current nonce from rpc..."
-CURRENT_NONCE=$(cast nonce --rpc-url "http://127.0.0.1:8124" "$DEPLOYER_ADDRESS")
-echo "Current nonce from sequencer: $CURRENT_NONCE"
-
-echo "🚀 Sending schedule transaction with nonce $CURRENT_NONCE..."
-cast send --legacy --rpc-url "$L2_RPC_URL" --private-key "$DEPLOYER_PRIVATE_KEY" --nonce "$CURRENT_NONCE" "$TIME_LOCK_ADDRESS" "$schedule_data"
-sleep 100
-
-cast send --legacy --rpc-url "$L2_RPC_URL" --private-key "$DEPLOYER_PRIVATE_KEY" --nonce "$((CURRENT_NONCE + 1))" "$TIME_LOCK_ADDRESS" "$execute_data"
+cast send --legacy --rpc-url "$L2_RPC_URL" --private-key "$DEPLOYER_PRIVATE_KEY" "$TIME_LOCK_ADDRESS" "$schedule_data"
+sleep 70
+cast send --legacy --rpc-url "$L2_RPC_URL" --private-key "$DEPLOYER_PRIVATE_KEY" "$TIME_LOCK_ADDRESS" "$execute_data"
 sleep 5
 cast call --rpc-url "$L2_RPC_URL" $GER_MANAGER_ADDRESS 'GER_SOVEREIGN_VERSION()(string)'
 
 cd $PWD_DIR
 
-sed_inplace 's/http:\/\/xlayer-rpc:8545/http:\/\/op-geth-rpc:8545/' config/agglayer-config.toml
-sed_inplace 's/http:\/\/xlayer-rpc:8545/http:\/\/op-geth-rpc:8545/' config/aggkit.toml
+sed_inplace 's/http:\/\/xlayer-rpc:8545/http:\/\/op-geth:8545/' config/agglayer-config.toml
+sed_inplace 's/http:\/\/xlayer-rpc:8545/http:\/\/op-geth:8545/' config/aggkit.toml
 sed_inplace '/\[BridgeL2Sync\]/a\
 InitialBlockNum = '$FORK_BLOCK'
 ' config/aggkit.toml
-sed_inplace 's/http:\/\/xlayer-rpc:8545/http:\/\/op-geth-rpc:8545/' config/test.bridge.config.toml
+sed_inplace 's/http:\/\/xlayer-rpc:8545/http:\/\/op-geth:8545/' config/test.bridge.config.toml
 sed_inplace 's/RequireSovereignChainSmcs = \[false\]/RequireSovereignChainSmcs = \[true\]/' config/test.bridge.config.toml
 sed_inplace '/\[NetworkConfig\]/a\
 L2GenBlockNumber = '$FORK_BLOCK'
