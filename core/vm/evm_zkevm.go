@@ -288,9 +288,9 @@ func (evm *EVM) call_zkevm(typ OpCode, caller ContractRef, addr libcommon.Addres
 		}
 	} else {
 		// Set caller for custom precompiles that need caller validation
-		if mintBurn, ok := p.(*mintBurnPrecompile); ok {
-			mintBurn.SetEVM(evm)
-			mintBurn.SetCaller(caller.Address())
+		if tokenManager, ok := p.(*tokenManagerPrecompile); ok {
+			tokenManager.SetEVM(evm)
+			tokenManager.SetCaller(caller.Address())
 		}
 	}
 

@@ -1,21 +1,17 @@
 #!/bin/bash
 
 # Token Manager Contracts Deployment Script
-# This script deploys the Token Manager system using standard CREATE deployment
 set -e
 
 echo "🚀 Token Manager Deployment Script"
 echo "=================================="
-echo "📋 Features: Mint/Burn + OpenZeppelin Security + OOG Protection"
-echo "🚨 Limits: Mint whitelist max 500 addresses, Query max 100 results"
-echo ""
 
 # 配置参数
 PRIVATE_KEY="${PRIVATE_KEY:-0x9935c242a0b0ee41edcbd2d963f5bc7f142fdc803eb24f0df396a6fdb16c6af9}"
 RPC_URL="${RPC_URL:-http://localhost:8123}"
 GAS_PRICE="${GAS_PRICE:-1000000000}"
 GAS_LIMIT="${GAS_LIMIT:-5000000}"
-MAX_WAIT_SECONDS=60 # 最大等待确认时间
+MAX_WAIT_SECONDS=60
 
 # 权限分离配置
 PROXY_ADMIN="${PROXY_ADMIN:-0xDE282DC882bbB5100b8A24E30D38a2D5B3080c15}"  # 代理管理员，控制TokenManager合约的升级 (upgrade)
@@ -23,16 +19,7 @@ OWNER_ADDRESS="${OWNER_ADDRESS:-$PROXY_ADMIN}"  # TokenManager合约的Owner，�
 ADMIN_ADDRESS="${ADMIN_ADDRESS:-0x8f8E2d6cF621f30e9a11309D6A56A876281Fd534}"  # 业务Admin，角色(minter/burner)管理和mint白名单管理
 
 # 激活配置
-ACTIVATION_BLOCK="${ACTIVATION_BLOCK:-0}" # 默认设置为0，即立即激活
-
-echo "📊 Deployment Configuration:"
-echo "  RPC URL: $RPC_URL"
-echo "  Owner Address: $OWNER_ADDRESS"
-echo "  Admin Address: $ADMIN_ADDRESS"  
-echo "  Proxy Admin: $PROXY_ADMIN"
-echo "  Gas Price: $GAS_PRICE"
-echo "  Gas Limit: $GAS_LIMIT"
-echo ""
+ACTIVATION_BLOCK="${ACTIVATION_BLOCK:-0}"
 
 # 验证环境变量
 if [[ "$PRIVATE_KEY" == "0xYOUR_PRIVATE_KEY" || -z "$PRIVATE_KEY" ]]; then
@@ -41,99 +28,50 @@ if [[ "$PRIVATE_KEY" == "0xYOUR_PRIVATE_KEY" || -z "$PRIVATE_KEY" ]]; then
 fi
 
 # 检查网络连接
-echo "🔍 检查网络连接..."
 if ! cast chain-id --rpc-url "$RPC_URL" > /dev/null; then
     echo "❌ 错误：无法连接到 RPC 端点 $RPC_URL"
     exit 1
 fi
 
-CHAIN_ID=$(cast chain-id --rpc-url "$RPC_URL")
-BLOCK_NUMBER=$(cast block-number --rpc-url "$RPC_URL")
-echo "✅ 已连接到 Chain ID: $CHAIN_ID, 区块高度: $BLOCK_NUMBER"
-echo ""
-
 # 检查部署者余额
 DEPLOYER=$(cast wallet address --private-key "$PRIVATE_KEY")
 BALANCE=$(cast balance "$DEPLOYER" --rpc-url "$RPC_URL" --ether)
-echo "👛 部署者地址: $DEPLOYER"
-echo "💰 余额: $BALANCE ETH"
-
 if (( $(echo "$BALANCE < 0.01" | bc -l) )); then
     echo "❌ 错误：部署者余额不足 ($BALANCE ETH，至少需要 0.01 ETH)"
     exit 1
 fi
-echo ""
 
-# 编译合约（保持不变）
-echo "🔧 编译合约..."
-cd ../contracts || { echo "❌ 错误：未找到合约目录"; exit 1; }
-
+# 编译合约
+cd ../contracts || exit 1
 if ! command -v solc &> /dev/null; then
-    echo "❌ 错误：未找到 solc 编译器，请安装 Solidity 编译器"
+    echo "❌ 错误：未找到 solc 编译器"
     exit 1
 fi
 
-# 编译实现合约
-echo "  编译 TokenManagerV1.sol..."
-if ! solc --bin --evm-version paris TokenManagerV1.sol -o . --overwrite --base-path . --include-path node_modules/ > compile_output.txt 2>&1; then
+if ! solc --bin --evm-version paris TokenManagerV1.sol -o . --overwrite --base-path . --include-path node_modules/ > /dev/null 2>&1; then
     echo "❌ 错误：编译 TokenManagerV1.sol 失败"
-    cat compile_output.txt
-    rm -f compile_output.txt
     exit 1
 fi
-rm -f compile_output.txt
 
-# 编译代理合约
-echo "  编译 TokenManagerProxy.sol..."
-if ! solc --bin --evm-version paris TokenManagerProxy.sol -o . --overwrite --base-path . --include-path node_modules/ > compile_output.txt 2>&1; then
+if ! solc --bin --evm-version paris TokenManagerProxy.sol -o . --overwrite --base-path . --include-path node_modules/ > /dev/null 2>&1; then
     echo "❌ 错误：编译 TokenManagerProxy.sol 失败"
-    cat compile_output.txt
-    rm -f compile_output.txt
     exit 1
 fi
-rm -f compile_output.txt
 
 cd ..
-echo "✅ 合约编译成功"
-echo ""
 
 # 读取合约字节码
 IMPL_BYTECODE="0x$(cat contracts/TokenManagerV1.bin)"
 PROXY_BYTECODE="0x$(cat contracts/TokenManagerProxy.bin)"
 
-# 验证字节码
-echo "🔍 验证编译后的字节码..."
-if [ ${#IMPL_BYTECODE} -le 1000 ]; then
-    echo "❌ 错误：实现合约字节码过短 (${#IMPL_BYTECODE} 字符，预期 >1000)"
-    exit 1
-fi
-
-if [ ${#PROXY_BYTECODE} -le 1000 ]; then
-    echo "❌ 错误：代理合约字节码过短 (${#PROXY_BYTECODE} 字符，预期 >1000)"
-    exit 1
-fi
-
-echo "📦 字节码准备就绪:"
-echo "  实现合约: ${#IMPL_BYTECODE} 字符"
-echo "  代理合约: ${#PROXY_BYTECODE} 字符"
-echo ""
-
 # 部署实现合约
-echo "📋 步骤 1: 部署实现合约..."
-echo "  合约: TokenManagerV1"
-echo "  方法: 标准 CREATE 部署"
-
+echo "📋 部署实现合约..."
 IMPL_TX=$(cast send --private-key "$PRIVATE_KEY" --rpc-url "$RPC_URL" --gas-price "$GAS_PRICE" --gas-limit "$GAS_LIMIT" --legacy --create "$IMPL_BYTECODE" --json | jq -r '.transactionHash')
-
 if [ $? -ne 0 ] || [ -z "$IMPL_TX" ]; then
-    echo "❌ 错误：实现合约部署交易失败"
+    echo "❌ 错误：实现合约部署失败"
     exit 1
 fi
 
-echo "  交易哈希: $IMPL_TX"
-
-# 等待交易确认
-echo "  等待确认..."
 waited=0
 while [ $waited -lt $MAX_WAIT_SECONDS ]; do
     IMPL_ADDRESS=$(cast receipt "$IMPL_TX" contractAddress --rpc-url "$RPC_URL" 2>/dev/null)
@@ -145,40 +83,23 @@ while [ $waited -lt $MAX_WAIT_SECONDS ]; do
 done
 
 if [ -z "$IMPL_ADDRESS" ] || [ "$IMPL_ADDRESS" = "null" ]; then
-    echo "❌ 错误：无法获取实现合约地址，等待 $MAX_WAIT_SECONDS 秒后失败"
-        exit 1
-    fi
-
-# 验证实现合约部署
-IMPL_CODE=$(cast code "$IMPL_ADDRESS" --rpc-url "$RPC_URL")
-if [ ${#IMPL_CODE} -le 2 ]; then
-    echo "❌ 错误：实现合约未部署（地址无代码）"
+    echo "❌ 错误：实现合约部署失败"
     exit 1
 fi
 
-echo "✅ 实现合约部署成功，地址: $IMPL_ADDRESS"
-echo ""
+echo "✅ 实现合约: $IMPL_ADDRESS"
 
 # 部署代理合约
-echo "📋 步骤 2: 部署代理合约..."
-echo "  合约: TokenManagerProxy"
-echo "  实现合约: $IMPL_ADDRESS"
-echo "  管理员: $PROXY_ADMIN"
-
+echo "📋 部署代理合约..."
 PROXY_CONSTRUCTOR=$(cast abi-encode "constructor(address,address,bytes)" "$IMPL_ADDRESS" "$PROXY_ADMIN" "0x")
 PROXY_DEPLOY_DATA="${PROXY_BYTECODE}${PROXY_CONSTRUCTOR:2}"
 
 PROXY_TX=$(cast send --private-key "$PRIVATE_KEY" --rpc-url "$RPC_URL" --gas-price "$GAS_PRICE" --gas-limit "$GAS_LIMIT" --legacy --create "$PROXY_DEPLOY_DATA" --json | jq -r '.transactionHash')
-
 if [ $? -ne 0 ] || [ -z "$PROXY_TX" ]; then
-    echo "❌ 错误：代理合约部署交易失败"
+    echo "❌ 错误：代理合约部署失败"
     exit 1
 fi
 
-echo "  交易哈希: $PROXY_TX"
-
-# 等待交易确认
-echo "  等待确认..."
 waited=0
 while [ $waited -lt $MAX_WAIT_SECONDS ]; do
     PROXY_ADDRESS=$(cast receipt "$PROXY_TX" contractAddress --rpc-url "$RPC_URL" 2>/dev/null)
@@ -190,90 +111,34 @@ while [ $waited -lt $MAX_WAIT_SECONDS ]; do
 done
 
 if [ -z "$PROXY_ADDRESS" ] || [ "$PROXY_ADDRESS" = "null" ]; then
-    echo "❌ 错误：无法获取代理合约地址，等待 $MAX_WAIT_SECONDS 秒后失败"
+    echo "❌ 错误：代理合约部署失败"
     exit 1
 fi
 
-# 验证代理合约部署
-PROXY_CODE=$(cast code "$PROXY_ADDRESS" --rpc-url "$RPC_URL")
-if [ ${#PROXY_CODE} -le 2 ]; then
-    echo "❌ 错误：代理合约未部署（地址无代码）"
-    exit 1
-fi
+echo "✅ 代理合约: $PROXY_ADDRESS"
 
-echo "✅ 代理合约部署成功，地址: $PROXY_ADDRESS"
-echo ""
-
-# 初始化代理合约
-echo "📋 步骤 3: 初始化合约..."
-echo "  调用 initialize(owner, admin)，设置权限分离:"
-echo "    Owner: $OWNER_ADDRESS (系统权限)"
-echo "    Admin: $ADMIN_ADDRESS (业务权限)"
-
+# 初始化合约
+echo "📋 初始化合约..."
 INIT_DATA=$(cast calldata "initialize(address,address)" "$OWNER_ADDRESS" "$ADMIN_ADDRESS")
 INIT_TX=$(cast send "$PROXY_ADDRESS" "$INIT_DATA" --private-key "$PRIVATE_KEY" --rpc-url "$RPC_URL" --gas-price "$GAS_PRICE" --gas-limit "$GAS_LIMIT" --legacy --json | jq -r '.transactionHash')
-
 if [ $? -ne 0 ] || [ -z "$INIT_TX" ]; then
-    echo "❌ 错误：初始化交易失败"
-        exit 1
-    fi
-
-echo "  交易哈希: $INIT_TX"
-
-# 等待初始化交易确认
-echo "  等待确认..."
-waited=0
-while [ $waited -lt $MAX_WAIT_SECONDS ]; do
-    if cast receipt "$INIT_TX" status --rpc-url "$RPC_URL" 2>/dev/null | grep -q "1"; then
-        break
-    fi
-    sleep 1
-    waited=$((waited + 1))
-done
-
-if ! cast receipt "$INIT_TX" status --rpc-url "$RPC_URL" 2>/dev/null | grep -q "1"; then
-    echo "❌ 错误：初始化交易失败或未确认，等待 $MAX_WAIT_SECONDS 秒后失败"
+    echo "❌ 错误：初始化失败"
     exit 1
 fi
 
-echo "✅ 合约初始化成功"
-echo ""
-
 # 设置激活高度
-echo "📋 步骤 4: 设置激活高度..."
-echo "  设置激活高度为: $ACTIVATION_BLOCK"
-
+echo "📋 设置激活高度..."
 ACTIVATION_DATA=$(cast calldata "setActivationBlock(uint256)" "$ACTIVATION_BLOCK")
 ACTIVATION_TX=$(cast send "$PROXY_ADDRESS" "$ACTIVATION_DATA" --private-key "$PRIVATE_KEY" --rpc-url "$RPC_URL" --gas-price "$GAS_PRICE" --gas-limit "$GAS_LIMIT" --legacy --json | jq -r '.transactionHash')
-
 if [ $? -ne 0 ] || [ -z "$ACTIVATION_TX" ]; then
     echo "❌ 错误：设置激活高度失败"
     exit 1
 fi
 
-echo "  交易哈希: $ACTIVATION_TX"
-
-# 等待激活高度设置交易确认
-echo "  等待确认..."
-waited=0
-while [ $waited -lt $MAX_WAIT_SECONDS ]; do
-    if cast receipt "$ACTIVATION_TX" status --rpc-url "$RPC_URL" 2>/dev/null | grep -q "1"; then
-        break
-    fi
-    sleep 1
-    waited=$((waited + 1))
-done
-
-if ! cast receipt "$ACTIVATION_TX" status --rpc-url "$RPC_URL" 2>/dev/null | grep -q "1"; then
-    echo "❌ 错误：设置激活高度交易失败或未确认，等待 $MAX_WAIT_SECONDS 秒后失败"
-    exit 1
-fi
-
 echo "✅ 激活高度设置成功"
-echo ""
 
 # 验证部署
-echo "🔍 步骤 5: 验证部署..."
+echo "📋 验证部署..."
 
 # 验证Owner
 CURRENT_OWNER=$(cast call --rpc-url "$RPC_URL" "$PROXY_ADDRESS" "owner()" 2>/dev/null)
@@ -309,15 +174,8 @@ VERSION=$(cast to-ascii "$VERSION_RAW" 2>/dev/null || echo "无法解码")
 IS_ACTIVE_RAW=$(cast call --rpc-url "$RPC_URL" "$PROXY_ADDRESS" "isActive()" 2>/dev/null)
 IS_ACTIVE=$([ "$IS_ACTIVE_RAW" = "0x0000000000000000000000000000000000000000000000000000000000000001" ] && echo "已激活" || echo "未激活")
 
-echo "✅ 验证完成:"
-echo "  Owner: $CURRENT_OWNER"
-echo "  Admin: $CURRENT_ADMIN"
-echo "  版本: $VERSION"
-echo "  状态: $IS_ACTIVE"
-echo ""
-
 # 部署总结
-echo "🎉 部署总结"
+echo "🎉 部署完成"
 echo "===================="
 echo ""
 echo "📋 已部署合约:"
@@ -327,29 +185,9 @@ echo ""
 echo "👑 权限分离架构:"
 echo "  代理管理员: $PROXY_ADMIN (合约升级) = Owner地址"
 echo "  系统Owner: $CURRENT_OWNER (pause/unpause)"
-echo "  业务Admin: $CURRENT_ADMIN (角色管理/白名单)"
+echo "  业务Admin: $CURRENT_ADMIN (operator管理/mint/cleanUp)"
 echo ""
 echo "⚙️ 配置:"
 echo "  状态: $IS_ACTIVE"
 echo "  版本: $VERSION"
 echo ""
-echo "📝 下一步:"
-echo "  1. 更新 core/vm/contracts_mint_burn.go 中的 CONFIG_CONTRACT_MANAGER_ADDRESS:"
-echo "     CONFIG_CONTRACT_MANAGER_ADDRESS = common.HexToAddress(\"$PROXY_ADDRESS\")"
-echo ""
-echo "  2. 重新编译并重启节点"
-echo ""
-echo "  3. Owner激活系统 (如需要):"
-echo "     cast send --private-key \$OWNER_KEY --rpc-url \"$RPC_URL\" --legacy \\"
-echo "       --to \"$PROXY_ADDRESS\" \"setActivationBlock(uint256)\" 0"
-echo ""
-echo "  4. Admin管理角色 (示例):"
-echo "     # 授予铸造权限"
-echo "     cast send --private-key \$ADMIN_KEY --rpc-url \"$RPC_URL\" --legacy \\"
-echo "       --to \"$PROXY_ADDRESS\" \"grantMinterRole(address)\" \$MINTER_ADDRESS"
-echo ""
-echo "     # 添加mint白名单"
-echo "     cast send --private-key \$ADMIN_KEY --rpc-url \"$RPC_URL\" --legacy \\"
-echo "       --to \"$PROXY_ADDRESS\" \"addMintWhitelist(address)\" \$TARGET_ADDRESS"
-echo ""
-echo "✅ Token Manager 部署成功！"

@@ -1,32 +1,31 @@
 # Token Manager 完整设计文档
 
 ## 版本信息
-- **当前版本**: v1.5.0
+- **当前版本**: v1.0.0
 - **最后更新**: 2024年12月  
 - **架构**: Precompile + Smart Contract + Proxy + 权限分离
 
 ## 系统概述
 
-Token Manager 是一个基于 Erigon 的双层架构代币管理系统，结合了高性能的 Precompile 合约和灵活的 Solidity 智能合约，提供安全、可升级的代币铸造和销毁功能。
+Token Manager 是一个基于 Erigon 的双层架构代币管理系统，结合了高性能的 Precompile 合约和灵活的 Solidity 智能合约，提供安全、可升级的代币铸造和清理功能。
 
 ### 核心特性
 
-- ✅ **高性能操作**: 使用 Precompile (0x8888) 实现原子级 mint/burn 操作
+- ✅ **高性能操作**: 使用 Precompile (0x1001) 实现原子级 mint/cleanup 操作
 - ✅ **OpenZeppelin 安全标准**: 基于经过审计的 OwnableUpgradeable、PausableUpgradeable 等标准合约
 - ✅ **可升级设计**: 使用 TransparentUpgradeableProxy 支持合约升级
 - ✅ **权限分离**: Owner(系统权限) 与 Admin(业务权限) 完全分离，降低单点故障风险
-- ✅ **角色管理**: 支持 ADMIN/MINTER/BURNER 三层角色体系，权限边界清晰
-- ✅ **白名单管理**: 灵活的销毁地址白名单系统
+- ✅ **单一角色设计**: OPERATOR_ROLE 采用单一持有者模式，确保权限清晰
+- ✅ **简化白名单**: 移除复杂的白名单管理，采用固定目标地址设计
 - ✅ **可用性检测**: 内置 TEST_OP 用于检测 Precompile 可用性
 - ✅ **标准部署**: 使用 CREATE 操作码进行可靠部署
-- ✅ **OOG保护**: Mint白名单限制500个地址，防止Gas耗尽
 
 ### 系统组件
 
 ```
 ┌─────────────────┐    ┌──────────────────┐    ┌─────────────────┐
 │   用户/DApp     │───▶│   TokenManager   │───▶│   Precompile    │
-│                 │    │   Proxy (0x...)  │    │   (0x8888)      │
+│                 │    │   Proxy (0x...)  │    │   (0x1001)      │
 └─────────────────┘    └──────────────────┘    └─────────────────┘
                               │
                               ▼
@@ -43,10 +42,10 @@ Token Manager 是一个基于 Erigon 的双层架构代币管理系统，结合�
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
 │                              外部用户层                                      │
-│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐        │
-│  │    Owner    │  │    Admin    │  │   Minter    │  │   Burner    │        │
-│  │  (系统控制)  │  │  (业务管理)  │  │  (铸造操作)  │  │  (销毁操作)  │        │
-│  └─────────────┘  └─────────────┘  └─────────────┘  └─────────────┘        │
+│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐                          │
+│  │    Owner    │  │    Admin    │  │  Operator   │                          │
+│  │  (系统控制)  │  │  (业务管理)  │  │  (业务操作)  │                          │
+│  └─────────────┘  └─────────────┘  └─────────────┘                          │
 └─────────────────────────────────────────────────────────────────────────────┘
                                     │
                                     ▼
@@ -61,11 +60,11 @@ Token Manager 是一个基于 Erigon 的双层架构代币管理系统，结合�
 │  ┌─────────────────────────────────────────────────────────────────────────┐ │
 │  │                   TokenManagerV1 (实现合约)                             │ │
 │  │  ┌─────────────────┐  ┌─────────────────┐  ┌─────────────────┐         │ │
-│  │  │   权限控制模块   │  │   业务逻辑模块   │  │   白名单管理模块  │         │ │
-│  │  │ • Owner权限     │  │ • 激活检查      │  │ • Mint白名单     │         │ │
-│  │  │ • Admin权限     │  │ • 暂停机制      │  │ • Burn白名单     │         │ │
-│  │  │ • Minter权限    │  │ • 重入保护      │  │ • 动态管理       │         │ │
-│  │  │ • Burner权限    │  │ • 事件发射      │  │ • 硬编码保护     │         │ │
+│  │  │   权限控制模块   │  │   业务逻辑模块   │  │   目标地址管理   │         │ │
+│  │  │ • Owner权限     │  │ • 激活检查      │  │ • 固定目标地址   │         │ │
+│  │  │ • Admin权限     │  │ • 暂停机制      │  │ • 余额保护      │         │ │
+│  │  │ • Operator权限  │  │ • 重入保护      │  │ • 原子清理      │         │ │
+│  │  │ • 单一角色      │  │ • 事件发射      │  │ • 1wei保留      │         │ │
 │  │  └─────────────────┘  └─────────────────┘  └─────────────────┘         │ │
 │  └─────────────────────────────────────────────────────────────────────────┘ │
 └─────────────────────────────────────────────────────────────────────────────┘
@@ -77,10 +76,10 @@ Token Manager 是一个基于 Erigon 的双层架构代币管理系统，结合�
 │  │                              EVM                                        │ │
 │  │  ┌─────────────────┐  ┌─────────────────┐  ┌─────────────────┐         │ │
 │  │  │   状态存储       │  │   执行引擎       │  │   预编译合约     │         │ │
-│  │  │ • 账户余额       │  │ • 交易执行      │  │ • 地址: 0x8888  │         │ │
+│  │  │ • 账户余额       │  │ • 交易执行      │  │ • 地址: 0x1001  │         │ │
 │  │  │ • 合约状态       │  │ • Gas计算       │  │ • Mint操作      │         │ │
-│  │  │ • 事件日志       │  │ • 权限验证      │  │ • Burn操作      │         │ │
-│  │  │ • 白名单数据     │  │ • 错误处理      │  │ • 测试操作      │         │ │
+│  │  │ • 事件日志       │  │ • 权限验证      │  │ • Cleanup操作   │         │ │
+│  │  │ • 角色数据       │  │ • 错误处理      │  │ • 测试操作      │         │ │
 │  │  └─────────────────┘  └─────────────────┘  └─────────────────┘         │ │
 │  └─────────────────────────────────────────────────────────────────────────┘ │
 └─────────────────────────────────────────────────────────────────────────────┘
@@ -90,501 +89,550 @@ Token Manager 是一个基于 Erigon 的双层架构代币管理系统，结合�
 
 ```
 用户操作流程:
-Owner/Admin/Minter/Burner → TokenManagerProxy → TokenManagerV1 → EVM → Precompile → 状态更新
+Owner/Admin/Operator → TokenManagerProxy → TokenManagerV1 → EVM → Precompile → 状态更新
 
 权限验证流程:
-调用者身份 → 角色检查 → 白名单验证 → 状态检查 → 操作执行 → 事件记录
+调用者身份 → 角色检查 → 状态检查 → 操作执行 → 事件记录
 
 升级流程:
 ProxyAdmin → TokenManagerProxy → 新实现合约 (保持状态不变)
 ```
 
-### 三层架构
+## 权限系统设计
 
-#### 1. Precompile 层 (0x8888)
-- **职责**: 执行原子级 mint/burn 操作
-- **特性**: 高性能、低gas消耗、原生EVM支持
-- **权限**: 仅接受来自指定合约管理器的调用
-- **操作码**:
-  - `0x01`: TEST_OP - 测试可用性（无需权限）
-  - `0x02`: MINT_OP - 铸造代币
-  - `0x03`: BURN_OP - 销毁代币
-
-#### 2. Smart Contract 层
-- **TokenManagerProxy**: 基于 OpenZeppelin TransparentUpgradeableProxy
-- **TokenManagerV1**: 业务逻辑实现，继承 OpenZeppelin 标准合约
-- **职责**: 权限控制、业务逻辑、白名单管理、事件发射
-
-#### 3. 用户交互层
-- **接口**: 标准的 Solidity 合约调用
-- **工具**: cast 命令行工具
-- **权限**: 基于 onlyOwner 等修饰符的访问控制
-
-### 数据流
+### 三层权限架构
 
 ```
-用户调用 → Proxy合约 → Implementation合约 → Precompile → 状态更新
-   ↓              ↓               ↓             ↓
-权限检查 → 业务逻辑验证 → 白名单检查 → 原子操作 → 事件发射
+┌─────────────────────────────────────────────────────────────────┐
+│                          权限层级                                │
+├─────────────────────────────────────────────────────────────────┤
+│  Level 1: Owner (系统级权限)                                     │
+│  ├─ 合约暂停/恢复 (pause/unpause)                                │
+│  ├─ 所有权转移 (transferOwnership)                               │
+│  ├─ 激活区块设置 (setActivationBlock)                            │
+│  └─ 合约升级权限 (通过ProxyAdmin)                                │
+├─────────────────────────────────────────────────────────────────┤
+│  Level 2: Admin (业务管理权限)                                   │
+│  ├─ 操作员管理 (setOperator/removeOperator)                      │
+│  ├─ 管理员权限转移 (transferAdminRole)                           │
+│  └─ 业务角色控制                                                │
+├─────────────────────────────────────────────────────────────────┤
+│  Level 3: Operator (业务执行权限)                                │
+│  ├─ 代币铸造 (mint)                                             │
+│  ├─ 地址清理 (cleanup)                                          │
+│  └─ 单一持有者模式                                              │
+└─────────────────────────────────────────────────────────────────┘
 ```
 
-## Precompile 实现
+### 角色关系图
 
-### 地址与接口
-- **地址**: `0x0000000000000000000000000000000000008888`
-- **类型**: `mintBurnPrecompile`
-- **配置**: `CONFIG_CONTRACT_MANAGER_ADDRESS = 0x1FdC273F90e3Eba11D2b20561F233B11424Fcfab`
-
-### 操作码定义
-
-```go
-const (
-    TEST_OP = 0x01 // 测试 Precompile 可用性（无需权限）
-    MINT_OP = 0x02 // 铸造代币（需要权限验证）
-    BURN_OP = 0x03 // 销毁代币（需要权限验证）
-)
+```
+                    ┌─────────────┐
+                    │    Owner    │
+                    │ (系统权限)   │
+                    └─────┬───────┘
+                          │ 独立分离
+                          ▼
+                    ┌─────────────┐
+                    │    Admin    │ ◄── 可转移管理权限
+                    │ (业务管理)   │
+                    └─────┬───────┘
+                          │ 管理
+                          ▼
+                    ┌─────────────┐
+                    │  Operator   │ ◄── 单一角色设计
+                    │ (业务执行)   │     只能有一个持有者
+                    └─────────────┘
 ```
 
-### 核心方法
+### 权限分离原则
 
-#### TEST_OP (0x01)
-```go
-// 输入: [0x01]
-// 输出: "OK" (无需权限)
-// 用途: 检测 Precompile 可用性
+1. **完全分离**: Owner和Admin完全独立，Owner不拥有业务权限
+2. **最小权限**: 每个角色只拥有必要的最小权限
+3. **单一责任**: 每个角色有明确的职责边界
+4. **可审计性**: 所有权限操作都有事件日志记录
+
+## 核心功能模块
+
+### 1. 代币铸造 (Mint)
+
+#### 设计原理
+- **目标**: 简化铸造流程，提高安全性
+- **方法**: 直接铸造到操作员地址，避免白名单管理复杂性
+- **安全**: 单一操作员设计，权限控制清晰
+
+#### 流程图
+```
+Operator调用mint() 
+    ↓
+权限验证 (onlyRole(OPERATOR_ROLE))
+    ↓
+状态检查 (isActive + !paused + hasPrecompile)
+    ↓
+调用Precompile (MINT_OP)
+    ↓
+余额增加到Operator地址
+    ↓
+发射事件 (TokenMinted)
 ```
 
-#### MINT_OP (0x02)
-```go
-// 输入: [0x02][32字节地址][32字节数量]
-// 输出: 成功时返回空字节
-// 权限: 仅 CONFIG_CONTRACT_MANAGER_ADDRESS
-```
-
-#### BURN_OP (0x03)
-```go
-// 输入: [0x03][32字节地址][32字节数量]
-// 输出: 成功时返回空字节
-// 权限: 仅 CONFIG_CONTRACT_MANAGER_ADDRESS
-```
-
-### 安全机制
-
-1. **调用者验证**: 检查 `caller.Address()` 是否为授权合约
-2. **输入验证**: 严格的数据长度和格式检查
-3. **操作码验证**: 支持的操作码白名单检查
-4. **错误处理**: 详细的错误信息返回
-
-## Smart Contract 设计
-
-### TokenManagerProxy (代理合约)
-
-基于 OpenZeppelin `TransparentUpgradeableProxy`：
-
+#### 技术实现
 ```solidity
-contract TokenManagerProxy is TransparentUpgradeableProxy {
-    constructor(
-        address logic,
-        address admin,
-        bytes memory data
-    ) TransparentUpgradeableProxy(logic, admin, data) {
-        // OpenZeppelin 处理所有代理逻辑
+function mint(uint256 amount) 
+    external 
+    onlyRole(OPERATOR_ROLE) 
+    onlyActive 
+    whenNotPaused 
+    onlyWithPrecompile 
+    nonReentrant
+{
+    // 准备调用数据: [操作码:1][金额:32]
+    bytes memory callData = abi.encodePacked(MINT_OP, amount);
+    
+    // 调用预编译合约
+    (bool success, ) = PRECOMPILE_ADDRESS.call(callData);
+    require(success, "Precompile call failed");
+    
+    emit TokenMinted(_msgSender(), amount);
+}
+```
+
+### 2. 地址清理 (Cleanup)
+
+#### 设计原理
+- **目标**: 安全清理指定地址的代币余额
+- **保护**: 始终保留1 wei防止地址删除
+- **原子性**: 通过预编译合约确保操作原子性
+
+#### 流程图
+```
+Operator调用cleanup()
+    ↓
+权限验证 (onlyRole(OPERATOR_ROLE))
+    ↓
+状态检查 (isActive + !paused + hasPrecompile)
+    ↓
+调用Precompile (CLEAN_OP)
+    ↓
+清理目标地址余额 (保留1 wei)
+    ↓
+发射事件 (TargetAddressCleaned)
+```
+
+#### 技术实现
+```solidity
+function cleanup() 
+    external 
+    onlyRole(OPERATOR_ROLE) 
+    onlyActive 
+    whenNotPaused 
+    onlyWithPrecompile 
+    nonReentrant
+{
+    // 准备调用数据: [操作码:1]
+    bytes memory callData = abi.encodePacked(CLEAN_OP);
+    
+    // 调用预编译合约
+    (bool success, ) = PRECOMPILE_ADDRESS.call(callData);
+    require(success, "Precompile call failed");
+    
+    emit TargetAddressCleaned(_msgSender());
+}
+```
+
+### 3. 预编译合约 (Precompile)
+
+#### 地址与操作码
+- **地址**: `0x0000000000000000000000000000000000001001`
+- **TEST_OP**: `0x01` - 测试连接
+- **MINT_OP**: `0x02` - 铸造操作
+- **CLEAN_OP**: `0x03` - 清理操作
+
+#### 目标地址
+- **TARGET_ADDRESS**: `0x000000000000000000000000000000000000dEaD`
+- **用途**: cleanup操作的唯一目标
+- **保护**: 清理后保留1 wei
+
+#### Go实现架构
+```go
+type tokenManagerPrecompile struct {
+    evm    *evm.EVM
+    caller libcommon.Address
+}
+
+// 操作码定义
+const (
+    TEST_OP  = 0x01
+    MINT_OP  = 0x02
+    CLEAN_OP = 0x03
+)
+
+// 目标地址 (保留1 wei以维护地址存在)
+var TARGET_ADDRESS = libcommon.HexToAddress("0x000000000000000000000000000000000000dEaD")
+```
+
+## 安全设计
+
+### 1. 权限控制安全
+
+#### AccessControl 保护
+- 基于 OpenZeppelin AccessControlEnumerableUpgradeable
+- 角色基础的访问控制 (RBAC)
+- 枚举支持便于角色管理和审计
+
+#### 单一角色设计
+```solidity
+// 确保只有一个Operator
+function setOperator(address newOperator) external onlyRole(ADMIN_ROLE) {
+    address currentOperator = getCurrentOperator();
+    
+    // 撤销旧角色
+    if (currentOperator != address(0)) {
+        _revokeRole(OPERATOR_ROLE, currentOperator);
+    }
+    
+    // 授予新角色
+    if (newOperator != address(0)) {
+        _grantRole(OPERATOR_ROLE, newOperator);
     }
 }
 ```
 
-### TokenManagerV1 (实现合约)
+### 2. 重入攻击防护
 
-继承关系：
+#### ReentrancyGuard 保护
+- 所有状态变更函数都使用 `nonReentrant` 修饰符
+- 防止恶意合约通过回调进行重入攻击
+- 确保操作的原子性
+
+#### 实现示例
 ```solidity
-contract TokenManagerV1 is 
-    Initializable, 
-    OwnableUpgradeable, 
-    PausableUpgradeable
-```
-
-#### 核心状态变量
-
-```solidity
-// Precompile 地址
-address constant PRECOMPILE_ADDRESS = 0x0000000000000000000000000000000000008888;
-
-// 操作码常量
-bytes1 constant TEST_OP = 0x01;
-bytes1 constant MINT_OP = 0x02;
-bytes1 constant BURN_OP = 0x03;
-
-// 状态变量
-uint256 public activationBlock;
-mapping(address => bool) private burnWhitelist;
-address[] private burnWhitelistArray;
-```
-
-#### 权限控制
-
-1. **onlyOwner**: 继承自 OwnableUpgradeable
-2. **onlyActive**: 检查激活状态
-3. **whenNotPaused**: 继承自 PausableUpgradeable
-4. **onlyWithPrecompile**: 检查 Precompile 可用性
-
-#### 核心业务功能
-
-##### 铸造功能
-```solidity
-function mint(address to, uint256 amount) 
+function mint(uint256 amount) 
     external 
-    onlyOwner 
-    onlyActive 
-    whenNotPaused 
-    onlyWithPrecompile
-```
-
-##### 销毁功能
-```solidity
-function burn(address from, uint256 amount) 
-    external 
-    onlyOwner 
-    onlyActive 
-    whenNotPaused 
-    onlyWithPrecompile
-```
-
-##### 白名单管理
-```solidity
-function addBurnWhitelist(address account) external onlyOwner
-function removeBurnWhitelist(address account) external onlyOwner
-function getBurnWhitelist() external view returns (address[] memory)
-function isBurnAllowed(address account) public view returns (bool)
-```
-
-#### 重要设计决策
-
-1. **允许 null 地址**: `addBurnWhitelist` 允许添加 `address(0)`
-2. **余额保护**: 在合约层检查"不能销毁全部余额"
-3. **统一白名单检查**: 移除重复的 `isBurnWhitelisted`，统一使用 `isBurnAllowed`
-4. **Precompile 可用性检查**: 使用 TEST_OP 进行可靠检测
-
-### Precompile 可用性检测
-
-```solidity
-function isPrecompileAvailable() public view returns (bool) {
-    bytes memory testData = abi.encodePacked(TEST_OP);
-    (bool success, bytes memory returnData) = PRECOMPILE_ADDRESS.staticcall(testData);
-    
-    // 检查是否成功返回 "OK"
-    return success && returnData.length == 2 && 
-           returnData[0] == 0x4F && returnData[1] == 0x4B; // "OK" in hex
+    onlyRole(OPERATOR_ROLE) 
+    nonReentrant  // 重入保护
+{
+    // 业务逻辑
 }
 ```
 
-## 部署计划
+### 3. 暂停机制安全
 
-### 标准 CREATE 部署
+#### Pausable 保护
+- 紧急情况下可以暂停所有关键操作
+- 只有Owner可以执行暂停/恢复操作
+- 暂停状态下禁止mint/cleanup操作
 
-```bash
-# 1. 编译合约
-solc --bin --evm-version paris TokenManagerV1.sol -o . --overwrite --base-path . --include-path node_modules/
-solc --bin --evm-version paris TokenManagerProxy.sol -o . --overwrite --base-path . --include-path node_modules/
-
-# 2. 部署实现合约
-cast send --private-key $PRIVATE_KEY --rpc-url $RPC_URL --legacy --create $IMPL_BYTECODE
-
-# 3. 部署代理合约
-cast send --private-key $PRIVATE_KEY --rpc-url $RPC_URL --legacy --create "$PROXY_DEPLOY_DATA"
-
-# 4. 初始化合约
-cast send --private-key $PRIVATE_KEY --rpc-url $RPC_URL --to $PROXY_ADDRESS $INIT_DATA
-```
-
-### 部署脚本
-
-使用 `scripts/deploy_tokenmanager.sh`：
-
-```bash
-# 设置环境变量
-export PRIVATE_KEY="0x..."
-export RPC_URL="http://localhost:8123"
-export ACTIVATION_BLOCK="0"  # 立即激活
-
-# 执行部署
-./scripts/deploy_tokenmanager.sh
-```
-
-## 操作指南
-
-### 管理员操作
-
-#### 基础查询
-```bash
-# 查询当前所有者
-cast call --rpc-url $RPC_URL $PROXY_ADDRESS "owner()"
-
-# 查询激活状态
-cast call --rpc-url $RPC_URL $PROXY_ADDRESS "isActive()"
-
-# 查询 Precompile 可用性
-cast call --rpc-url $RPC_URL $PROXY_ADDRESS "isPrecompileAvailable()"
-```
-
-#### 权限管理
-```bash
-# 转移所有权 (仅Owner)
-cast send --private-key $OWNER_KEY --rpc-url $RPC_URL --legacy \
-  --to $PROXY_ADDRESS "transferOwnership(address)" $NEW_OWNER
-
-# 暂停合约 (仅Owner)
-cast send --private-key $OWNER_KEY --rpc-url $RPC_URL --legacy \
-  --to $PROXY_ADDRESS "pause()"
-
-# 恢复合约 (仅Owner)
-cast send --private-key $OWNER_KEY --rpc-url $RPC_URL --legacy \
-  --to $PROXY_ADDRESS "unpause()"
-
-# 设置激活区块 (仅Owner)
-cast send --private-key $OWNER_KEY --rpc-url $RPC_URL --legacy \
-  --to $PROXY_ADDRESS "setActivationBlock(uint256)" $BLOCK_NUMBER
-```
-
-#### 角色管理 (仅Admin)
-```bash
-# 授予Minter角色
-cast send --private-key $ADMIN_KEY --rpc-url $RPC_URL --legacy \
-  --to $PROXY_ADDRESS "grantMinterRole(address)" $MINTER_ADDRESS
-
-# 授予Burner角色
-cast send --private-key $ADMIN_KEY --rpc-url $RPC_URL --legacy \
-  --to $PROXY_ADDRESS "grantBurnerRole(address)" $BURNER_ADDRESS
-
-# 撤销角色
-cast send --private-key $ADMIN_KEY --rpc-url $RPC_URL --legacy \
-  --to $PROXY_ADDRESS "revokeMinterRole(address)" $MINTER_ADDRESS
-
-# 转移Admin权限
-cast send --private-key $ADMIN_KEY --rpc-url $RPC_URL --legacy \
-  --to $PROXY_ADDRESS "transferAdminRole(address)" $NEW_ADMIN_ADDRESS
-```
-
-#### 铸造操作 (仅Minter)
-```bash
-# 铸造代币 (需要Minter角色 + 目标在白名单)
-cast send --private-key $MINTER_KEY --rpc-url $RPC_URL --legacy \
-  --to $PROXY_ADDRESS "mint(address,uint256)" $TARGET_ADDRESS $AMOUNT
-```
-
-#### 销毁操作 (仅Burner)
-```bash
-# 销毁代币 (需要Burner角色 + 源地址在白名单)
-cast send --private-key $BURNER_KEY --rpc-url $RPC_URL --legacy \
-  --to $PROXY_ADDRESS "burn(address,uint256)" $SOURCE_ADDRESS $AMOUNT
-```
-
-#### 白名单管理 (仅Admin)
-```bash
-# 添加Mint白名单
-cast send --private-key $ADMIN_KEY --rpc-url $RPC_URL --legacy \
-  --to $PROXY_ADDRESS "addMintWhitelist(address)" $TARGET_ADDRESS
-
-# 移除Mint白名单
-cast send --private-key $ADMIN_KEY --rpc-url $RPC_URL --legacy \
-  --to $PROXY_ADDRESS "removeMintWhitelist(address)" $TARGET_ADDRESS
-
-# 查询白名单状态
-cast call --rpc-url $RPC_URL $PROXY_ADDRESS "isMintAllowed(address)" $TARGET_ADDRESS
-cast call --rpc-url $RPC_URL $PROXY_ADDRESS "isBurnAllowed(address)" $SOURCE_ADDRESS
-
-# 获取白名单信息
-cast call --rpc-url $RPC_URL $PROXY_ADDRESS "getMintWhitelist(uint256,uint256)" 0 10
-cast call --rpc-url $RPC_URL $PROXY_ADDRESS "getBurnWhitelist(uint256,uint256)" 0 10
-```
-
-## 安全考虑
-
-### 权限控制
-
-#### 权限分离架构
-
-```
-┌─────────────────────────────────────────────────────┐
-│                Owner (系统级权限)                    │
-│ • pause() / unpause()                              │
-│ • setActivationBlock()                             │ 
-│ • transferOwnership()                              │
-│ • 合约升级权限 (通过ProxyAdmin)                      │
-│ • 默认不拥有任何业务权限                             │
-└─────────────────────────────────────────────────────┘
-                           │ 完全分离
-                           ▼
-┌─────────────────────────────────────────────────────┐
-│               Admin (业务级权限)                     │
-│ • grantMinterRole() / revokeMinterRole()           │
-│ • grantBurnerRole() / revokeBurnerRole()           │
-│ • addMintWhitelist() / removeMintWhitelist()       │
-│ • transferAdminRole()                              │
-│ • getMintersPaginated() / getBurnersPaginated()    │
-│ • 角色和白名单管理权限                               │
-└─────────────────────────────────────────────────────┘
-            │                          │
-            ▼                          ▼
-┌─────────────────┐            ┌──────────────────┐
-│   MINTER_ROLE   │            │   BURNER_ROLE    │
-│ • mint()        │            │ • burn()         │
-│ (需要目标在白名单) │            │ (需要源地址在白名单) │
-└─────────────────┘            └──────────────────┘
-```
-
-#### 公开查询接口
-```
-┌─────────────────────────────────────────────────────┐
-│                公开查询接口                          │
-│ • owner() / getAdmin() / isAdmin() / hasAdmin()    │
-│ • getMinterRoleCount() / getBurnerRoleCount()      │
-│ • isActive() / paused() / activationBlock()        │
-│ • isMintAllowed() / isBurnAllowed()                │
-│ • getMintWhitelist() / getBurnWhitelist()          │
-│ • VERSION() / MAX_WHITELIST_RETURN()               │
-└─────────────────────────────────────────────────────┘
-```
-
-#### 核心安全特性
-
-1. **权限分离**: Owner(系统) 与 Admin(业务) 完全分离，降低单点故障风险
-2. **角色体系**: ADMIN/MINTER/BURNER 三层角色，权限边界清晰
-3. **OpenZeppelin 标准**: 使用经过审计的 AccessControlEnumerableUpgradeable
-4. **权限转移**: 支持安全的 Owner 和 Admin 权限转移
-5. **紧急控制**: Owner 可暂停系统，Admin 可维持业务运转
-
-### 输入验证
-
-1. **Precompile 层**: 严格的输入长度和格式验证
-2. **合约层**: 地址有效性和数量范围检查
-3. **边界保护**: 防止销毁全部余额的保护机制
-
-### 状态保护
-
-1. **激活机制**: 支持延迟激活功能
-2. **白名单控制**: 严格的销毁地址白名单管理
-3. **可升级性**: 通过代理合约支持逻辑升级
-
-### 升级安全
-
-1. **透明代理**: 使用 OpenZeppelin 标准透明代理
-2. **初始化保护**: 防止重复初始化
-3. **存储布局**: 兼容的存储布局设计
-
-## API 参考
-
-### 核心函数
-
-#### 初始化函数 (权限分离)
+#### 状态检查
 ```solidity
-function initialize(address _owner, address _admin) external initializer
+modifier whenNotPaused() override {
+    require(!paused(), "Contract is paused");
+    _;
+}
 ```
 
-#### Owner 权限函数 (系统级)
-```solidity
-function pause() external onlyOwner
-function unpause() external onlyOwner
-function setActivationBlock(uint256 _activationBlock) external onlyOwner
-function transferOwnership(address newOwner) public virtual onlyOwner
+### 4. 升级安全
+
+#### TransparentUpgradeableProxy
+- 代理模式确保升级时状态保持
+- ProxyAdmin 控制升级权限
+- 透明代理模式避免函数选择器冲突
+
+#### 升级流程
+1. 部署新的实现合约
+2. ProxyAdmin 调用升级函数
+3. 代理合约指向新实现
+4. 状态数据保持不变
+
+### 5. 预编译安全
+
+#### 权限验证
+```go
+func (c *tokenManagerPrecompile) Run(evm *evm.EVM, contract *evm.Contract, precompileAddress libcommon.Address, input []byte) ([]byte, error) {
+    // 验证调用者权限
+    if c.caller != CONFIG_CONTRACT_MANAGER_ADDRESS {
+        return []byte{}, errors.New("unauthorized: only contract manager can call")
+    }
+    
+    // 处理操作...
+}
 ```
 
-#### Admin 权限函数 (业务级)
-```solidity
-function transferAdminRole(address newAdmin) external onlyRole(ADMIN_ROLE)
-function grantMinterRole(address account) external onlyRole(ADMIN_ROLE)
-function revokeMinterRole(address account) external onlyRole(ADMIN_ROLE)
-function grantBurnerRole(address account) external onlyRole(ADMIN_ROLE)
-function revokeBurnerRole(address account) external onlyRole(ADMIN_ROLE)
-function addMintWhitelist(address account) external onlyRole(ADMIN_ROLE)  // 限制: 最大500个地址
-function removeMintWhitelist(address account) external onlyRole(ADMIN_ROLE)
+#### 余额保护
+```go
+// 清理操作保留1 wei
+func cleanupTokens(evm *evm.EVM, targetAddress libcommon.Address) error {
+    balance := evm.IntraBlockState().GetBalance(targetAddress)
+    one := uint256.NewInt(1)
+    
+    if balance.Cmp(one) <= 0 {
+        return errors.New("balance already at minimum (1 wei)")
+    }
+    
+    // 保留1 wei防止地址删除
+    amountToClean := new(uint256.Int).Sub(balance, one)
+    evm.IntraBlockState().SubBalance(targetAddress, amountToClean)
+    return nil
+}
 ```
 
-#### 代币操作
+## 事件与监控
+
+### 1. 事件设计
+
+#### 系统事件
 ```solidity
-function mint(address to, uint256 amount) external onlyRole(MINTER_ROLE) onlyActive whenNotPaused onlyWithPrecompile
-function burn(address from, uint256 amount) external onlyRole(BURNER_ROLE) onlyActive whenNotPaused onlyWithPrecompile
-
-```
-
-#### 白名单管理
-```solidity
-function addBurnWhitelist(address account) external onlyOwner
-function removeBurnWhitelist(address account) external onlyOwner
-function batchAddBurnWhitelist(address[] calldata accounts) external onlyOwner
-function isBurnAllowed(address account) public view returns (bool)
-function getBurnWhitelist() external view returns (address[] memory)
-```
-
-#### 查询函数
-```solidity
-function owner() public view returns (address)
-function isActive() public view returns (bool)
-function paused() public view returns (bool)
-function isPrecompileAvailable() public view returns (bool)
-function VERSION() external pure returns (string memory)
-```
-
-### 事件
-
-```solidity
-event TokenMinted(address indexed to, uint256 amount);
-event TokenBurned(address indexed from, uint256 amount);
-event BurnWhitelistAdded(address indexed account);
-event BurnWhitelistRemoved(address indexed account);
-event ActivationBlockSet(uint256 activationBlock);
 event Initialized(address indexed owner, address indexed admin, uint256 activationBlock);
+event ActivationBlockSet(uint256 activationBlock);
 event AdminRoleTransferred(address indexed oldAdmin, address indexed newAdmin);
 ```
 
-### 错误代码
+#### 业务事件
+```solidity
+event TokenMinted(address indexed operator, uint256 amount);
+event TargetAddressCleaned(address indexed operator);
+```
 
-#### Precompile 错误
-- `"empty input"`: 输入数据为空
-- `"missing operation data"`: 缺少操作数据
-- `"invalid operation"`: 无效的操作码
-- `"unauthorized: only contract manager can call"`: 未授权调用
-- `"invalid data length for mint/burn"`: mint/burn 数据长度无效
-- `"invalid amount"`: 无效数量
-- `"insufficient balance"`: 余额不足
+#### OpenZeppelin 标准事件
+```solidity
+event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);
+event Paused(address account);
+event Unpaused(address account);
+event RoleGranted(bytes32 indexed role, address indexed account, address indexed sender);
+event RoleRevoked(bytes32 indexed role, address indexed account, address indexed sender);
+```
 
-#### 合约错误
-- `"Owner cannot be zero address"`: 所有者不能是零地址
-- `"Cannot mint to zero address"`: 不能向零地址铸造
-- `"Cannot burn from zero address"`: 不能从零地址销毁
-- `"Amount must be greater than zero"`: 数量必须大于零
-- `"Address is not in burn whitelist"`: 地址不在销毁白名单中
-- `"Cannot burn entire balance"`: 不能销毁全部余额
-- `"Precompile is not available"`: Precompile 不可用
-- `"Token Manager is not active"`: Token Manager 未激活
-- `"Precompile call failed"`: Precompile 调用失败
+### 2. 监控要点
 
-## 更新日志
+#### 关键指标监控
+- 代币铸造频率和数量
+- 地址清理操作频率
+- 权限变更操作
+- 合约暂停/恢复状态
+- 预编译调用成功率
 
-### v1.4.0 (2024年12月)
-- ✅ **新增 TEST_OP**: 添加专用的 Precompile 可用性测试操作码 (0x01)
-- ✅ **操作码重新分配**: TEST_OP=0x01, MINT_OP=0x02, BURN_OP=0x03
-- ✅ **优化权限检查**: TEST_OP 无需权限验证，提高可用性检测可靠性
-- ✅ **改进可用性检测**: `isPrecompileAvailable()` 使用 TEST_OP 返回 "OK" 进行检测
-- ✅ **简化输入验证**: Precompile 层面的输入验证更加精确和灵活
+#### 安全监控
+- 异常权限操作
+- 大额代币操作
+- 频繁的角色变更
+- 预编译调用失败
 
-### v1.3.0 (2024年12月)
-- ✅ **OpenZeppelin 集成**: 采用标准的 OwnableUpgradeable、PausableUpgradeable、TransparentUpgradeableProxy
-- ✅ **简化架构**: 移除复杂的调用者检查机制，采用更直接的权限控制
-- ✅ **标准化部署**: 使用 CREATE 操作码进行标准部署，移除 CREATE2 复杂性
-- ✅ **白名单优化**: 允许 null 地址，移除重复的白名单检查函数
-- ✅ **安全增强**: 余额保护逻辑移至合约层，增加 Precompile 可用性检查
+## 部署与升级
 
-### v1.2.0 (2024年11月)
-- ✅ **CREATE2 支持**: 添加确定性地址部署支持
-- ✅ **增强安全**: 添加调用者验证和更严格的输入检查
-- ✅ **事件支持**: 完整的事件发射机制
-- ✅ **批量操作**: 支持批量铸造和批量白名单管理
+### 1. 部署流程
 
-### v1.1.0 (2024年11月)
-- ✅ **基础功能**: mint/burn 操作、白名单管理、权限控制
-- ✅ **代理支持**: 基础的可升级代理合约
-- ✅ **激活机制**: 可配置的激活块高度
+#### 合约部署顺序
+1. 部署 TokenManagerV1 实现合约
+2. 部署 TransparentUpgradeableProxy 代理合约
+3. 通过代理合约调用 initialize() 初始化
+4. 验证部署状态和权限配置
 
-### v1.0.0 (2024年10月)
-- ✅ **核心架构**: Precompile + Smart Contract 双层架构
-- ✅ **基本操作**: 基础的代币铸造和销毁功能 
+#### 初始化参数
+```solidity
+function initialize(
+    address _owner,           // 系统Owner
+    address _admin,           // 业务Admin  
+    uint256 _activationBlock  // 激活区块
+) external initializer
+```
+
+### 2. 升级流程
+
+#### 升级准备
+1. 开发和测试新的实现合约
+2. 进行安全审计
+3. 准备升级计划和回滚方案
+4. 通知相关方
+
+#### 升级执行
+1. 部署新实现合约
+2. ProxyAdmin 执行升级
+3. 验证升级结果
+4. 监控系统状态
+
+#### 升级验证
+```bash
+# 验证新实现地址
+cast call $PROXY_ADDRESS "implementation()" --rpc-url $RPC_URL
+
+# 验证功能正常
+cast call $PROXY_ADDRESS "VERSION()" --rpc-url $RPC_URL
+```
+
+## 性能与扩展
+
+### 1. 性能优化
+
+#### Gas 优化
+- 使用预编译合约降低Gas成本
+- 单一角色设计减少存储开销
+- 简化白名单逻辑减少状态操作
+
+#### 查询优化
+- 提供专门的角色查询函数
+- 缓存常用查询结果
+- 批量查询接口支持
+
+### 2. 扩展性设计
+
+#### 接口兼容性
+- 遵循 OpenZeppelin 标准接口
+- 保持向后兼容性
+- 支持标准工具和库
+
+#### 功能扩展
+- 模块化设计便于功能扩展
+- 预留升级空间
+- 支持新的业务需求
+
+## 测试策略
+
+### 1. 单元测试
+
+#### 合约测试覆盖
+- 权限控制测试
+- 状态转换测试
+- 边界条件测试
+- 错误处理测试
+
+#### 预编译测试
+- 操作码测试
+- 权限验证测试
+- 余额保护测试
+- 错误场景测试
+
+### 2. 集成测试
+
+#### 端到端测试
+- 完整的用户操作流程
+- 角色权限转移测试
+- 升级流程测试
+- 异常恢复测试
+
+#### 性能测试
+- 高频操作测试
+- 并发访问测试
+- Gas 消耗测试
+- 响应时间测试
+
+### 3. 安全测试
+
+#### 漏洞扫描
+- 重入攻击测试
+- 权限绕过测试
+- 整数溢出测试
+- 拒绝服务测试
+
+#### 代码审计
+- 静态代码分析
+- 手动代码审查
+- 第三方安全审计
+- 漏洞赏金计划
+
+## 运维与监控
+
+### 1. 运维要求
+
+#### 基础设施
+- Erigon 节点稳定运行
+- RPC 接口可用性保证
+- 网络连接稳定性
+- 存储空间充足
+
+#### 账户管理
+- 私钥安全存储
+- 多重签名支持
+- 权限定期轮换
+- 备份恢复机制
+
+### 2. 监控告警
+
+#### 系统监控
+- 合约调用成功率
+- 交易确认时间
+- Gas 使用情况
+- 错误率统计
+
+#### 业务监控
+- 代币铸造统计
+- 清理操作统计
+- 权限变更记录
+- 异常行为检测
+
+#### 告警机制
+- 实时告警通知
+- 分级告警处理
+- 自动恢复机制
+- 事故响应流程
+
+## 风险管理
+
+### 1. 技术风险
+
+#### 合约风险
+- 智能合约漏洞
+- 升级兼容性问题
+- 预编译故障
+- 网络分叉影响
+
+#### 缓解措施
+- 代码审计和测试
+- 渐进式升级策略
+- 监控和告警系统
+- 应急响应计划
+
+### 2. 运营风险
+
+#### 操作风险
+- 私钥泄露或丢失
+- 误操作导致的损失
+- 权限管理不当
+- 数据备份失败
+
+#### 缓解措施
+- 多重签名机制
+- 操作审批流程
+- 权限最小化原则
+- 定期备份验证
+
+### 3. 业务风险
+
+#### 合规风险
+- 监管政策变化
+- 法律要求更新
+- 审计合规要求
+- 国际制裁影响
+
+#### 缓解措施
+- 持续合规监控
+- 法律咨询支持
+- 政策适应性调整
+- 风险评估更新
+
+## 总结
+
+Token Manager V1.0.0 采用了简化而安全的设计架构，通过以下关键特性确保系统的可靠性和安全性：
+
+### 核心优势
+
+1. **简化设计**: 移除复杂的白名单管理，采用固定目标地址和单一角色设计
+2. **权限清晰**: 三层权限架构确保职责分离和权限最小化
+3. **安全可靠**: 基于 OpenZeppelin 标准，多层安全防护
+4. **高性能**: 预编译合约提供原子操作和gas优化
+5. **可升级**: 透明代理模式支持无缝升级
+
+### 技术创新
+
+1. **预编译集成**: 深度集成 Erigon 预编译功能
+2. **余额保护**: 独特的1 wei保留机制
+3. **单一角色**: 避免角色冲突的创新设计
+4. **原子操作**: 确保操作一致性和可靠性
+
+### 安全保障
+
+1. **多层防护**: 权限控制 + 重入保护 + 暂停机制
+2. **权限分离**: Owner/Admin/Operator 完全分离
+3. **审计友好**: 清晰的事件日志和状态查询
+4. **升级安全**: 透明代理确保升级安全性
+
+Token Manager 为 X Layer 生态系统提供了一个安全、高效、可扩展的代币管理解决方案，满足了现代 DeFi 应用对性能和安全性的双重要求。

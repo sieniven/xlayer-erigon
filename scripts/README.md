@@ -116,62 +116,53 @@ cd scripts
 ```bash
 # 网络配置
 RPC_URL="http://localhost:8123"
-PROXY_ADDRESS="0x1FdC273F90e3Eba11D2b20561F233B11424Fcfab"  # 固定的代理合约地址
+PROXY_ADDRESS="0x1FdC273F90e3Eba11D2b20561F233B11424Fcfab"  # 代理合约地址
+TARGET_ADDRESS="0x000000000000000000000000000000000000dEaD"  # 清理目标地址
 
 # 测试账户私钥
 OWNER_PRIVATE_KEY="0x9935c242a0b0ee41edcbd2d963f5bc7f142fdc803eb24f0df396a6fdb16c6af9"
 ADMIN_PRIVATE_KEY="0x815405dddb0e2a99b12af775fd2929e526704e1d1aea6a0b4e74dc33e2f7fcd2"
+OPERATOR_PRIVATE_KEY="0x3c9229289a6125f7fdf1885a77bb12c37a8d3b4962d936f7e3084dece32a3ca1"
 
 # 测试金额
-TEST_MINT_AMOUNT="1000000000000000000"    # 1 ETH
-TEST_BURN_AMOUNT="500000000000000000"     # 0.5 ETH
-ACCOUNT_FUNDING_AMOUNT="100000000000000000000"  # 100 ETH
+MINT_AMOUNT="1000000000000000000"    # 1 ETH
+TRANSFER_AMOUNT="100000000000000000"  # 0.1 ETH (用于测试账户初始化)
 ```
 
 #### 测试覆盖范围
 
 | 测试类别 | 具体测试 |
 |----------|----------|
-| **基础查询** | VERSION, isActive, paused, activationBlock, owner, getAdmin |
-| **角色管理** | grantMinterRole, grantBurnerRole, revokeMinterRole, revokeBurnerRole |
-| **角色查询** | getMinterRoleCount, getBurnerRoleCount, getMintersPaginated, getBurnersPaginated |
-| **白名单管理** | addMintWhitelist, removeMintWhitelist, getMintWhitelist, getBurnWhitelist |
-| **白名单查询** | getMintWhitelistCount, getBurnWhitelistCount, isMintAllowed, isBurnAllowed |
-| **核心功能** | mint, burn (成功和失败场景) |
-| **权限控制** | 无权限操作被正确拒绝 |
+| **角色管理** | setOperator, removeOperator, transferAdminRole |
+| **角色查询** | getCurrentOperator, getRoleMemberCount, getRoleMember, hasRole |
+| **管理员查询** | hasAdmin, isAdmin, getAdmin |
+| **核心功能** | mint (铸造到操作员), cleanup (清理目标地址) |
+| **权限控制** | 无权限操作被正确拒绝，权限转移验证 |
 | **暂停控制** | pause, unpause, 暂停状态下操作被拒绝 |
-| **边界测试** | 零地址、零金额、重复操作、分页边界 |
-| **错误参数** | 无效地址、无效操作 |
-| **复杂场景** | 大量白名单、分页查询、并发权限检查 |
+| **所有者管理** | transferOwnership, renounceOwnership |
+| **边界测试** | 重复cleanup操作、余额变化验证 |
 
 #### 测试流程
 
-1. **创建临时账户** - 生成10个测试账户并分配资金
-2. **基础功能测试** - 验证查询接口和状态
-3. **权限管理测试** - 测试角色授予和撤销
-4. **白名单测试** - 测试动态白名单管理
-5. **核心操作测试** - 测试mint/burn功能
-6. **暂停机制测试** - 测试pause/unpause
-7. **边界情况测试** - 测试各种边界条件
-8. **复杂场景测试** - 测试高级功能
+1. **Operator角色管理测试** - 设置、替换、移除操作员，验证权限转移
+2. **Mint操作测试** - 测试代币铸造到操作员账户
+3. **Cleanup操作测试** - 测试目标地址清理功能，验证1 wei保留机制
+4. **暂停/恢复功能测试** - 测试pause/unpause机制
+5. **角色查询功能测试** - 测试所有角色查询接口
+6. **管理员角色转移测试** - 测试管理员权限转移
+7. **所有者转移测试** - 测试所有者权限转移
 
 #### 成功输出示例
 
 ```
-🎉 Token Manager 全面测试完成
-==============================
-
-📊 测试覆盖范围:
-  ✅ 基础查询接口
-  ✅ 角色管理接口
-  ✅ 白名单管理接口
-  ✅ Mint/Burn功能
-  ✅ 权限控制
-  ✅ 暂停控制
-  ✅ 边界情况测试
-  ✅ 复杂场景测试
-
-✅ 所有接口功能和边界情况测试通过！
+🎉 所有测试完成!
+  ✅ Operator角色管理正常
+  ✅ Mint操作正常
+  ✅ Cleanup操作正常
+  ✅ 暂停/恢复功能正常
+  ✅ 角色查询功能正常
+  ✅ 管理员转移功能正常
+  ✅ 所有者转移功能正常
 ```
 
 ---
@@ -182,9 +173,9 @@ ACCOUNT_FUNDING_AMOUNT="100000000000000000000"  # 100 ETH
 
 | 限制项 | 数值 | 说明 |
 |--------|------|------|
-| **Mint白名单最大容量** | 500个地址 | 防止Gas耗尽(OOG) |
-| **分页查询最大返回数** | 100个地址 | 防止单次查询OOG |
-| **Burn余额保护** | 必须保留≥1 wei | 防止地址余额被完全清零 |
+| **单一角色设计** | 每个角色只能有1个地址 | OPERATOR_ROLE采用单一持有者模式 |
+| **Cleanup余额保护** | 必须保留≥1 wei | 防止目标地址余额被完全清零 |
+| **权限分离** | Owner/Admin/Operator三级权限 | 确保权限最小化原则 |
 
 ---
 
@@ -199,13 +190,15 @@ ACCOUNT_FUNDING_AMOUNT="100000000000000000000"  # 100 ETH
    - 验证合约地址是否正确
 
 3. **权限分离**:
-   - Owner控制系统级操作 (pause/unpause/setActivationBlock)
-   - Admin控制业务级操作 (角色管理/白名单管理)
+   - Owner控制系统级操作 (pause/unpause/transferOwnership)
+   - Admin控制业务级操作 (setOperator/removeOperator/transferAdminRole)
+   - Operator执行业务操作 (mint/cleanup)
    - 确保权限分配符合安全原则
 
 4. **测试环境**:
    - 在生产环境运行测试前，先在测试网验证
-   - 测试脚本会创建临时账户和执行实际交易
+   - 测试脚本会自动为测试账户提供资金并执行实际交易
+   - 基础状态验证已移至部署脚本，测试脚本专注于功能测试
 
 ---
 
