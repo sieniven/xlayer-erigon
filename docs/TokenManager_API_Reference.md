@@ -35,24 +35,24 @@ Token Manager V1 是一个可升级的代币管理系统，提供安全的代币
 | cleanup (清理目标地址) | ❌ | ❌ | ✅ |
 | **查询接口** ||||
 | getCurrentOperator | ✅ | ✅ | ✅ |
-| 基础查询接口（owner/getAdmin/hasAdmin等） | ✅ | ✅ | ✅ |
+| 基础查询接口（owner/getAdmin等） | ✅ | ✅ | ✅ |
 
 ### 详细接口权限分配
 
 | 角色 | 角色标识符 | 权限说明 | 专有接口 (仅此角色可调用) |
 |------|------------|----------|--------------------------|
 | **Owner** | 合约所有者 | 系统级权限 | **系统控制**:<br/>• `pause()`<br/>• `unpause()`<br/>• `transferOwnership(address)`<br/>• `renounceOwnership()` *(已禁用)*<br/>• *合约升级权限 (通过ProxyAdmin)* |
-| **ADMIN_ROLE** | `0x0000000000000000000000000000000000000000000000000000000000000000` | 业务管理员 | **角色管理**:<br/>• `setOperator(address)` *(单一角色设计)*<br/>• `removeOperator()` *(清空Operator)*<br/>• `transferAdminRole(address)` |
+| **ADMIN_ROLE** | `keccak256("ADMIN_ROLE")` | 业务管理员 | **角色管理**:<br/>• `setOperator(address)` *(单一角色设计)*<br/>• `removeOperator()` *(清空Operator)*<br/>• `transferAdminRole(address)` |
 | **OPERATOR_ROLE** | `keccak256("OPERATOR_ROLE")` | 业务操作员 | **代币操作**:<br/>• `mint(uint256)` *(铸造到操作员地址)*<br/>• `cleanup()` *(清理目标地址)* |
 
 ### 公开查询接口 (所有用户可调用)
 
 | 接口类型 | 具体接口 |
 |----------|----------|
-| **基础信息** | • `owner()` - 获取Owner地址 *(自动生成)*<br/>• `getAdmin()` - 获取Admin地址<br/>• `isAdmin(address)` - 检查是否为Admin<br/>• `hasAdmin()` - 检查是否有Admin<br/>• `VERSION()` - 获取版本信息<br/>• `hasRole(bytes32,address)` - 检查角色权限 *(自动生成)* |
+| **基础信息** | • `owner()` - 获取Owner地址 *(自动生成)*<br/>• `getAdmin()` - 获取Admin地址<br/>• `VERSION()` - 获取版本信息<br/>• `hasRole(bytes32,address)` - 检查角色权限 *(标准接口)* |
 | **系统状态** | • `isActive()` - 检查激活状态<br/>• `activationBlock()` - 获取激活区块 *(自动生成)*<br/>• `paused()` - 检查暂停状态 *(自动生成)* |
 | **常量查询** | • `ADMIN_ROLE()` - 管理员角色标识符 *(自动生成)*<br/>• `OPERATOR_ROLE()` - 操作员角色标识符 *(自动生成)* |
-| **OpenZeppelin标准接口** | • `hasRole(bytes32,address)` - 检查角色权限 *(自动生成)*<br/>• `getRoleMember(bytes32,uint256)` - 获取角色成员 *(自动生成)*<br/>• `getRoleMemberCount(bytes32)` - 获取角色成员数量 *(单一角色设计：OPERATOR应返回0或1)*<br/>• `getRoleMembers(bytes32)` - 获取角色成员列表 |
+| **OpenZeppelin标准接口** | • `hasRole(bytes32,address)` - 检查角色权限 *(标准接口)*<br/>• `getRoleMember(bytes32,uint256)` - 获取角色成员 *(标准接口)*<br/>• `getRoleMemberCount(bytes32)` - 获取角色成员数量 *(单一角色设计：OPERATOR应返回0或1)*<br/>• `getRoleMembers(bytes32)` - 获取角色成员列表 *(标准接口，从父合约继承)* |
 | **角色查询** | • `getCurrentOperator()` - 获取当前Operator地址 *(单一角色)* |
 
 **重要说明**:
@@ -153,19 +153,6 @@ cast send --private-key $OPERATOR_KEY --rpc-url $RPC $PROXY_ADDRESS \
 
 ### Admin权限管理
 
-#### `isAdmin(address account) → bool`
-检查地址是否为Admin
-
-**权限**: 公开查询  
-**参数**: `account` - 要检查的地址  
-**返回**: true(是Admin) / false(不是Admin)
-
-#### `hasAdmin() → bool`
-检查是否有Admin
-
-**权限**: 公开查询  
-**返回**: true(有Admin) / false(没有Admin)
-
 #### `transferAdminRole(address newAdmin)`
 转移Admin权限
 
@@ -224,7 +211,7 @@ cast send --private-key $OPERATOR_KEY --rpc-url $RPC $PROXY_ADDRESS \
 **返回**: 角色成员数量
 
 #### `getRoleMembers(bytes32 role) → address[]`
-获取指定角色的所有成员 (自定义接口)
+获取指定角色的所有成员 (继承自父合约)
 
 **权限**: 公开查询  
 **参数**: `role` - 角色标识符  
@@ -353,7 +340,7 @@ Token Manager 合约基于 OpenZeppelin 标准合约构建，继承了以下标�
 - `hasRole(bytes32, address)` - 检查角色权限
 - `getRoleMember(bytes32, uint256)` - 获取角色成员
 - `getRoleMemberCount(bytes32)` - 获取角色成员数量
-- `getRoleMembers(bytes32)` - 获取角色成员列表 (自定义扩展)
+- `getRoleMembers(bytes32)` - 获取角色成员列表 (继承自父合约)
 
 #### OwnableUpgradeable 标准接口
 - `owner()` - 获取合约所有者

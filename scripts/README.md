@@ -135,7 +135,7 @@ TRANSFER_AMOUNT="100000000000000000"  # 0.1 ETH (用于测试账户初始化)
 |----------|----------|
 | **角色管理** | setOperator, removeOperator, transferAdminRole |
 | **角色查询** | getCurrentOperator, getRoleMemberCount, getRoleMember, hasRole |
-| **管理员查询** | hasAdmin, isAdmin, getAdmin |
+| **管理员查询** | getAdmin, hasRole, getRoleMemberCount |
 | **核心功能** | mint (铸造到操作员), cleanup (清理目标地址) |
 | **权限控制** | 无权限操作被正确拒绝，权限转移验证 |
 | **暂停控制** | pause, unpause, 暂停状态下操作被拒绝 |

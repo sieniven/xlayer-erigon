@@ -32,7 +32,7 @@ contract TokenManagerV1 is
     bytes1 constant CLEAN_OP = 0x03;
     
     // Role definitions
-    bytes32 public constant ADMIN_ROLE = DEFAULT_ADMIN_ROLE;
+    bytes32 public constant ADMIN_ROLE = keccak256("ADMIN_ROLE");
     bytes32 public constant OPERATOR_ROLE = keccak256("OPERATOR_ROLE");
     
     // ==================== STATE VARIABLES ====================
@@ -46,8 +46,8 @@ contract TokenManagerV1 is
     event AdminRoleTransferred(address indexed oldAdmin, address indexed newAdmin);
     
     // Token Operation Events
-    event TokenMinted(address indexed operator, uint256 amount, uint256 timestamp);
-    event TargetAddressCleaned(address indexed operator, uint256 timestamp);
+    event TokenMinted(address indexed operator, uint256 amount);
+    event TargetAddressCleaned(address indexed operator);
     
     // ==================== MODIFIERS ====================
     
@@ -84,11 +84,12 @@ contract TokenManagerV1 is
         __Pausable_init();
         __ReentrancyGuard_init();
         
-        // Set up role hierarchy - ADMIN_ROLE manages OPERATOR_ROLE
+        // Set up role hierarchy - ADMIN_ROLE manages OPERATOR_ROLE  
         _setRoleAdmin(OPERATOR_ROLE, ADMIN_ROLE);
         
-        // Grant ADMIN_ROLE to admin address (Owner does NOT get ADMIN_ROLE)
-        _grantRole(ADMIN_ROLE, _admin);
+        // Grant business role (Owner and Admin are independent)
+        _grantRole(ADMIN_ROLE, _admin);          // Admin gets ADMIN_ROLE to manage business operations
+        // Note: Owner does NOT get any business roles - maintains separation of concerns
         
         activationBlock = type(uint256).max; // Not active by default
         
@@ -124,7 +125,7 @@ contract TokenManagerV1 is
      * @return bool True if active, false otherwise
      */
     function isActive() public view returns (bool) {
-        return block.number >= activationBlock && owner() != address(0);
+        return block.number >= activationBlock;
     }
     
     /**
@@ -150,9 +151,9 @@ contract TokenManagerV1 is
     function setOperator(address account) external onlyRole(ADMIN_ROLE) {
         require(account != address(0), "Cannot set operator to zero address");
         
-        // Get current operator
-        address[] memory operators = getRoleMembers(OPERATOR_ROLE);
-        address currentOperator = operators.length > 0 ? operators[0] : address(0);
+        // Get current operator (gas optimized)
+        uint256 memberCount = getRoleMemberCount(OPERATOR_ROLE);
+        address currentOperator = memberCount > 0 ? getRoleMember(OPERATOR_ROLE, 0) : address(0);
         
         // Check if already the current operator
         require(currentOperator != account, "Address is already the current operator");
@@ -170,9 +171,9 @@ contract TokenManagerV1 is
      * @dev Remove current operator
      */
     function removeOperator() external onlyRole(ADMIN_ROLE) {
-        address[] memory operators = getRoleMembers(OPERATOR_ROLE);
-        if (operators.length > 0) {
-            address currentOperator = operators[0];
+        uint256 memberCount = getRoleMemberCount(OPERATOR_ROLE);
+        if (memberCount > 0) {
+            address currentOperator = getRoleMember(OPERATOR_ROLE, 0);
             _revokeRole(OPERATOR_ROLE, currentOperator);
         }
     }
@@ -239,7 +240,7 @@ contract TokenManagerV1 is
             }
         }
         
-        emit TokenMinted(operator, amount, block.timestamp);
+        emit TokenMinted(operator, amount);
     }
     
     /**
@@ -270,50 +271,19 @@ contract TokenManagerV1 is
             }
         }
         
-        emit TargetAddressCleaned(_msgSender(), block.timestamp);
+        emit TargetAddressCleaned(_msgSender());
     }
 
     // ==================== ROLE QUERIES ====================
-    
-    /**
-     * @dev Get all members of a role
-     * @param role Role to query
-     * @return address[] Array of addresses with the role
-     */
-    function getRoleMembers(bytes32 role) public view override returns (address[] memory) {
-        uint256 count = getRoleMemberCount(role);
-        address[] memory members = new address[](count);
-        for (uint256 i = 0; i < count; i++) {
-            members[i] = getRoleMember(role, i);
-        }
-        return members;
-    }
-    
-    /**
-     * @dev Check if an address has admin role
-     * @param account Address to check
-     * @return bool True if address has admin role
-     */
-    function isAdmin(address account) external view returns (bool) {
-        return hasRole(ADMIN_ROLE, account);
-    }
-    
-    /**
-     * @dev Check if contract has an admin
-     * @return bool True if contract has at least one admin
-     */
-    function hasAdmin() external view returns (bool) {
-        return getRoleMemberCount(ADMIN_ROLE) > 0;
-    }
     
     /**
      * @dev Get current admin address
      * @return address Current admin address
      */
     function getAdmin() external view returns (address) {
-        address[] memory admins = getRoleMembers(ADMIN_ROLE);
-        require(admins.length > 0, "No admin found");
-        return admins[0];
+        uint256 memberCount = getRoleMemberCount(ADMIN_ROLE);
+        require(memberCount > 0, "No admin found");
+        return getRoleMember(ADMIN_ROLE, 0);
     }
 
     // ==================== SECURITY OVERRIDES ====================
