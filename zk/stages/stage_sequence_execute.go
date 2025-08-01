@@ -13,6 +13,7 @@ import (
 	"github.com/ledgerwatch/erigon/core/rawdb"
 	"github.com/ledgerwatch/erigon/core/state"
 	"github.com/ledgerwatch/erigon/core/types"
+	ethTypes "github.com/ledgerwatch/erigon/core/types"
 	"github.com/ledgerwatch/erigon/eth/stagedsync"
 	"github.com/ledgerwatch/erigon/eth/stagedsync/stages"
 	"github.com/ledgerwatch/erigon/zk"
@@ -20,6 +21,7 @@ import (
 	"github.com/ledgerwatch/erigon/zk/datastream/server"
 	"github.com/ledgerwatch/erigon/zk/hermez_db"
 	"github.com/ledgerwatch/erigon/zk/metrics"
+	kafkaTypes "github.com/ledgerwatch/erigon/zk/realtime/kafka/types"
 	realtimeTypes "github.com/ledgerwatch/erigon/zk/realtime/types"
 	zktx "github.com/ledgerwatch/erigon/zk/tx"
 	"github.com/ledgerwatch/erigon/zk/txpool"
@@ -30,6 +32,7 @@ import (
 var shouldCheckForExecutionAndDataStreamAlignment = true
 var prevBlockTxCount = int64(0)
 var prevBlockHash = common.Hash{}
+var prevBlockHeader *ethTypes.Header
 
 func SpawnSequencingStage(
 	s *stagedsync.StageState,
@@ -460,10 +463,13 @@ BatchLoop:
 
 		// For X Layer, realtime. Send kafka block header
 		if cfg.zk.XLayer.Realtime.Enable && cfg.kafkaBlockInfoChan != nil {
-			cfg.kafkaBlockInfoChan <- &realtimeTypes.BlockInfo{
-				Header:  header,
-				TxCount: prevBlockTxCount,
-				Hash:    prevBlockHash,
+			cfg.kafkaBlockInfoChan <- kafkaTypes.BlockMessage{
+				Header: header,
+				PrevBlockInfo: &realtimeTypes.BlockInfo{
+					Header:  prevBlockHeader,
+					TxCount: prevBlockTxCount,
+					Hash:    prevBlockHash,
+				},
 			}
 		}
 
@@ -882,6 +888,7 @@ BatchLoop:
 			return err
 		}
 
+		prevBlockHeader = header
 		prevBlockTxCount = int64(len(batchState.blockState.builtBlockElements.transactions))
 		prevBlockHash = block.Hash()
 

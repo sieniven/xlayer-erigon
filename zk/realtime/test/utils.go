@@ -178,6 +178,65 @@ func transToken(t *testing.T, ctx context.Context, client *rtclient.RealtimeClie
 	return transTokenWithFrom(t, ctx, client, operations.DefaultL2AdminPrivateKey, amount, toAddress)
 }
 
+// Creates multiple transactions in a batch and waits for them all to be mined
+func transTokenBatch(t *testing.T, ctx context.Context, client *rtclient.RealtimeClient, amount *uint256.Int, toAddress string, batchSize int) []string {
+	return transTokenBatchWithFrom(t, ctx, client, operations.DefaultL2AdminPrivateKey, amount, toAddress, batchSize)
+}
+
+func transTokenBatchWithFrom(t *testing.T, ctx context.Context, client *rtclient.RealtimeClient, fromPrivateKey string, amount *uint256.Int, toAddress string, batchSize int) []string {
+	var txHashes []string
+	var transactions []types.Transaction
+
+	// Create all transactions first
+	for i := 0; i < batchSize; i++ {
+		chainID, err := client.ChainID(ctx)
+		require.NoError(t, err)
+		auth, err := operations.GetAuth(fromPrivateKey, chainID.Uint64())
+		require.NoError(t, err)
+		nonce, err := client.RealtimeGetTransactionCount(auth.From)
+		require.NoError(t, err)
+		gasPrice, err := client.SuggestGasPrice(ctx)
+		require.NoError(t, err)
+
+		to := common.HexToAddress(toAddress)
+		gas := uint64(21000)
+
+		var tx types.Transaction = &types.LegacyTx{
+			CommonTx: types.CommonTx{
+				Nonce: nonce,
+				To:    &to,
+				Gas:   gas,
+				Value: amount,
+			},
+			GasPrice: uint256.MustFromBig(gasPrice),
+		}
+
+		privateKey, err := crypto.HexToECDSA(strings.TrimPrefix(fromPrivateKey, "0x"))
+		require.NoError(t, err)
+
+		signer := types.MakeSigner(operations.GetTestChainConfig(operations.DefaultL2ChainID), 1, 0)
+		signedTx, err := types.SignTx(tx, *signer, privateKey)
+		require.NoError(t, err)
+
+		err = client.SendTransaction(ctx, signedTx)
+		require.NoError(t, err)
+
+		txHashes = append(txHashes, signedTx.Hash().String())
+		transactions = append(transactions, signedTx)
+
+		time.Sleep(10 * time.Millisecond)
+	}
+
+	// Wait for all transactions to be mined
+	for _, tx := range transactions {
+		err := WaitTxToBeMined(ctx, client, tx, DefaultTimeoutTxToBeMined)
+		require.NoError(t, err)
+	}
+
+	log.Info(fmt.Sprintf("All %d transactions have been mined successfully", len(transactions)))
+	return txHashes
+}
+
 func transTokenWithFrom(t *testing.T, ctx context.Context, client *rtclient.RealtimeClient, fromPrivateKey string, amount *uint256.Int, toAddress string) string {
 	chainID, err := client.ChainID(ctx)
 	require.NoError(t, err)
