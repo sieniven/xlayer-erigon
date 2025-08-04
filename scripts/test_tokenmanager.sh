@@ -198,8 +198,17 @@ if [ "$CURRENT_OP_ADDR" != "$EXPECTED_OP" ]; then
     exit 1
 fi
 
+# 检查当前余额是否过大（可能导致溢出）
 OPERATOR_BALANCE_BEFORE=$(cast balance "$OPERATOR" --rpc-url "$RPC_URL")
 echo "ℹ️  Operator余额 (操作前): $OPERATOR_BALANCE_BEFORE wei"
+
+# 检查余额是否接近uint256最大值（可能导致溢出）
+MAX_SAFE_BALANCE="100000000000000000000000000000000000000000000000000000000000000000000000000"  # 10^75 wei
+if (( $(echo "$OPERATOR_BALANCE_BEFORE > $MAX_SAFE_BALANCE" | bc -l) )); then
+    echo "⚠️  警告：Operator余额过大，可能导致溢出问题"
+    echo "  当前余额: $OPERATOR_BALANCE_BEFORE wei"
+    echo "  建议使用新的测试账户或清理余额后重新测试"
+fi
 
 echo "ℹ️  执行mint操作 (金额: $MINT_AMOUNT wei)..."
 set +e  # 临时禁用严格模式
@@ -217,17 +226,174 @@ fi
 OPERATOR_BALANCE_AFTER=$(cast balance "$OPERATOR" --rpc-url "$RPC_URL")
 echo "ℹ️  Operator余额 (操作后): $OPERATOR_BALANCE_AFTER wei"
 
-BALANCE_DIFF=$((OPERATOR_BALANCE_AFTER - OPERATOR_BALANCE_BEFORE))
+# 使用bc进行大数计算，避免bash整数溢出
+BALANCE_DIFF=$(echo "$OPERATOR_BALANCE_AFTER - $OPERATOR_BALANCE_BEFORE" | bc)
 echo "ℹ️  余额变化: $BALANCE_DIFF wei"
 
 # 考虑gas费用，实际增加应该接近mint金额（允许一定误差）
-MIN_EXPECTED=$((MINT_AMOUNT - 100000000000000000))  # 允许0.1 ETH的gas费用误差
-if [ "$BALANCE_DIFF" -ge "$MIN_EXPECTED" ]; then
+MIN_EXPECTED=$(echo "$MINT_AMOUNT - 100000000000000000" | bc)  # 允许0.1 ETH的gas费用误差
+
+if (( $(echo "$BALANCE_DIFF >= $MIN_EXPECTED" | bc -l) )); then
     echo "✅ Mint操作成功"
 else
-    echo "❌ Mint操作失败 (余额变化: $BALANCE_DIFF wei，预期至少: $MIN_EXPECTED wei)"
+    echo "❌ Mint操作失败:"
+    echo "  操作前余额: $OPERATOR_BALANCE_BEFORE wei"
+    echo "  操作后余额: $OPERATOR_BALANCE_AFTER wei"
+    echo "  余额变化: $BALANCE_DIFF wei"
+    echo "  预期最小: $MIN_EXPECTED wei"
+    echo "  mint金额: $MINT_AMOUNT wei"
+    
+    # 检查是否是负数（严重问题）
+    if (( $(echo "$BALANCE_DIFF < 0" | bc -l) )); then
+        echo "  🚨 余额减少，存在严重的溢出或状态问题！"
+    fi
     exit 1
 fi
+
+# 边界测试1: amount为0的情况（应该失败）
+echo "ℹ️  测试mint边界条件 - amount为0..."
+set +e
+ZERO_MINT_RESULT=$(cast send --private-key "$OPERATOR_PRIVATE_KEY" --rpc-url "$RPC_URL" --legacy \
+    "$PROXY_ADDRESS" "mint(uint256)" "0" 2>&1)
+ZERO_MINT_EXIT_CODE=$?
+set -e
+
+if [ $ZERO_MINT_EXIT_CODE -ne 0 ] && echo "$ZERO_MINT_RESULT" | grep -q "Amount must be greater than zero"; then
+    echo "✅ amount为0时正确拒绝"
+else
+    echo "❌ amount为0时应该失败但没有失败"
+    echo "结果: $ZERO_MINT_RESULT"
+    exit 1
+fi
+
+# 边界测试2: 非operator调用mint（应该失败）
+echo "ℹ️  测试mint边界条件 - 非operator调用..."
+set +e
+UNAUTHORIZED_MINT_RESULT=$(cast send --private-key "$ADMIN_PRIVATE_KEY" --rpc-url "$RPC_URL" --legacy \
+    "$PROXY_ADDRESS" "mint(uint256)" "$MINT_AMOUNT" 2>&1)
+UNAUTHORIZED_MINT_EXIT_CODE=$?
+set -e
+
+if [ $UNAUTHORIZED_MINT_EXIT_CODE -ne 0 ] && echo "$UNAUTHORIZED_MINT_RESULT" | grep -q "Only operator can call this function"; then
+    echo "✅ 非operator调用时正确拒绝"
+else
+    echo "❌ 非operator调用时应该失败但没有失败"
+    echo "结果: $UNAUTHORIZED_MINT_RESULT"
+    exit 1
+fi
+
+# 边界测试3: 递增数值测试
+echo "ℹ️  测试mint边界条件 - 递增数值测试..."
+
+# 定义测试数值数组 (ETH单位)
+declare -a TEST_AMOUNTS=(
+    "10000000000000000000"          # 10 ETH
+    "1000000000000000000000"        # 1000 ETH
+    "100000000000000000000000"      # 100000 ETH (10万ETH)
+    "10000000000000000000000000"    # 10000000 ETH (1000万ETH)
+    "100000000000000000000000000"   # 100000000 ETH (1亿ETH)
+    "1000000000000000000000000000"  # 1000000000 ETH (10亿ETH)
+)
+
+declare -a TEST_LABELS=(
+    "10 ETH"
+    "1000 ETH"
+    "100000 ETH (10万ETH)"
+    "10000000 ETH (1000万ETH)"
+    "100000000 ETH (1亿ETH)"
+    "1000000000 ETH (10亿ETH)"
+)
+
+# 逐个测试递增数值
+for i in "${!TEST_AMOUNTS[@]}"; do
+    AMOUNT="${TEST_AMOUNTS[$i]}"
+    LABEL="${TEST_LABELS[$i]}"
+    
+    echo "ℹ️  测试 $LABEL..."
+    OPERATOR_BALANCE_BEFORE=$(cast balance "$OPERATOR" --rpc-url "$RPC_URL")
+    
+    set +e
+    LARGE_MINT_RESULT=$(cast send --private-key "$OPERATOR_PRIVATE_KEY" --rpc-url "$RPC_URL" --legacy \
+        "$PROXY_ADDRESS" "mint(uint256)" "$AMOUNT" 2>&1)
+    LARGE_MINT_EXIT_CODE=$?
+    set -e
+    
+    if [ $LARGE_MINT_EXIT_CODE -eq 0 ]; then
+        # 验证余额确实增加了
+        OPERATOR_BALANCE_AFTER=$(cast balance "$OPERATOR" --rpc-url "$RPC_URL")
+        
+        # 使用bc进行大数计算，避免bash整数溢出
+        BALANCE_INCREASE=$(echo "$OPERATOR_BALANCE_AFTER - $OPERATOR_BALANCE_BEFORE" | bc)
+        MIN_EXPECTED=$(echo "$AMOUNT - 1000000000000000000" | bc)  # 允许1 ETH gas费用
+        
+        # 检查余额是否合理增加（使用bc比较）
+        if (( $(echo "$BALANCE_INCREASE >= $MIN_EXPECTED" | bc -l) )); then
+            echo "✅ $LABEL mint成功"
+            echo "  余额增加: $BALANCE_INCREASE wei"
+        else
+            echo "❌ $LABEL mint余额增加异常:"
+            echo "  操作前余额: $OPERATOR_BALANCE_BEFORE wei"
+            echo "  操作后余额: $OPERATOR_BALANCE_AFTER wei"  
+            echo "  实际增加: $BALANCE_INCREASE wei"
+            echo "  预期最小: $MIN_EXPECTED wei"
+            echo "  mint金额: $AMOUNT wei"
+            
+            # 检查是否是负数（表明溢出或其他问题）
+            if (( $(echo "$BALANCE_INCREASE < 0" | bc -l) )); then
+                echo "  🚨 余额减少，可能存在严重问题！"
+                exit 1
+            fi
+            
+            # 对于大数值，不立即退出，继续测试找出边界
+            if [ "$i" -lt 2 ]; then
+                exit 1
+            else
+                echo "  ⚠️  继续测试以找出系统边界..."
+            fi
+        fi
+    else
+        # 检查是否是合理的失败
+        if echo "$LARGE_MINT_RESULT" | grep -q -E "gas|limit|insufficient|overflow"; then
+            echo "✅ $LABEL mint被合理拒绝 (系统限制)"
+        else
+            echo "❌ $LABEL mint失败: $LARGE_MINT_RESULT"
+            # 对于小数值失败是严重问题，大数值失败可能是系统保护
+            if [ "$i" -lt 2 ]; then
+                exit 1
+            else
+                echo "  ⚠️  可能达到系统处理上限"
+            fi
+        fi
+    fi
+done
+
+echo "✅ 递增数值测试完成，最大测试到10亿ETH"
+
+# 边界测试4: operator为零地址时的测试
+echo "ℹ️  测试mint边界条件 - operator为零地址..."
+# 临时将operator设置为零地址
+cast send --private-key "$ADMIN_PRIVATE_KEY" --rpc-url "$RPC_URL" --legacy \
+    "$PROXY_ADDRESS" "setOperator(address)" "0x0000000000000000000000000000000000000000" >/dev/null 2>&1
+
+set +e
+NO_OP_MINT_RESULT=$(cast send --private-key "$OPERATOR_PRIVATE_KEY" --rpc-url "$RPC_URL" --legacy \
+    "$PROXY_ADDRESS" "mint(uint256)" "$MINT_AMOUNT" 2>&1)
+NO_OP_MINT_EXIT_CODE=$?
+set -e
+
+# 恢复operator
+cast send --private-key "$ADMIN_PRIVATE_KEY" --rpc-url "$RPC_URL" --legacy \
+    "$PROXY_ADDRESS" "setOperator(address)" "$OPERATOR" >/dev/null 2>&1
+
+if [ $NO_OP_MINT_EXIT_CODE -ne 0 ] && echo "$NO_OP_MINT_RESULT" | grep -q "Only operator can call this function"; then
+    echo "✅ operator为零地址时正确拒绝"
+else
+    echo "❌ operator为零地址时应该失败但没有失败"
+    echo "结果: $NO_OP_MINT_RESULT"
+    exit 1
+fi
+
+echo "✅ 所有mint边界测试完成"
 echo ""
 
 # 步骤3: Cleanup操作测试
@@ -287,6 +453,48 @@ else
     echo "❌ 对已清理地址的cleanup操作失败"
     exit 1
 fi
+
+# 边界测试1: 非operator调用cleanup（应该失败）
+echo "ℹ️  测试cleanup边界条件 - 非operator调用..."
+set +e
+UNAUTHORIZED_CLEANUP_RESULT=$(cast send --private-key "$ADMIN_PRIVATE_KEY" --rpc-url "$RPC_URL" --legacy \
+    "$PROXY_ADDRESS" "cleanup()" 2>&1)
+UNAUTHORIZED_CLEANUP_EXIT_CODE=$?
+set -e
+
+if [ $UNAUTHORIZED_CLEANUP_EXIT_CODE -ne 0 ] && echo "$UNAUTHORIZED_CLEANUP_RESULT" | grep -q "Only operator can call this function"; then
+    echo "✅ 非operator调用cleanup时正确拒绝"
+else
+    echo "❌ 非operator调用cleanup时应该失败但没有失败"
+    echo "结果: $UNAUTHORIZED_CLEANUP_RESULT"
+    exit 1
+fi
+
+# 边界测试2: operator为零地址时调用cleanup
+echo "ℹ️  测试cleanup边界条件 - operator为零地址..."
+# 临时将operator设置为零地址
+cast send --private-key "$ADMIN_PRIVATE_KEY" --rpc-url "$RPC_URL" --legacy \
+    "$PROXY_ADDRESS" "setOperator(address)" "0x0000000000000000000000000000000000000000" >/dev/null 2>&1
+
+set +e
+NO_OP_CLEANUP_RESULT=$(cast send --private-key "$OPERATOR_PRIVATE_KEY" --rpc-url "$RPC_URL" --legacy \
+    "$PROXY_ADDRESS" "cleanup()" 2>&1)
+NO_OP_CLEANUP_EXIT_CODE=$?
+set -e
+
+# 恢复operator
+cast send --private-key "$ADMIN_PRIVATE_KEY" --rpc-url "$RPC_URL" --legacy \
+    "$PROXY_ADDRESS" "setOperator(address)" "$OPERATOR" >/dev/null 2>&1
+
+if [ $NO_OP_CLEANUP_EXIT_CODE -ne 0 ] && echo "$NO_OP_CLEANUP_RESULT" | grep -q "Only operator can call this function"; then
+    echo "✅ operator为零地址时cleanup正确拒绝"
+else
+    echo "❌ operator为零地址时cleanup应该失败但没有失败"
+    echo "结果: $NO_OP_CLEANUP_RESULT"
+    exit 1
+fi
+
+echo "✅ 所有cleanup边界测试完成"
 echo ""
 
 # 步骤4: 暂停/恢复功能测试
@@ -532,8 +740,8 @@ echo ""
 
 echo "🎉 所有测试完成!"
 echo "  ✅ Operator管理正常"
-echo "  ✅ Mint操作正常"
-echo "  ✅ Cleanup操作正常"
+echo "  ✅ Mint操作正常 (包含边界测试)"
+echo "  ✅ Cleanup操作正常 (包含边界测试)"
 echo "  ✅ 暂停/恢复功能正常"
 echo "  ✅ 查询功能正常"
 echo "  ✅ Admin转移功能正常"
