@@ -202,10 +202,13 @@ OPERATOR_BALANCE_BEFORE=$(cast balance "$OPERATOR" --rpc-url "$RPC_URL")
 echo "ℹ️  Operator余额 (操作前): $OPERATOR_BALANCE_BEFORE wei"
 
 echo "ℹ️  执行mint操作 (金额: $MINT_AMOUNT wei)..."
+set +e  # 临时禁用严格模式
 MINT_RESULT=$(cast send --private-key "$OPERATOR_PRIVATE_KEY" --rpc-url "$RPC_URL" --legacy \
     "$PROXY_ADDRESS" "mint(uint256)" "$MINT_AMOUNT" 2>&1)
+MINT_EXIT_CODE=$?
+set -e  # 重新启用严格模式
 
-if [ $? -ne 0 ]; then
+if [ $MINT_EXIT_CODE -ne 0 ]; then
     echo "❌ Mint操作失败:"
     echo "$MINT_RESULT"
     exit 1
@@ -242,8 +245,17 @@ fi
 
 echo "ℹ️  目标地址余额 (清理前): $TARGET_BALANCE wei"
 
-cast send --private-key "$OPERATOR_PRIVATE_KEY" --rpc-url "$RPC_URL" --legacy \
-    "$PROXY_ADDRESS" "cleanup()" >/dev/null 2>&1
+set +e  # 临时禁用严格模式
+CLEANUP_RESULT=$(cast send --private-key "$OPERATOR_PRIVATE_KEY" --rpc-url "$RPC_URL" --legacy \
+    "$PROXY_ADDRESS" "cleanup()" 2>&1)
+CLEANUP_EXIT_CODE=$?
+set -e  # 重新启用严格模式
+
+if [ $CLEANUP_EXIT_CODE -ne 0 ]; then
+    echo "❌ Cleanup操作失败:"
+    echo "$CLEANUP_RESULT"
+    exit 1
+fi
 
 TARGET_BALANCE_AFTER=$(cast balance "$TARGET_ADDRESS" --rpc-url "$RPC_URL")
 echo "ℹ️  目标地址余额 (清理后): $TARGET_BALANCE_AFTER wei"
@@ -256,8 +268,17 @@ else
 fi
 
 # 测试对已清理地址的cleanup操作（应该成功，幂等性）
-cast send --private-key "$OPERATOR_PRIVATE_KEY" --rpc-url "$RPC_URL" --legacy \
-    "$PROXY_ADDRESS" "cleanup()" >/dev/null 2>&1
+set +e  # 临时禁用严格模式
+CLEANUP2_RESULT=$(cast send --private-key "$OPERATOR_PRIVATE_KEY" --rpc-url "$RPC_URL" --legacy \
+    "$PROXY_ADDRESS" "cleanup()" 2>&1)
+CLEANUP2_EXIT_CODE=$?
+set -e  # 重新启用严格模式
+
+if [ $CLEANUP2_EXIT_CODE -ne 0 ]; then
+    echo "❌ 第二次Cleanup操作失败:"
+    echo "$CLEANUP2_RESULT"
+    exit 1
+fi
 
 FINAL_BALANCE=$(cast balance "$TARGET_ADDRESS" --rpc-url "$RPC_URL")
 if [ "$FINAL_BALANCE" -eq 1 ]; then
