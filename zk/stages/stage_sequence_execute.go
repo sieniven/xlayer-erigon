@@ -13,7 +13,6 @@ import (
 	"github.com/ledgerwatch/erigon/core/rawdb"
 	"github.com/ledgerwatch/erigon/core/state"
 	"github.com/ledgerwatch/erigon/core/types"
-	ethTypes "github.com/ledgerwatch/erigon/core/types"
 	"github.com/ledgerwatch/erigon/eth/stagedsync"
 	"github.com/ledgerwatch/erigon/eth/stagedsync/stages"
 	"github.com/ledgerwatch/erigon/zk"
@@ -21,8 +20,6 @@ import (
 	"github.com/ledgerwatch/erigon/zk/datastream/server"
 	"github.com/ledgerwatch/erigon/zk/hermez_db"
 	"github.com/ledgerwatch/erigon/zk/metrics"
-	kafkaTypes "github.com/ledgerwatch/erigon/zk/realtime/kafka/types"
-	realtimeTypes "github.com/ledgerwatch/erigon/zk/realtime/types"
 	zktx "github.com/ledgerwatch/erigon/zk/tx"
 	"github.com/ledgerwatch/erigon/zk/txpool"
 	"github.com/ledgerwatch/erigon/zk/utils"
@@ -30,9 +27,6 @@ import (
 )
 
 var shouldCheckForExecutionAndDataStreamAlignment = true
-var prevBlockTxCount = int64(0)
-var prevBlockHash = common.Hash{}
-var prevBlockHeader *ethTypes.Header
 
 func SpawnSequencingStage(
 	s *stagedsync.StageState,
@@ -463,14 +457,7 @@ BatchLoop:
 
 		// For X Layer, realtime. Send kafka block header
 		if cfg.zk.XLayer.Realtime.Enable && cfg.kafkaBlockInfoChan != nil {
-			cfg.kafkaBlockInfoChan <- kafkaTypes.BlockMessage{
-				Header: header,
-				PrevBlockInfo: &realtimeTypes.BlockInfo{
-					Header:  prevBlockHeader,
-					TxCount: prevBlockTxCount,
-					Hash:    prevBlockHash,
-				},
-			}
+			cfg.kafkaBlockInfoChan <- header
 		}
 
 	OuterLoopTransactions:
@@ -887,10 +874,6 @@ BatchLoop:
 		if err := streamWriter.WriteBlockDetailsToDatastream(batchState.forkId, batchState.batchNumber, batchState.builtBlocks); err != nil {
 			return err
 		}
-
-		prevBlockHeader = header
-		prevBlockTxCount = int64(len(batchState.blockState.builtBlockElements.transactions))
-		prevBlockHash = block.Hash()
 
 		// lets commit everything after updateStreamAndCheckRollback no matter of its result unless
 		// we're in L1 recovery where losing some blocks on restart doesn't matter

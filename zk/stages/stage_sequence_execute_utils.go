@@ -34,7 +34,6 @@ import (
 	"github.com/ledgerwatch/erigon/zk/datastream/server"
 	"github.com/ledgerwatch/erigon/zk/hermez_db"
 	"github.com/ledgerwatch/erigon/zk/l1infotree"
-	kafkaTypes "github.com/ledgerwatch/erigon/zk/realtime/kafka/types"
 	zktx "github.com/ledgerwatch/erigon/zk/tx"
 	"github.com/ledgerwatch/erigon/zk/txpool"
 	zktypes "github.com/ledgerwatch/erigon/zk/types"
@@ -97,7 +96,7 @@ type SequenceBlockCfg struct {
 	doneHook       DoneHook
 
 	// For X Layer, realtime
-	kafkaBlockInfoChan chan kafkaTypes.BlockMessage
+	kafkaBlockInfoChan chan *types.Header
 	kafkaTxInfoChan    chan state.TxInfo
 }
 
@@ -131,7 +130,7 @@ func StageSequenceBlocksCfg(
 	doneHook DoneHook,
 
 	// For X Layer, realtime
-	kafkaBlockInfoChan chan kafkaTypes.BlockMessage,
+	kafkaBlockInfoChan chan *types.Header,
 	kafkaTxInfoChan chan state.TxInfo,
 ) SequenceBlockCfg {
 

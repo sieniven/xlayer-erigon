@@ -137,7 +137,6 @@ import (
 	"github.com/ledgerwatch/erigon/zk/realtime"
 	realtimeCache "github.com/ledgerwatch/erigon/zk/realtime/cache"
 	realtimeKafka "github.com/ledgerwatch/erigon/zk/realtime/kafka"
-	kafkaTypes "github.com/ledgerwatch/erigon/zk/realtime/kafka/types"
 	"github.com/ledgerwatch/erigon/zk/realtime/realtimeapi"
 	realtimeSub "github.com/ledgerwatch/erigon/zk/realtime/subscription"
 	realtimeTypes "github.com/ledgerwatch/erigon/zk/realtime/types"
@@ -261,7 +260,7 @@ type Ethereum struct {
 	kafkaProducer *realtimeKafka.KafkaProducer
 	kafkaConsumer *realtimeKafka.KafkaConsumer
 	realtimeCache *realtimeCache.RealtimeCache
-	blockInfoChan chan kafkaTypes.BlockMessage
+	blockInfoChan chan *types.Header
 	txInfoChan    chan state.TxInfo
 	finishChan    chan realtimeTypes.FinishedEntry
 	realtimeSub   *realtimeSub.RealtimeSubscription
@@ -1236,14 +1235,14 @@ func New(ctx context.Context, stack *node.Node, config *ethconfig.Config, logger
 
 			// For X Layer, realtime
 			if cfg.Zk.XLayer.Realtime.Enable {
-				kafkaProducer, err := realtimeKafka.NewKafkaProducer(cfg.Zk.XLayer.Realtime.Kafka)
+				kafkaProducer, err := realtimeKafka.NewKafkaProducer(cfg.Zk.XLayer.Realtime.Kafka, backend.sentryCtx, backend.chainDB)
 				if err != nil {
 					backend.kafkaEnabled = false
 					log.Warn("[Realtime] Failed to initialize kafka producer", "error", err)
 				} else {
 					backend.kafkaEnabled = true
 					backend.kafkaProducer = kafkaProducer
-					backend.blockInfoChan = make(chan kafkaTypes.BlockMessage, realtimeKafka.DefaultKafkaBufferSize)
+					backend.blockInfoChan = make(chan *types.Header, realtimeKafka.DefaultKafkaBufferSize)
 					backend.txInfoChan = make(chan state.TxInfo, realtimeKafka.DefaultKafkaBufferSize)
 
 					// Send error trigger message on sequencer restart

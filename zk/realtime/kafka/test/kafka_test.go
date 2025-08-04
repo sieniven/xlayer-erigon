@@ -107,7 +107,7 @@ func TestKafka(t *testing.T) {
 		ClientID:         "xlayer-test-consumer",
 		GroupID:          "xlayer-test-consumer-1",
 	}
-	producer, err := kafka.NewKafkaProducer(cfg)
+	producer, err := kafka.NewKafkaProducer(cfg, context.Background(), nil)
 	assert.NilError(t, err)
 
 	currBlockHeader := ethTypes.CopyHeader(blockHeader)
