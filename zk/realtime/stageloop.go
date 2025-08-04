@@ -112,14 +112,8 @@ func ListenKafkaConsumer(
 			realtimeCache.UpdateExecution(finishEntry)
 			log.Debug("[Realtime] Received finish signal from execution", "finishHeight", finishEntry.Height)
 		case blockMsg := <-blockMsgsChan:
-			header, _, err := blockMsg.GetBlockInfo()
-			if err != nil {
+			if err := blockMsg.Validate(realtimeCache.GetExecutionHeight()); err != nil {
 				log.Error(fmt.Sprintf("[Realtime] Failed to consume block message from kafka. error: %v", err))
-				continue
-			}
-			if header.Number.Uint64() <= realtimeCache.GetExecutionHeight() {
-				// Ignore block msgs from previous blocks
-				log.Debug(fmt.Sprintf("[Realtime] Ignoring block message from previous block. blockNum: %d", header.Number))
 				continue
 			}
 			kafkaCache.BlockMsgCache.Add(&blockMsg)
@@ -127,7 +121,7 @@ func ListenKafkaConsumer(
 				// Publish block to subscriptions
 				subService.BroadcastNewMsg(&blockMsg, nil)
 			}
-			log.Debug(fmt.Sprintf("[Realtime] Received block message. blockNum: %d", header.Number))
+			log.Debug(fmt.Sprintf("[Realtime] Received block message. blockNum: %d", blockMsg.Header.Number))
 		case txMsg := <-txMsgsChan:
 			if err := txMsg.Validate(); err != nil {
 				log.Error(fmt.Sprintf("[Realtime] Failed to consume transaction message from kafka. error: %v", err))
