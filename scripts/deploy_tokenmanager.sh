@@ -155,7 +155,7 @@ if [ "$CURRENT_OWNER" != "$EXPECTED_OWNER" ]; then
 fi
 
 # 验证Admin
-CURRENT_ADMIN=$(cast call --rpc-url "$RPC_URL" "$PROXY_ADDRESS" "getAdmin()" 2>/dev/null)
+CURRENT_ADMIN=$(cast call --rpc-url "$RPC_URL" "$PROXY_ADDRESS" "admin()" 2>/dev/null)
 # 移除前导的24个零字节（48个字符）
 CURRENT_ADMIN="0x${CURRENT_ADMIN:26}"
 CURRENT_ADMIN=$(cast to-check-sum-address "$CURRENT_ADMIN" 2>/dev/null || echo "$CURRENT_ADMIN")

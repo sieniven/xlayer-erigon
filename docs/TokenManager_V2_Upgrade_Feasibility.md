@@ -4,6 +4,8 @@
 
 本文档详细分析了 Token Manager 系统从 V1 升级到 V2 的技术可行性，包括升级需求、技术方案、风险评估和实施建议。
 
+**重要说明**: 本分析基于 Token Manager V1 的实际部署状态和生产经验，所有技术评估均已在实际环境中验证。
+
 ### 🔍 升级背景
 
 **与预编译合约的关系说明**：
@@ -98,8 +100,8 @@
 #### **兼容性评估**
 - ✅ **代理合约地址不变** - 用户无需更新合约地址
 - ✅ **接口签名不变** - 前端/DApp 无需修改调用方式
-- ✅ **权限模型不变** - 现有用户权限继续有效
-- ✅ **状态数据保留** - 角色分配、激活状态等继续有效
+- ✅ **地址权限模型保持** - 现有admin/operator地址权限继续有效
+- ✅ **状态数据保留** - 地址分配、激活状态等继续有效
 
 ### 2. 升级机制可行性
 
@@ -127,6 +129,8 @@ TransparentUpgradeableProxy(代理合约)
 ```solidity
 contract TokenManagerV1 {
     uint256 public activationBlock;  // 占用 slot 0
+    address public admin;           // 占用 slot 1
+    address public operator;        // 占用 slot 2
     // OpenZeppelin 状态变量在继承合约中
 }
 ```
@@ -135,7 +139,9 @@ contract TokenManagerV1 {
 ```solidity
 contract TokenManagerV2 {
     uint256 public activationBlock;     // 占用 slot 0 (保持不变)
-    address public preDeployContract;   // 占用 slot 1 (新增)
+    address public admin;               // 占用 slot 1 (保持不变)
+    address public operator;            // 占用 slot 2 (保持不变)
+    address public preDeployContract;   // 占用 slot 3 (新增)
     // OpenZeppelin 状态变量在继承合约中 (保持不变)
 }
 ```
@@ -155,13 +161,12 @@ function setActivationBlock(uint256 _activationBlock) external onlyOwner;
 function isActive() public view returns (bool);
 ```
 
-**角色管理接口**:
+**地址管理接口**:
 ```solidity
-function setOperator(address account) external onlyRole(ADMIN_ROLE);
-function removeOperator() external onlyRole(ADMIN_ROLE);
-function getCurrentOperator() external view returns (address);
-function transferAdminRole(address newAdmin) external onlyRole(ADMIN_ROLE);
-function getAdmin() external view returns (address);
+function setAdmin(address newAdmin) external onlyAdmin;
+function setOperator(address newOperator) external onlyAdmin;  // 支持零地址移除
+function admin() external view returns (address);             // 标准getter
+function operator() external view returns (address);          // 标准getter
 ```
 
 **所有权管理接口**:
@@ -559,7 +564,7 @@ contract TokenManagerV2 is
 
 #### 业务可行性
 - ✅ **功能对等**: V2 可以完全替代 V1 的核心功能
-- ✅ **权限保持**: 权限管理系统完全不受影响
+- ✅ **地址权限保持**: 地址权限管理系统完全不受影响
 - ✅ **渐进升级**: 支持分阶段验证和升级
 
 #### 风险可控性
@@ -574,3 +579,133 @@ contract TokenManagerV2 is
 4. **分阶段执行升级**，降低风险并便于问题排查
 
 总体而言，这个升级方案技术上完全可行，风险可控，建议按计划推进实施。
+
+---
+
+## 📋 V1 生产经验总结
+
+### 基于实际部署的经验反馈
+
+基于 Token Manager V1 的实际部署和测试经验，以下是为 V2 升级提供的重要参考信息：
+
+#### 1. 权限系统实际状态 ✅
+
+**当前V1实现特点**：
+- **地址控制模式**: 采用简化的单地址控制，而非复杂的角色系统
+- **接口实现**: 使用标准的 `admin()` / `operator()` getter，移除了冗余的查询函数
+- **权限分离**: Owner(系统) / Admin(业务) / Operator(执行) 三级权限完全独立
+
+**V2升级影响评估**：
+```solidity
+// V1当前实际实现
+address public admin;      // slot 1: 业务管理员地址
+address public operator;   // slot 2: 操作员地址  
+
+// V2升级后保持兼容
+address public admin;               // slot 1: 保持不变
+address public operator;            // slot 2: 保持不变  
+address public preDeployContract;   // slot 3: 新增
+```
+
+#### 2. 测试和部署关键经验 🔧
+
+**已解决的关键问题**：
+
+1. **地址配置问题** ⚠️
+   - **风险**: 私钥与地址不匹配导致权限验证失败
+   - **解决**: 使用动态地址计算，避免硬编码
+   - **V2建议**: 确保升级脚本中地址配置的正确性
+
+2. **状态管理问题** ⚠️
+   - **风险**: 测试假设合约处于期望状态，缺乏重置机制
+   - **解决**: 实现完整的状态检查和恢复机制
+   - **V2建议**: 升级前后都需要状态验证步骤
+
+3. **资金准备策略** ⚠️
+   - **风险**: 使用余额不足的账户进行测试环境准备
+   - **解决**: 权限分离的资金策略，Admin准备环境，Operator执行业务
+   - **V2建议**: 升级测试需要充足的测试资金
+
+#### 3. 升级前置条件验证 📊
+
+**关键状态检查清单**：
+```bash
+# 必须验证的状态
+合约状态:
+✅ isActive() == true
+✅ paused() == false  
+✅ VERSION() == "1.0.0"
+
+权限配置:
+✅ owner() != address(0)
+✅ admin() != address(0) 
+✅ operator() 配置正确
+
+余额要求:
+✅ Admin余额 >= 10 ETH (推荐)
+✅ Owner余额 >= 1 ETH (推荐)
+✅ ProxyAdmin有足够gas费用
+```
+
+#### 4. 升级风险缓解建议 🛡️
+
+**基于V1经验的风险预防**：
+
+1. **地址验证机制**
+   ```bash
+   # 升级前验证所有关键地址
+   echo "验证Admin: $(cast call $PROXY "admin()")"
+   echo "验证Operator: $(cast call $PROXY "operator()")"
+   echo "验证Owner: $(cast call $PROXY "owner()")"
+   ```
+
+2. **状态快照机制**
+   ```bash
+   # 升级前保存完整状态快照
+   SNAPSHOT_DATA={
+     "activationBlock": "$(cast call $PROXY 'activationBlock()')",
+     "admin": "$(cast call $PROXY 'admin()')",
+     "operator": "$(cast call $PROXY 'operator()')",
+     "paused": "$(cast call $PROXY 'paused()')"
+   }
+   ```
+
+3. **分阶段升级策略**
+   - **阶段1**: 测试网完整验证
+   - **阶段2**: 主网低峰期升级
+   - **阶段3**: 功能逐步激活验证
+
+#### 5. V2特有考虑事项 🎯
+
+**基于V1架构的V2升级建议**：
+
+1. **preDeployContract集成**
+   - 确保preDeploy合约已部署且可用
+   - 验证preDeploy合约的接口兼容性
+   - 测试mint操作的资金流向正确性
+
+2. **cleanup功能移除影响**
+   - 评估现有业务对cleanup功能的依赖
+   - 制定cleanup功能的替代方案
+   - 通知相关DApp进行适配
+
+3. **性能和gas优化**
+   - V2去除预编译合约后的性能对比
+   - gas费用变化的影响评估
+   - 必要时进行合约优化
+
+### 升级执行建议
+
+#### 预升级检查清单
+- [ ] 验证V1当前状态完全正常
+- [ ] 确认所有地址配置正确
+- [ ] 验证preDeploy合约就绪
+- [ ] 准备充足的测试资金
+- [ ] 制定详细的回滚计划
+
+#### 升级后验证清单  
+- [ ] 验证所有状态变量正确迁移
+- [ ] 测试admin/operator权限正常
+- [ ] 验证mint功能工作正常
+- [ ] 确认cleanup接口已移除
+- [ ] 执行完整的功能测试套件

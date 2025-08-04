@@ -133,37 +133,97 @@ TRANSFER_AMOUNT="100000000000000000"  # 0.1 ETH (用于测试账户初始化)
 
 | 测试类别 | 具体测试 |
 |----------|----------|
-| **角色管理** | setOperator, removeOperator, transferAdminRole |
-| **角色查询** | getCurrentOperator, getRoleMemberCount, getRoleMember, hasRole |
-| **管理员查询** | getAdmin, hasRole, getRoleMemberCount |
+| **操作员管理** | setOperator (支持零地址移除) |
+| **管理员管理** | setAdmin |
+| **角色查询** | operator(), admin() (自动生成getter) |
 | **核心功能** | mint (铸造到操作员), cleanup (清理目标地址) |
 | **权限控制** | 无权限操作被正确拒绝，权限转移验证 |
 | **暂停控制** | pause, unpause, 暂停状态下操作被拒绝 |
-| **所有者管理** | transferOwnership, renounceOwnership |
-| **边界测试** | 重复cleanup操作、余额变化验证 |
+| **所有者管理** | transferOwnership, renounceOwnership (禁用) |
+| **边界测试** | 重复cleanup操作、余额变化验证、零地址移除 |
+| **系统查询** | VERSION(), isActive(), paused(), activationBlock() |
 
 #### 测试流程
 
-1. **Operator角色管理测试** - 设置、替换、移除操作员，验证权限转移
+1. **Operator管理测试** - 设置、替换、移除(零地址)操作员
 2. **Mint操作测试** - 测试代币铸造到操作员账户
 3. **Cleanup操作测试** - 测试目标地址清理功能，验证1 wei保留机制
 4. **暂停/恢复功能测试** - 测试pause/unpause机制
-5. **角色查询功能测试** - 测试所有角色查询接口
-6. **管理员角色转移测试** - 测试管理员权限转移
+5. **查询功能测试** - 测试所有自动生成的getter接口
+6. **Admin转移测试** - 测试管理员权限转移
 7. **所有者转移测试** - 测试所有者权限转移
+
+#### 核心接口变更
+
+**移除的冗余接口**:
+- ❌ `getAdmin()` → ✅ 使用 `admin()` (自动生成)
+- ❌ `getCurrentOperator()` → ✅ 使用 `operator()` (自动生成)
+- ❌ `removeOperator()` → ✅ 使用 `setOperator(address(0))`
+- ❌ `hasAdmin()` / `hasOperator()` → ✅ 直接检查地址是否为零
+
+**保留的核心接口**:
+- ✅ `setAdmin(address)` - 设置新admin
+- ✅ `setOperator(address)` - 设置operator (支持零地址移除)
+- ✅ `mint(uint256)` - 铸造代币到operator
+- ✅ `cleanup()` - 清理目标地址到1 wei
+- ✅ `pause()` / `unpause()` - 系统控制
+- ✅ `transferOwnership(address)` - 所有权转移
 
 #### 成功输出示例
 
 ```
 🎉 所有测试完成!
-  ✅ Operator角色管理正常
+  ✅ Operator管理正常
   ✅ Mint操作正常
   ✅ Cleanup操作正常
   ✅ 暂停/恢复功能正常
-  ✅ 角色查询功能正常
-  ✅ 管理员转移功能正常
+  ✅ 查询功能正常
+  ✅ Admin转移功能正常
   ✅ 所有者转移功能正常
 ```
+
+---
+
+## 🏗️ 合约架构
+
+### 地址控制模式
+
+TokenManager V1 采用简化的地址控制模式，替代了复杂的角色控制：
+
+```solidity
+// 状态变量 (自动生成getter)
+address public admin;     // admin() - 业务管理员
+address public operator;  // operator() - 操作员
+
+// 管理函数
+function setAdmin(address newAdmin) external onlyAdmin;
+function setOperator(address newOperator) external onlyAdmin;  // 支持address(0)移除
+```
+
+### 权限层级
+
+```
+Owner (系统级权限)
+├── setActivationBlock()    - 设置激活区块
+├── pause() / unpause()     - 暂停/恢复系统
+└── transferOwnership()     - 转移所有权
+
+Admin (业务级权限)
+├── setAdmin()             - 设置新admin
+└── setOperator()          - 设置/移除operator
+
+Operator (操作级权限)
+├── mint()                 - 铸造代币
+└── cleanup()              - 清理目标地址
+```
+
+### 安全特性
+
+1. **防抢跑保护**: 构造函数调用 `_disableInitializers()`
+2. **防重入保护**: 所有状态变更函数使用 `nonReentrant`
+3. **暂停机制**: 支持紧急暂停所有业务操作
+4. **权限分离**: Owner/Admin/Operator 三级权限独立
+5. **单地址控制**: 每个角色物理上只能有一个地址
 
 ---
 
@@ -173,9 +233,10 @@ TRANSFER_AMOUNT="100000000000000000"  # 0.1 ETH (用于测试账户初始化)
 
 | 限制项 | 数值 | 说明 |
 |--------|------|------|
-| **单一角色设计** | 每个角色只能有1个地址 | OPERATOR_ROLE采用单一持有者模式 |
+| **单一地址设计** | 每个角色只能有1个地址 | Admin/Operator采用单一地址模式，物理上无法设置多个 |
 | **Cleanup余额保护** | 必须保留≥1 wei | 防止目标地址余额被完全清零 |
-| **权限分离** | Owner/Admin/Operator三级权限 | 确保权限最小化原则 |
+| **权限设计** | Owner/Admin完全独立 | 两个权限体系分离，但允许同一地址同时担任两个角色 |
+| **接口简化** | 移除冗余函数 | 使用Solidity标准getter替代自定义查询函数 |
 
 ---
 
@@ -191,7 +252,7 @@ TRANSFER_AMOUNT="100000000000000000"  # 0.1 ETH (用于测试账户初始化)
 
 3. **权限分离**:
    - Owner控制系统级操作 (pause/unpause/transferOwnership)
-   - Admin控制业务级操作 (setOperator/removeOperator/transferAdminRole)
+   - Admin控制业务级操作 (setAdmin/setOperator)
    - Operator执行业务操作 (mint/cleanup)
    - 确保权限分配符合安全原则
 
@@ -199,6 +260,11 @@ TRANSFER_AMOUNT="100000000000000000"  # 0.1 ETH (用于测试账户初始化)
    - 在生产环境运行测试前，先在测试网验证
    - 测试脚本会自动为测试账户提供资金并执行实际交易
    - 基础状态验证已移至部署脚本，测试脚本专注于功能测试
+
+5. **接口调用**:
+   - 使用 `admin()` 和 `operator()` 替代已移除的getter函数
+   - 使用 `setOperator(address(0))` 移除operator
+   - 注意Owner和Admin权限完全独立
 
 ---
 
@@ -232,6 +298,14 @@ TRANSFER_AMOUNT="100000000000000000"  # 0.1 ETH (用于测试账户初始化)
    cast nonce $ACCOUNT_ADDRESS --rpc-url $RPC_URL
    ```
 
+5. **"function not found"**
+   ```bash
+   # 检查是否使用了已移除的函数
+   # 使用 admin() 替代 getAdmin()
+   # 使用 operator() 替代 getCurrentOperator()
+   # 使用 setOperator(address(0)) 替代 removeOperator()
+   ```
+
 ### 调试模式
 
 在脚本开头添加调试选项：
@@ -250,6 +324,7 @@ set -e
 
 - [Token Manager API Reference](../docs/TokenManager_API_Reference.md)
 - [Token Manager Complete Design](../docs/TokenManager_Complete_Design.md)
+- [Token Manager V2 Upgrade Feasibility](../docs/TokenManager_V2_Upgrade_Feasibility.md)
 - [Contract Source Code](../contracts/TokenManagerV1.sol)
 
 ---
@@ -259,4 +334,5 @@ set -e
 如遇到问题，请检查：
 1. Erigon节点日志
 2. 脚本输出的错误信息
-3. 相关文档中的故障排除部分 
+3. 相关文档中的故障排除部分
+4. 确保使用正确的接口名称 (admin/operator getter)

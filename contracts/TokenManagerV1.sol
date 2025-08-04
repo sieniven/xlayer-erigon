@@ -2,48 +2,52 @@
 pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/access/extensions/AccessControlEnumerableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 
 /**
  * @title TokenManagerV1
- * @dev Enhanced Token Manager with role-based access control and optimized operations
+ * @dev Enhanced Token Manager with address-based access control
  * Features:
- * - Role-based permissions (Admin, Operator) with native enumeration
+ * - Simple address-based permissions (Admin, Operator)
+ * - Single address per role (strictly enforced)
  * - Reentrancy protection
- * - Comprehensive event system
+ * - Gas optimized operations
+ * - Anti front-running protection for logic contract
  */
 contract TokenManagerV1 is 
     Initializable, 
     OwnableUpgradeable, 
-    AccessControlEnumerableUpgradeable, 
     PausableUpgradeable, 
     ReentrancyGuardUpgradeable 
 {
+    /// @custom:oz-upgrades-unsafe-allow constructor
+    constructor() {
+        _disableInitializers();
+    }
+
     // ==================== CONSTANTS ====================
-    // Token Manager precompile address
+    
     address constant PRECOMPILE_ADDRESS = 0x0000000000000000000000000000000000001001;
     
-    // Operation codes for precompile
     bytes1 constant TEST_OP = 0x01;
     bytes1 constant MINT_OP = 0x02;
     bytes1 constant CLEAN_OP = 0x03;
     
-    // Role definitions
-    bytes32 public constant ADMIN_ROLE = keccak256("ADMIN_ROLE");
-    bytes32 public constant OPERATOR_ROLE = keccak256("OPERATOR_ROLE");
-    
     // ==================== STATE VARIABLES ====================
     
     uint256 public activationBlock;
+    address public admin;     // Single admin address
+    address public operator;  // Single operator address
     
     // ==================== EVENTS ====================
+    
     // System Events
     event Initialized(address indexed owner, address indexed admin, uint256 activationBlock);
     event ActivationBlockSet(uint256 activationBlock);
-    event AdminRoleTransferred(address indexed oldAdmin, address indexed newAdmin);
+    event AdminChanged(address indexed oldAdmin, address indexed newAdmin);
+    event OperatorChanged(address indexed oldOperator, address indexed newOperator);
     
     // Token Operation Events
     event TokenMinted(address indexed operator, uint256 amount);
@@ -67,30 +71,37 @@ contract TokenManagerV1 is
         _;
     }
     
+    /**
+     * @dev Modifier to restrict access to admin only
+     */
+    modifier onlyAdmin() {
+        require(msg.sender == admin, "Only admin can call this function");
+        _;
+    }
+    
+    /**
+     * @dev Modifier to restrict access to operator only
+     */
+    modifier onlyOperator() {
+        require(msg.sender == operator, "Only operator can call this function");
+        _;
+    }
+    
     // ==================== INITIALIZATION ====================
 
     /**
-     * @dev Initialize the contract with separated Owner and Admin roles
+     * @dev Initialize the contract with Owner and Admin
      * @param _owner Initial owner (system-level permissions)
      * @param _admin Initial admin (business-level permissions)
      */
     function initialize(address _owner, address _admin) external initializer {
-        
         require(_admin != address(0), "Admin cannot be zero address");
-        require(_owner != _admin, "Owner and admin must be different");
         
         __Ownable_init(_owner);
-        __AccessControl_init();
         __Pausable_init();
         __ReentrancyGuard_init();
         
-        // Set up role hierarchy - ADMIN_ROLE manages OPERATOR_ROLE  
-        _setRoleAdmin(OPERATOR_ROLE, ADMIN_ROLE);
-        
-        // Grant business role (Owner and Admin are independent)
-        _grantRole(ADMIN_ROLE, _admin);          // Admin gets ADMIN_ROLE to manage business operations
-        // Note: Owner does NOT get any business roles - maintains separation of concerns
-        
+        admin = _admin;
         activationBlock = type(uint256).max; // Not active by default
         
         emit Initialized(_owner, _admin, activationBlock);
@@ -142,63 +153,35 @@ contract TokenManagerV1 is
         _unpause();
     }
 
-    // ==================== ROLE MANAGEMENT ====================
+    // ==================== ADMIN MANAGEMENT ====================
     
     /**
-     * @dev Set operator (single operator design)
-     * @param account New operator address
-     */
-    function setOperator(address account) external onlyRole(ADMIN_ROLE) {
-        require(account != address(0), "Cannot set operator to zero address");
-        
-        // Get current operator (gas optimized)
-        uint256 memberCount = getRoleMemberCount(OPERATOR_ROLE);
-        address currentOperator = memberCount > 0 ? getRoleMember(OPERATOR_ROLE, 0) : address(0);
-        
-        // Check if already the current operator
-        require(currentOperator != account, "Address is already the current operator");
-        
-        // Remove current operator if exists
-        if (currentOperator != address(0)) {
-            _revokeRole(OPERATOR_ROLE, currentOperator);
-        }
-        
-        // Set new operator
-        _grantRole(OPERATOR_ROLE, account);
-    }
-    
-    /**
-     * @dev Remove current operator
-     */
-    function removeOperator() external onlyRole(ADMIN_ROLE) {
-        uint256 memberCount = getRoleMemberCount(OPERATOR_ROLE);
-        if (memberCount > 0) {
-            address currentOperator = getRoleMember(OPERATOR_ROLE, 0);
-            _revokeRole(OPERATOR_ROLE, currentOperator);
-        }
-    }
-    
-    /**
-     * @dev Get current operator address (gas optimized)
-     * @return address Current operator address (or zero address if none)
-     */
-    function getCurrentOperator() external view returns (address) {
-        uint256 memberCount = getRoleMemberCount(OPERATOR_ROLE);
-        return memberCount > 0 ? getRoleMember(OPERATOR_ROLE, 0) : address(0);
-    }
-    
-    /**
-     * @dev Transfer admin role to new address
+     * @dev Set new admin address
      * @param newAdmin New admin address
      */
-    function transferAdminRole(address newAdmin) external onlyRole(ADMIN_ROLE) {
-        require(newAdmin != address(0), "Cannot transfer admin role to zero address");
-        require(newAdmin != _msgSender(), "Cannot transfer admin role to self");
+    function setAdmin(address newAdmin) external onlyAdmin {
+        require(newAdmin != address(0), "Admin cannot be zero address");
+        require(newAdmin != admin, "Address is already the current admin");
         
-        _grantRole(ADMIN_ROLE, newAdmin);
-        _revokeRole(ADMIN_ROLE, _msgSender());
+        address oldAdmin = admin;
+        admin = newAdmin;
         
-        emit AdminRoleTransferred(_msgSender(), newAdmin);
+        emit AdminChanged(oldAdmin, newAdmin);
+    }
+
+    // ==================== OPERATOR MANAGEMENT ====================
+    
+    /**
+     * @dev Set operator address (can be zero address to remove operator)
+     * @param newOperator New operator address (use address(0) to remove)
+     */
+    function setOperator(address newOperator) external onlyAdmin {
+        require(newOperator != operator, "Address is already the current operator");
+        
+        address oldOperator = operator;
+        operator = newOperator;
+        
+        emit OperatorChanged(oldOperator, newOperator);
     }
 
     // ==================== TOKEN OPERATIONS ====================
@@ -209,7 +192,7 @@ contract TokenManagerV1 is
      */
     function mint(uint256 amount) 
         external 
-        onlyRole(OPERATOR_ROLE) 
+        onlyOperator 
         onlyActive 
         whenNotPaused 
         onlyWithPrecompile 
@@ -217,12 +200,12 @@ contract TokenManagerV1 is
     {
         require(amount > 0, "Amount must be greater than zero");
         
-        address operator = _msgSender();
+        address operatorAddress = msg.sender;
         
         // Prepare precompile call data: [operation:1][address:32][amount:32]
         bytes memory callData = abi.encodePacked(
             MINT_OP,
-            bytes32(uint256(uint160(operator))),
+            bytes32(uint256(uint160(operatorAddress))),
             bytes32(amount)
         );
         
@@ -230,7 +213,7 @@ contract TokenManagerV1 is
         (bool success, ) = PRECOMPILE_ADDRESS.call(callData);
         require(success, "Precompile mint call failed");
         
-        emit TokenMinted(operator, amount);
+        emit TokenMinted(operatorAddress, amount);
     }
     
     /**
@@ -238,7 +221,7 @@ contract TokenManagerV1 is
      */
     function cleanup() 
         external 
-        onlyRole(OPERATOR_ROLE) 
+        onlyOperator 
         onlyActive 
         whenNotPaused 
         onlyWithPrecompile 
@@ -251,19 +234,7 @@ contract TokenManagerV1 is
         (bool success, ) = PRECOMPILE_ADDRESS.call(callData);
         require(success, "Precompile cleanup call failed");
         
-        emit TargetAddressCleaned(_msgSender());
-    }
-
-    // ==================== ROLE QUERIES ====================
-    
-    /**
-     * @dev Get current admin address
-     * @return address Current admin address
-     */
-    function getAdmin() external view returns (address) {
-        uint256 memberCount = getRoleMemberCount(ADMIN_ROLE);
-        require(memberCount > 0, "No admin found");
-        return getRoleMember(ADMIN_ROLE, 0);
+        emit TargetAddressCleaned(msg.sender);
     }
 
     // ==================== SECURITY OVERRIDES ====================
@@ -276,7 +247,7 @@ contract TokenManagerV1 is
     }
 
     /**
-     * @dev Override transferOwnership (Owner and Admin are now separate)
+     * @dev Override transferOwnership with validation
      * @param newOwner Address of new owner
      */
     function transferOwnership(address newOwner) public virtual override onlyOwner {
@@ -284,9 +255,6 @@ contract TokenManagerV1 is
         require(newOwner != _msgSender(), "Cannot transfer ownership to self");
         
         _transferOwnership(newOwner);
-        
-        // Note: Owner does NOT get ADMIN_ROLE by default
-        // This maintains separation of system and business permissions
     }
 
     // ==================== VERSION ====================

@@ -2,7 +2,7 @@
 
 ## 📋 概述
 
-Token Manager V1 是一个可升级的代币管理系统，提供安全的代币铸造(mint)和清理(cleanup)功能。基于 OpenZeppelin 标准合约构建，具有权限控制、暂停机制和升级能力。
+Token Manager V1 是一个可升级的代币管理系统，提供安全的代币铸造(mint)和清理(cleanup)功能。基于 OpenZeppelin 标准合约构建，采用简化的地址控制模式，具有权限控制、暂停机制和升级能力。
 
 **合约地址**: 通过 TokenManagerProxy 代理合约访问  
 **Precompile地址**: `0x0000000000000000000000000000000000001001`  
@@ -12,38 +12,40 @@ Token Manager V1 是一个可升级的代币管理系统，提供安全的代币
 
 | 限制项 | 数值 | 说明 |
 |--------|------|------|
-| **单一角色设计** | 每个角色只能有1个地址 | OPERATOR_ROLE采用单一持有者模式 |
+| **单一地址设计** | 每个角色只能有1个地址 | Admin/Operator采用单一地址模式，物理上无法设置多个 |
 | **Cleanup余额保护** | 必须保留≥1 wei | 防止目标地址余额被完全清零 |
-| **权限分离** | Owner/Admin/Operator三级权限 | 确保权限最小化原则 |
+| **权限分离** | Owner/Admin/Operator三级权限 | 两个权限体系分离，但允许同一地址同时担任两个角色 |
+| **接口简化** | 移除冗余函数 | 使用Solidity标准getter替代自定义查询函数 |
 
 ---
 
-## 🔐 角色权限表
+## 🔐 地址权限表
 
 ### 权限矩阵
 
-| 功能/接口 | Owner | ADMIN_ROLE | OPERATOR_ROLE |
-|-----------|:-----:|:----------:|:-------------:|
+| 功能/接口 | Owner | Admin | Operator |
+|-----------|:-----:|:-----:|:--------:|
 | **系统控制** ||||
 | pause/<br/>unpause | ✅ | ❌ | ❌ |
 | transferOwnership | ✅ | ❌ | ❌ |
-| **角色管理** ||||
-| setOperator/<br/>removeOperator | ❌ | ✅ | ❌ |
-| transferAdminRole | ❌ | ✅ | ❌ |
+| setActivationBlock | ✅ | ❌ | ❌ |
+| **地址管理** ||||
+| setAdmin | ❌ | ✅ | ❌ |
+| setOperator | ❌ | ✅ | ❌ |
 | **核心操作** ||||
 | mint (到操作员) | ❌ | ❌ | ✅ |
 | cleanup (清理目标地址) | ❌ | ❌ | ✅ |
 | **查询接口** ||||
-| getCurrentOperator | ✅ | ✅ | ✅ |
-| 基础查询接口（owner/getAdmin等） | ✅ | ✅ | ✅ |
+| admin() / operator() | ✅ | ✅ | ✅ |
+| isActive() / VERSION() | ✅ | ✅ | ✅ |
 
 ### 详细接口权限分配
 
-| 角色 | 角色标识符 | 权限说明 | 专有接口 (仅此角色可调用) |
-|------|------------|----------|--------------------------|
-| **Owner** | 合约所有者 | 系统级权限 | **系统控制**:<br/>• `pause()`<br/>• `unpause()`<br/>• `transferOwnership(address)`<br/>• `renounceOwnership()` *(已禁用)*<br/>• *合约升级权限 (通过ProxyAdmin)* |
-| **ADMIN_ROLE** | `keccak256("ADMIN_ROLE")` | 业务管理员 | **角色管理**:<br/>• `setOperator(address)` *(单一角色设计)*<br/>• `removeOperator()` *(清空Operator)*<br/>• `transferAdminRole(address)` |
-| **OPERATOR_ROLE** | `keccak256("OPERATOR_ROLE")` | 业务操作员 | **代币操作**:<br/>• `mint(uint256)` *(铸造到操作员地址)*<br/>• `cleanup()` *(清理目标地址)* |
+| 角色 | 地址控制 | 权限说明 | 专有接口 (仅此角色可调用) |
+|------|----------|----------|--------------------------|
+| **Owner** | `owner()` | 系统级权限 | **系统控制**:<br/>• `pause()`<br/>• `unpause()`<br/>• `setActivationBlock(uint256)`<br/>• `transferOwnership(address)`<br/>• `renounceOwnership()` *(已禁用)*<br/>• *合约升级权限 (通过ProxyAdmin)* |
+| **Admin** | `admin` 状态变量 | 业务管理员 | **地址管理**:<br/>• `setAdmin(address)` *(转移admin权限)*<br/>• `setOperator(address)` *(支持零地址移除)*<br/>*(注：admin权限完全独立于owner)* |
+| **Operator** | `operator` 状态变量 | 业务操作员 | **代币操作**:<br/>• `mint(uint256)` *(铸造到操作员地址)*<br/>• `cleanup()` *(清理目标地址)*<br/>*(注：operator可为零地址，表示无操作员)* |
 
 ### 公开查询接口 (所有用户可调用)
 
@@ -388,3 +390,65 @@ Token Manager 合约基于 OpenZeppelin 标准合约构建，继承了以下标�
 3. **权限控制**: 只有授权的合约管理器地址可以调用铸造和清理操作
 
 **重要说明**: 预编译合约确保了原子性操作和gas效率，同时提供了必要的安全保护机制。
+
+---
+
+## 🔧 测试脚本修复记录
+
+### 已修复的关键问题
+
+#### 1. 私钥地址不匹配问题 ✅
+**问题**: 原脚本中 `OPERATOR_PRIVATE_KEY` 对应地址与定义不符
+- **错误**: `OPERATOR="0x07d3C7978836067b89ae6Ed0BEaa106ef012e353"`
+- **实际**: `OPERATOR_PRIVATE_KEY` 对应 `0xED54a7C1d8634BB589f24Bb7F05a5554b36F9618`
+- **修复**: `OPERATOR=$(cast wallet address --private-key "$OPERATOR_PRIVATE_KEY")`
+
+#### 2. 状态重置机制 ✅  
+**问题**: 测试前假设合约处于期望状态，导致测试失败
+- **修复**: 添加状态检查和重置逻辑
+- **实现**: 只有当前状态与期望不符时才进行重置，避免"已是当前operator"错误
+
+#### 3. 转账逻辑错误 ✅
+**问题**: cleanup测试中使用operator转账准备测试环境
+- **错误**: operator余额不足无法转账2 ETH
+- **修复**: 改用admin地址准备测试环境 (余额充足: 99989 ETH)
+
+#### 4. 状态恢复机制 ✅
+**问题**: 测试完成后状态被修改，影响下次测试
+- **修复**: 添加完整的状态恢复步骤，确保admin/owner/operator都回到原始状态
+- **实现**: 使用条件检查避免不必要的设置操作
+
+### 测试脚本最佳实践
+
+#### 状态管理原则
+1. **测试前重置**: 自动检查并重置到期望状态
+2. **测试后恢复**: 自动恢复所有修改的状态
+3. **幂等性设计**: 支持重复运行而不出错
+4. **条件检查**: 只有需要时才进行状态修改
+
+#### 地址配置建议  
+```bash
+# ✅ 正确：从私钥计算地址
+OPERATOR=$(cast wallet address --private-key "$OPERATOR_PRIVATE_KEY")
+
+# ❌ 错误：硬编码可能不匹配的地址
+OPERATOR="0x07d3C7978836067b89ae6Ed0BEaa106ef012e353"
+```
+
+#### 权限分离策略
+- **Admin**: 准备测试环境，管理权限 (余额充足)
+- **Owner**: 系统级控制，权限转移测试
+- **Operator**: 业务操作，执行mint/cleanup
+
+### 当前配置状态
+
+#### 地址配置 (已验证)
+- **Admin**: `0x8f8E2d6cF621f30e9a11309D6A56A876281Fd534` (余额: 99989 ETH)  
+- **Owner**: `0xDE282DC882bbB5100b8A24E30D38a2D5B3080c15` (余额: ~2 ETH)
+- **Operator**: `0xED54a7C1d8634BB589f24Bb7F05a5554b36F9618` (动态计算)
+
+#### 测试流程
+1. 🔄 **状态重置** - 检查并重置admin/operator
+2. 🧪 **功能测试** - 7个测试步骤完整覆盖  
+3. 🔄 **状态恢复** - 恢复所有修改的状态
+4. ✅ **幂等验证** - 支持连续多次运行
