@@ -372,3 +372,91 @@ func (rc *RealtimeClient) EthGetTokenBalance(
 
 	return balance, nil
 }
+
+func (rc *RealtimeClient) RealtimeGetBlockByNumber(blockNumber uint64) (map[string]interface{}, error) {
+	// Call eth_getBlockByNumber with fullTx=true to get full transaction details
+	fullTx := true
+	response, err := client.JSONRPCCall(rc.url, "eth_getBlockByNumber", blockNumber, fullTx)
+	if err != nil {
+		return nil, err
+	}
+	if response.Error != nil {
+		return nil, fmt.Errorf("%d - %s", response.Error.Code, response.Error.Message)
+	}
+
+	var result map[string]interface{}
+	err = json.Unmarshal(response.Result, &result)
+	if err != nil {
+		return nil, err
+	}
+
+	return result, nil
+}
+
+// RealtimeGetBlockByHash returns the information about a block requested by block hash in real-time
+func (rc *RealtimeClient) RealtimeGetBlockByHash(blockHash common.Hash, fullTx bool) (map[string]interface{}, error) {
+	response, err := client.JSONRPCCall(rc.url, "eth_getBlockByHash", blockHash, fullTx)
+	if err != nil {
+		return nil, err
+	}
+	if response.Error != nil {
+		return nil, fmt.Errorf("%d - %s", response.Error.Code, response.Error.Message)
+	}
+
+	var result map[string]interface{}
+	err = json.Unmarshal(response.Result, &result)
+	if err != nil {
+		return nil, err
+	}
+
+	return result, nil
+}
+
+// RealtimeGetBlockTransactionCountByHash returns the number of transactions in a block requested by block hash in real-time
+func (rc *RealtimeClient) RealtimeGetBlockTransactionCountByHash(blockHash common.Hash) (uint64, error) {
+	response, err := client.JSONRPCCall(rc.url, "eth_getBlockTransactionCountByHash", blockHash)
+	if err != nil {
+		return 0, err
+	}
+	if response.Error != nil {
+		return 0, fmt.Errorf("%d - %s", response.Error.Code, response.Error.Message)
+	}
+
+	return transHexToUint64(response.Result)
+}
+
+func (rc *RealtimeClient) RealtimeGetBlockInternalTransactions(blockNumber uint64) (map[common.Hash][]*zktypes.InnerTx, error) {
+	response, err := client.JSONRPCCall(rc.url, "eth_getBlockInternalTransactions", blockNumber)
+	if err != nil {
+		return nil, err
+	}
+	if response.Error != nil {
+		return nil, fmt.Errorf("%d - %s", response.Error.Code, response.Error.Message)
+	}
+
+	var result map[common.Hash][]*zktypes.InnerTx
+	err = json.Unmarshal(response.Result, &result)
+	if err != nil {
+		return nil, err
+	}
+
+	return result, nil
+}
+
+func (rc *RealtimeClient) RealtimeEnabled() (bool, error) {
+	response, err := client.JSONRPCCall(rc.url, "eth_realtimeEnabled")
+	if err != nil {
+		return false, err
+	}
+	if response.Error != nil {
+		return false, fmt.Errorf("%d - %s", response.Error.Code, response.Error.Message)
+	}
+
+	var result bool
+	err = json.Unmarshal(response.Result, &result)
+	if err != nil {
+		return false, err
+	}
+
+	return result, nil
+}
