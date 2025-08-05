@@ -462,3 +462,67 @@ services:
       - ./config/xlayerconfig-mainnet-rpc.yaml:/usr/src/app/config.yaml
     command: >
       cdk-erigon --http.vhosts=* --http.corsdomain=* --ws --config=/usr/src/app/config.yaml
+
+  zkevm-explorer-l2-db:
+    container_name: zkevm-explorer-l2-db
+    image: postgres:15
+    ports:
+      - 5437:5432
+    environment:
+      - POSTGRES_USER=l2_explorer_user
+      - POSTGRES_PASSWORD=l2_explorer_password
+      - POSTGRES_DB=l2_explorer_db
+    command: [ "postgres", "-N", "500" ]
+
+  zkevm-explorer-l2-db-2:
+    container_name: zkevm-explorer-l2-db-2
+    image: postgres:15
+    ports:
+      - 5438:5432
+    environment:
+      - POSTGRES_USER=l2_explorer_user
+      - POSTGRES_PASSWORD=l2_explorer_password
+      - POSTGRES_DB=l2_explorer_db
+    command: [ "postgres", "-N", "500" ]
+
+  zkevm-explorer-l2:
+    container_name: zkevm-explorer-l2
+    image: hermeznetwork/zkevm-explorer:latest
+    ports:
+      - 4001:4000
+    environment:
+      - NETWORK=POE
+      - SUBNETWORK=Polygon Hermez
+      - COIN=ETH
+      - ETHEREUM_JSONRPC_VARIANT=erigon
+      - ETHEREUM_JSONRPC_HTTP_URL=http://xlayer-seq:8545
+      - DATABASE_URL=postgres://l2_explorer_user:l2_explorer_password@zkevm-explorer-l2-db:5432/l2_explorer_db
+      - ECTO_USE_SSL=false
+      - MIX_ENV=prod
+      - LOGO=/images/blockscout_logo.svg
+      - LOGO_FOOTER=/images/blockscout_logo.svg
+    command:
+      - "/bin/sh"
+      - "-c"
+      - "mix do ecto.create, ecto.migrate; mix phx.server"
+
+  zkevm-explorer-l2-2:
+    container_name: zkevm-explorer-l2-2
+    image: hermeznetwork/zkevm-explorer:latest
+    ports:
+      - 4002:4000
+    environment:
+      - NETWORK=POE
+      - SUBNETWORK=Polygon Hermez
+      - COIN=ETH
+      - ETHEREUM_JSONRPC_VARIANT=erigon
+      - ETHEREUM_JSONRPC_HTTP_URL=http://xlayer-seq-2:8545
+      - DATABASE_URL=postgres://l2_explorer_user:l2_explorer_password@zkevm-explorer-l2-db:5432/l2_explorer_db
+      - ECTO_USE_SSL=false
+      - MIX_ENV=prod
+      - LOGO=/images/blockscout_logo.svg
+      - LOGO_FOOTER=/images/blockscout_logo.svg
+    command:
+      - "/bin/sh"
+      - "-c"
+      - "mix do ecto.create, ecto.migrate; mix phx.server"
