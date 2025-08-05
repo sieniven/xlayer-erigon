@@ -17,6 +17,13 @@ function clone_repos {
 
 clone_repos
 
+function cleanup {
+    cd $TEST_DIR
+    rm -rf data_*
+}
+
+cleanup
+
 # 1. Run SA-Benchmark setup only for state0
 cd $SA_BENCH_DIR
 cp example.env .env

@@ -11,11 +11,19 @@ RPC_URL="http://localhost:8123"
 TIME_STAMP=$(date +%Y%m%d-%H%M%S)
 RESULT_FILE="check-regenesis-result-$TIME_STAMP.txt"
 
+# Load nvm
+export NVM_DIR="$HOME/.nvm"
+[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+nvm install v22
+nvm use v22
+npm install -g yarn
+
 # 1. Run state-check state0
 cd $ROOT_DIR
 go install ./cmd/state-check/
 cd $TEST_DIR
-state-check -dump-state-file config-op/state0.json -rpc-url $RPC_URL
+echo "*** State 0 ***" > $RESULT_FILE
+state-check -dump-state-file config-op/state0.json -rpc-url $RPC_URL --progress-bar=false | tee $RESULT_FILE
 
 # 8. Run state-check state1
 cast send 0xa03666Fb51Aa9aD2DE70e0434072A007b3C91A9E --value 200000 \
@@ -23,11 +31,14 @@ cast send 0xa03666Fb51Aa9aD2DE70e0434072A007b3C91A9E --value 200000 \
 --legacy --gas-price 10000000000 \
 --rpc-url $RPC_URL
 sleep 5
-state-check -dump-state-file config-op/state1.json -rpc-url $RPC_URL
+echo -e "\n\n*** State 1 ***" >> $RESULT_FILE
+state-check -dump-state-file config-op/state1.json -rpc-url $RPC_URL --progress-bar=false | tee -a $RESULT_FILE
 
 # 9. Run state-check state2
 cd $SA_BENCH_DIR
+yarn
 yarn run senduop:deterministicop
 sleep 5
 cd $TEST_DIR
-state-check -dump-state-file config-op/state2.json -rpc-url $RPC_URL
+echo -e "\n\n*** State 2 ***" >> $RESULT_FILE
+state-check -dump-state-file config-op/state2.json -rpc-url $RPC_URL --progress-bar=false | tee -a $RESULT_FILE
