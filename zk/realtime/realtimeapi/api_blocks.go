@@ -6,9 +6,7 @@ import (
 
 	libcommon "github.com/ledgerwatch/erigon-lib/common"
 	"github.com/ledgerwatch/erigon-lib/common/hexutil"
-	"github.com/ledgerwatch/erigon/core/types"
 	"github.com/ledgerwatch/erigon/rpc"
-	"github.com/ledgerwatch/erigon/turbo/adapter/ethapi"
 	zktypes "github.com/ledgerwatch/erigon/zk/types"
 	"github.com/ledgerwatch/log/v3"
 )
@@ -68,51 +66,23 @@ func (api *RealtimeAPIImpl) GetBlockByNumber(ctx context.Context, blockNr rpc.Bl
 		fullTx = new(bool)
 	}
 
-	if blockNr == rpc.PendingBlockNumber {
-		// Currently x-layer treats pending block as latest block which aligns with Erigon implementation
-		// TODO: Follow OP-stack implementation in the future
-		blockNr = rpc.LatestBlockNumber
-	}
-
 	blockNum, _, err := api.getBlockNumber(blockNr)
 	if err != nil {
 		return api.APIImpl.GetBlockByNumber(ctx, blockNr, fullTx)
 	}
 
-	header, _, _, ok := api.cacheDB.Stateless.GetHeader(blockNum)
-	if !ok {
-		return api.APIImpl.GetBlockByNumber(ctx, blockNr, fullTx)
-	}
-
-	txHashes, ok := api.cacheDB.Stateless.GetBlockTxs(blockNum)
-	if !ok {
-		return api.APIImpl.GetBlockByNumber(ctx, blockNr, fullTx)
-	}
-
-	var transactions []types.Transaction
-	for _, txHash := range txHashes {
-		if tx, _, _, _, exists := api.cacheDB.Stateless.GetTxInfo(txHash); exists {
-			transactions = append(transactions, tx)
-		} else {
+	if blockNr == rpc.PendingBlockNumber {
+		// Currently x-layer treats pending block as latest block which aligns with Erigon implementation
+		// TODO: Follow OP-stack implementation in the future
+		blockNum, _, err = api.getBlockNumber(rpc.LatestBlockNumber)
+		if err != nil {
 			return api.APIImpl.GetBlockByNumber(ctx, blockNr, fullTx)
 		}
 	}
 
-	block := types.NewBlockWithHeader(header).WithBody(transactions, nil)
-
-	additionalFields := map[string]interface{}{
-		"totalDifficulty": (*hexutil.Big)(header.Difficulty),
-	}
-
-	response, err := ethapi.RPCMarshalBlockEx(block, true, *fullTx, nil, libcommon.Hash{}, additionalFields)
+	response, err := api.formatBlockResponse(blockNum, *fullTx, blockNr == rpc.PendingBlockNumber)
 	if err != nil {
 		return api.APIImpl.GetBlockByNumber(ctx, blockNr, fullTx)
-	}
-
-	if blockNr == rpc.PendingBlockNumber {
-		for _, field := range []string{"hash", "nonce", "miner"} {
-			response[field] = nil
-		}
 	}
 
 	return response, nil
@@ -127,51 +97,27 @@ func (api *RealtimeAPIImpl) GetBlockByHash(ctx context.Context, numberOrHash rpc
 		fullTx = new(bool)
 	}
 
-	if numberOrHash.BlockNumber != nil {
+	if numberOrHash.BlockHash == nil {
+		if numberOrHash.BlockNumber == nil {
+			return nil, nil
+
+		}
 		return api.GetBlockByNumber(ctx, *numberOrHash.BlockNumber, fullTx)
 	}
 
-	if numberOrHash.BlockHash != nil {
-		targetHash := *numberOrHash.BlockHash
-
-		blockNum, found := api.cacheDB.Stateless.GetBlockNumberByHash(targetHash)
-		if !found {
-			return api.APIImpl.GetBlockByHash(ctx, numberOrHash, fullTx)
-		}
-
-		// Get header using the block number we found
-		header, _, _, ok := api.cacheDB.Stateless.GetHeader(blockNum)
-		if !ok {
-			return api.APIImpl.GetBlockByHash(ctx, numberOrHash, fullTx)
-		}
-		log.Debug(fmt.Sprintf("[GetBlockByHash] Header found for block %d", blockNum))
-
-		// Get transactions but don't fallback if missing - just use empty transactions
-		var transactions []types.Transaction
-		txHashes, ok := api.cacheDB.Stateless.GetBlockTxs(blockNum)
-		if ok {
-			for _, txHash := range txHashes {
-				if tx, _, _, _, exists := api.cacheDB.Stateless.GetTxInfo(txHash); exists {
-					transactions = append(transactions, tx)
-				}
-			}
-		}
-
-		block := types.NewBlockWithHeader(header).WithBody(transactions, nil)
-
-		additionalFields := map[string]interface{}{
-			"totalDifficulty": (*hexutil.Big)(header.Difficulty),
-		}
-
-		response, err := ethapi.RPCMarshalBlockEx(block, true, *fullTx, nil, libcommon.Hash{}, additionalFields)
-		if err != nil {
-			return api.APIImpl.GetBlockByHash(ctx, numberOrHash, fullTx)
-		}
-
-		return response, nil
+	blockNum, found := api.cacheDB.Stateless.GetBlockNumberByHash(*numberOrHash.BlockHash)
+	if !found {
+		return api.APIImpl.GetBlockByHash(ctx, numberOrHash, fullTx)
 	}
 
-	return api.APIImpl.GetBlockByHash(ctx, numberOrHash, fullTx)
+	response, err := api.formatBlockResponse(blockNum, *fullTx, false)
+	if err != nil {
+		return api.APIImpl.GetBlockByHash(ctx, numberOrHash, fullTx)
+	}
+
+	log.Debug(fmt.Sprintf("[GetBlockByHash] Successfully returning block %d with hash %s", blockNum, numberOrHash.BlockHash.Hex()))
+	return response, nil
+
 }
 
 func (api *RealtimeAPIImpl) GetBlockTransactionCountByHash(ctx context.Context, blockHash libcommon.Hash) (*hexutil.Uint, error) {
@@ -196,6 +142,10 @@ func (api *RealtimeAPIImpl) GetBlockTransactionCountByHash(ctx context.Context, 
 func (api *RealtimeAPIImpl) GetBlockInternalTransactions(ctx context.Context, blockNr rpc.BlockNumber) (map[libcommon.Hash][]*zktypes.InnerTx, error) {
 	if api.cacheDB == nil || !api.cacheDB.ReadyFlag.Load() {
 		return api.APIImpl.GetBlockInternalTransactions(ctx, blockNr)
+	}
+
+	if blockNr == rpc.PendingBlockNumber {
+		return nil, fmt.Errorf("pending block number not supported")
 	}
 
 	blockNum, _, err := api.getBlockNumber(blockNr)

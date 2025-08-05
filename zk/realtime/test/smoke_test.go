@@ -28,7 +28,6 @@ import (
 	"github.com/ledgerwatch/erigon/crypto"
 	"github.com/ledgerwatch/erigon/ethclient"
 	"github.com/ledgerwatch/erigon/test/operations"
-	"github.com/ledgerwatch/erigon/zk/realtime/realtimeapi"
 	"github.com/ledgerwatch/erigon/zk/realtime/rtclient"
 	zktypes "github.com/ledgerwatch/erigon/zk/types"
 	"github.com/ledgerwatch/erigon/zkevm/encoding"
@@ -263,17 +262,9 @@ func TestRealtimeRPC(t *testing.T) {
 
 	t.Run("RealtimeEnabled", func(t *testing.T) {
 		// Test with valid "pending" tag
-		pendingTag := realtimeapi.Pending
-		isEnabled, err := client.RealtimeEnabled(pendingTag)
+		isEnabled, err := client.RealtimeEnabled()
 		require.NoError(t, err)
 		require.IsType(t, bool(false), isEnabled, "RealtimeEnabled should return bool")
-
-		// Test with invalid "latest" tag (should return error)
-		latestTag := realtimeapi.Latest
-		_, err = client.RealtimeEnabled(latestTag)
-		require.Error(t, err, "RealtimeEnabled should return error for 'latest' tag")
-		require.Contains(t, err.Error(), "invalid tag, only 'pending' is supported")
-		log.Info(fmt.Sprintf("RealtimeEnabled (latest) correctly returned error: %v", err))
 
 		if isEnabled {
 			log.Info("RealtimeEnabled: Realtime feature is enabled and cache is ready")

@@ -71,8 +71,8 @@ func (bm *BlockInfoMap) Delete(blockNum uint64) {
 	defer bm.mu.Unlock()
 	if exists {
 		delete(bm.blockHashToHeight, blockhash)
+		delete(bm.blockInfos, blockNum)
 	}
-	delete(bm.blockInfos, blockNum)
 }
 
 func (bm *BlockInfoMap) Clear() {

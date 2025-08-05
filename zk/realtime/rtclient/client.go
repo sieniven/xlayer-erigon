@@ -11,7 +11,6 @@ import (
 	"github.com/ledgerwatch/erigon-lib/common"
 	"github.com/ledgerwatch/erigon/core/types"
 	"github.com/ledgerwatch/erigon/ethclient"
-	"github.com/ledgerwatch/erigon/zk/realtime/realtimeapi"
 	rpcTypes "github.com/ledgerwatch/erigon/zk/rpcdaemon"
 	zktypes "github.com/ledgerwatch/erigon/zk/types"
 	"github.com/ledgerwatch/erigon/zkevm/jsonrpc/client"
@@ -444,8 +443,8 @@ func (rc *RealtimeClient) RealtimeGetBlockInternalTransactions(blockNumber uint6
 	return result, nil
 }
 
-func (rc *RealtimeClient) RealtimeEnabled(tag realtimeapi.RealtimeTag) (bool, error) {
-	response, err := client.JSONRPCCall(rc.url, "eth_realtimeEnabled", tag)
+func (rc *RealtimeClient) RealtimeEnabled() (bool, error) {
+	response, err := client.JSONRPCCall(rc.url, "eth_realtimeEnabled")
 	if err != nil {
 		return false, err
 	}

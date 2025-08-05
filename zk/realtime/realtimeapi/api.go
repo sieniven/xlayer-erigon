@@ -5,8 +5,10 @@ import (
 	"math/big"
 
 	libcommon "github.com/ledgerwatch/erigon-lib/common"
+	"github.com/ledgerwatch/erigon-lib/common/hexutil"
 	"github.com/ledgerwatch/erigon/core/types"
 	"github.com/ledgerwatch/erigon/rpc"
+	"github.com/ledgerwatch/erigon/turbo/adapter/ethapi"
 	"github.com/ledgerwatch/erigon/turbo/jsonrpc"
 	realtimeCache "github.com/ledgerwatch/erigon/zk/realtime/cache"
 	"github.com/ledgerwatch/erigon/zk/realtime/subscription"
@@ -96,4 +98,50 @@ func newRPCTransaction_realtime(tx types.Transaction, txblockhash libcommon.Hash
 	result := jsonrpc.NewRPCTransaction(tx, blockhash, blockNumber, index, baseFee)
 	result.BlockHash = &txblockhash
 	return result
+}
+
+// formatBlockResponse creates a formatted block response from cache data
+// This utility function consolidates the block formatting logic used by both
+// GetBlockByNumber and GetBlockByHash methods
+func (api *RealtimeAPIImpl) formatBlockResponse(
+	blockNum uint64,
+	fullTx bool,
+	isPending bool,
+) (map[string]interface{}, error) {
+	header, _, _, ok := api.cacheDB.Stateless.GetHeader(blockNum)
+	if !ok {
+		return nil, fmt.Errorf("header not found for block %d", blockNum)
+	}
+
+	var transactions []types.Transaction
+	txHashes, ok := api.cacheDB.Stateless.GetBlockTxs(blockNum)
+	if ok {
+		for _, txHash := range txHashes {
+			if tx, _, _, _, exists := api.cacheDB.Stateless.GetTxInfo(txHash); exists {
+				transactions = append(transactions, tx)
+			} else {
+				return nil, fmt.Errorf("transaction %s not found in cache", txHash.Hex())
+			}
+		}
+	}
+
+	block := types.NewBlockWithHeader(header).WithBody(transactions, nil)
+
+	additionalFields := map[string]interface{}{
+		"totalDifficulty": (*hexutil.Big)(header.Difficulty),
+	}
+
+	response, err := ethapi.RPCMarshalBlockEx(block, true, fullTx, nil, libcommon.Hash{}, additionalFields)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal block: %w", err)
+	}
+
+	// Handle pending block special case
+	if isPending {
+		for _, field := range []string{"hash", "nonce", "miner"} {
+			response[field] = nil
+		}
+	}
+
+	return response, nil
 }
