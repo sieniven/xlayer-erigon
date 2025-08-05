@@ -106,7 +106,6 @@ func newRPCTransaction_realtime(tx types.Transaction, txblockhash libcommon.Hash
 func (api *RealtimeAPIImpl) formatBlockResponse(
 	blockNum uint64,
 	fullTx bool,
-	isPending bool,
 ) (map[string]interface{}, error) {
 	header, _, _, ok := api.cacheDB.Stateless.GetHeader(blockNum)
 	if !ok {
@@ -134,13 +133,6 @@ func (api *RealtimeAPIImpl) formatBlockResponse(
 	response, err := ethapi.RPCMarshalBlockEx(block, true, fullTx, nil, libcommon.Hash{}, additionalFields)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal block: %w", err)
-	}
-
-	// Handle pending block special case
-	if isPending {
-		for _, field := range []string{"hash", "nonce", "miner"} {
-			response[field] = nil
-		}
 	}
 
 	return response, nil

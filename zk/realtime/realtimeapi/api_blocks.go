@@ -33,12 +33,6 @@ func (api *RealtimeAPIImpl) GetBlockTransactionCountByNumber(ctx context.Context
 		return api.APIImpl.GetBlockTransactionCountByNumber(ctx, blockNr)
 	}
 
-	if blockNr == rpc.PendingBlockNumber {
-		// Currently x-layer treats pending block as latest block which aligns with Erigon implementation
-		// TODO: Follow OP-stack implementation in the future
-		blockNr = rpc.LatestBlockNumber
-	}
-
 	blockNum, _, err := api.getBlockNumber(blockNr)
 	if err != nil {
 		return api.APIImpl.GetBlockTransactionCountByNumber(ctx, blockNr)
@@ -71,18 +65,15 @@ func (api *RealtimeAPIImpl) GetBlockByNumber(ctx context.Context, blockNr rpc.Bl
 		return api.APIImpl.GetBlockByNumber(ctx, blockNr, fullTx)
 	}
 
-	if blockNr == rpc.PendingBlockNumber {
-		// Currently x-layer treats pending block as latest block which aligns with Erigon implementation
-		// TODO: Follow OP-stack implementation in the future
-		blockNum, _, err = api.getBlockNumber(rpc.LatestBlockNumber)
-		if err != nil {
-			return api.APIImpl.GetBlockByNumber(ctx, blockNr, fullTx)
-		}
-	}
-
-	response, err := api.formatBlockResponse(blockNum, *fullTx, blockNr == rpc.PendingBlockNumber)
+	response, err := api.formatBlockResponse(blockNum, *fullTx)
 	if err != nil {
 		return api.APIImpl.GetBlockByNumber(ctx, blockNr, fullTx)
+	}
+
+	if blockNr == rpc.PendingBlockNumber {
+		for _, field := range []string{"hash", "nonce", "miner"} {
+			response[field] = nil
+		}
 	}
 
 	return response, nil
@@ -110,7 +101,7 @@ func (api *RealtimeAPIImpl) GetBlockByHash(ctx context.Context, numberOrHash rpc
 		return api.APIImpl.GetBlockByHash(ctx, numberOrHash, fullTx)
 	}
 
-	response, err := api.formatBlockResponse(blockNum, *fullTx, false)
+	response, err := api.formatBlockResponse(blockNum, *fullTx)
 	if err != nil {
 		return api.APIImpl.GetBlockByHash(ctx, numberOrHash, fullTx)
 	}
@@ -142,10 +133,6 @@ func (api *RealtimeAPIImpl) GetBlockTransactionCountByHash(ctx context.Context, 
 func (api *RealtimeAPIImpl) GetBlockInternalTransactions(ctx context.Context, blockNr rpc.BlockNumber) (map[libcommon.Hash][]*zktypes.InnerTx, error) {
 	if api.cacheDB == nil || !api.cacheDB.ReadyFlag.Load() {
 		return api.APIImpl.GetBlockInternalTransactions(ctx, blockNr)
-	}
-
-	if blockNr == rpc.PendingBlockNumber {
-		return nil, fmt.Errorf("pending block number not supported")
 	}
 
 	blockNum, _, err := api.getBlockNumber(blockNr)
