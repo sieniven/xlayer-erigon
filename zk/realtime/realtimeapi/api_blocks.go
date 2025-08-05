@@ -51,6 +51,25 @@ func (api *RealtimeAPIImpl) GetBlockTransactionCountByNumber(ctx context.Context
 	return &numOfTx, nil
 }
 
+func (api *RealtimeAPIImpl) GetBlockTransactionCountByHash(ctx context.Context, blockHash libcommon.Hash) (*hexutil.Uint, error) {
+	if api.cacheDB == nil || !api.cacheDB.ReadyFlag.Load() {
+		return api.APIImpl.GetBlockTransactionCountByHash(ctx, blockHash)
+	}
+
+	blockNum, found := api.cacheDB.Stateless.GetBlockNumberByHash(blockHash)
+	if !found {
+		return api.APIImpl.GetBlockTransactionCountByHash(ctx, blockHash)
+	}
+
+	txHashes, ok := api.cacheDB.Stateless.GetBlockTxs(blockNum)
+	if !ok {
+		return api.APIImpl.GetBlockTransactionCountByHash(ctx, blockHash)
+	}
+
+	numOfTx := hexutil.Uint(len(txHashes))
+	return &numOfTx, nil
+}
+
 func (api *RealtimeAPIImpl) GetBlockByNumber(ctx context.Context, blockNr rpc.BlockNumber, fullTx *bool) (map[string]interface{}, error) {
 	if api.cacheDB == nil || !api.cacheDB.ReadyFlag.Load() {
 		return api.APIImpl.GetBlockByNumber(ctx, blockNr, fullTx)
@@ -109,25 +128,6 @@ func (api *RealtimeAPIImpl) GetBlockByHash(ctx context.Context, numberOrHash rpc
 	log.Debug(fmt.Sprintf("[GetBlockByHash] Successfully returning block %d with hash %s", blockNum, numberOrHash.BlockHash.Hex()))
 	return response, nil
 
-}
-
-func (api *RealtimeAPIImpl) GetBlockTransactionCountByHash(ctx context.Context, blockHash libcommon.Hash) (*hexutil.Uint, error) {
-	if api.cacheDB == nil || !api.cacheDB.ReadyFlag.Load() {
-		return api.APIImpl.GetBlockTransactionCountByHash(ctx, blockHash)
-	}
-
-	blockNum, found := api.cacheDB.Stateless.GetBlockNumberByHash(blockHash)
-	if !found {
-		return api.APIImpl.GetBlockTransactionCountByHash(ctx, blockHash)
-	}
-
-	txHashes, ok := api.cacheDB.Stateless.GetBlockTxs(blockNum)
-	if !ok {
-		return api.APIImpl.GetBlockTransactionCountByHash(ctx, blockHash)
-	}
-
-	numOfTx := hexutil.Uint(len(txHashes))
-	return &numOfTx, nil
 }
 
 func (api *RealtimeAPIImpl) GetBlockInternalTransactions(ctx context.Context, blockNr rpc.BlockNumber) (map[libcommon.Hash][]*zktypes.InnerTx, error) {

@@ -54,13 +54,11 @@ func (bm *BlockInfoMap) PutHeader(blockNum uint64, header *ethTypes.Header, prev
 		Hash:    libcommon.Hash{},
 	}
 
-	// Update previous block header tx count
+	// Update previous block info
 	prevBlockNum := blockNum - 1
 	_, exists := bm.blockInfos[prevBlockNum]
 	if exists && prevBlockInfo != nil {
-		// Update previous block info with finalized data
 		bm.blockInfos[prevBlockNum] = prevBlockInfo
-		// Index the finalized previous block hash
 		bm.blockHashToHeight[prevBlockInfo.Hash] = prevBlockNum
 	}
 }
