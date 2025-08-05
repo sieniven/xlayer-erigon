@@ -2,13 +2,11 @@ package realtimeapi
 
 import (
 	"context"
-	"fmt"
 
 	libcommon "github.com/ledgerwatch/erigon-lib/common"
 	"github.com/ledgerwatch/erigon-lib/common/hexutil"
 	"github.com/ledgerwatch/erigon/rpc"
 	zktypes "github.com/ledgerwatch/erigon/zk/types"
-	"github.com/ledgerwatch/log/v3"
 )
 
 func (api *RealtimeAPIImpl) BlockNumber(ctx context.Context, tag *RealtimeTag) (hexutil.Uint64, error) {
@@ -84,7 +82,7 @@ func (api *RealtimeAPIImpl) GetBlockByNumber(ctx context.Context, blockNr rpc.Bl
 		return api.APIImpl.GetBlockByNumber(ctx, blockNr, fullTx)
 	}
 
-	response, err := api.formatBlockResponse(blockNum, *fullTx)
+	response, err := api.tryGetBlockResponseFromNumber(blockNum, *fullTx)
 	if err != nil {
 		return api.APIImpl.GetBlockByNumber(ctx, blockNr, fullTx)
 	}
@@ -120,12 +118,11 @@ func (api *RealtimeAPIImpl) GetBlockByHash(ctx context.Context, numberOrHash rpc
 		return api.APIImpl.GetBlockByHash(ctx, numberOrHash, fullTx)
 	}
 
-	response, err := api.formatBlockResponse(blockNum, *fullTx)
+	response, err := api.tryGetBlockResponseFromNumber(blockNum, *fullTx)
 	if err != nil {
 		return api.APIImpl.GetBlockByHash(ctx, numberOrHash, fullTx)
 	}
 
-	log.Debug(fmt.Sprintf("[GetBlockByHash] Successfully returning block %d with hash %s", blockNum, numberOrHash.BlockHash.Hex()))
 	return response, nil
 
 }

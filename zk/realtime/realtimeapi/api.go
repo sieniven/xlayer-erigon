@@ -103,7 +103,7 @@ func newRPCTransaction_realtime(tx types.Transaction, txblockhash libcommon.Hash
 // formatBlockResponse creates a formatted block response from cache data
 // This utility function consolidates the block formatting logic used by both
 // GetBlockByNumber and GetBlockByHash methods
-func (api *RealtimeAPIImpl) formatBlockResponse(
+func (api *RealtimeAPIImpl) tryGetBlockResponseFromNumber(
 	blockNum uint64,
 	fullTx bool,
 ) (map[string]interface{}, error) {
