@@ -467,3 +467,93 @@ func RevertReasonRealtime(
 
 	return unpackedMsg, nil
 }
+
+// ConfirmationLevel type used to describe the confirmation level of a transaction
+type ConfirmationLevel int
+
+// PoolConfirmationLevel indicates that transaction is added into the pool
+const PoolConfirmationLevel ConfirmationLevel = 0
+
+// TrustedConfirmationLevel indicates that transaction is  added into the trusted state
+const TrustedConfirmationLevel ConfirmationLevel = 1
+
+// VirtualConfirmationLevel indicates that transaction is  added into the virtual state
+const VirtualConfirmationLevel ConfirmationLevel = 2
+
+// VerifiedConfirmationLevel indicates that transaction is  added into the verified state
+const VerifiedConfirmationLevel ConfirmationLevel = 3
+
+// ApplyL2Txs sends the given L2 txs, waits for them to be consolidated and
+// checks the final state.
+func ApplyL2Txs(ctx context.Context, txs []*types.Transaction, auth *bind.TransactOpts, client *rtclient.RealtimeClient, confirmationLevel ConfirmationLevel) ([]*big.Int, error) {
+	var err error
+	waitToBeMined := confirmationLevel != PoolConfirmationLevel
+	sentTxs, err := applyTxs(ctx, txs, auth, client, waitToBeMined)
+	if err != nil {
+		return nil, err
+	}
+	if confirmationLevel == PoolConfirmationLevel {
+		return nil, nil
+	}
+
+	l2BlockNumbers := make([]*big.Int, 0, len(sentTxs))
+	for _, txTemp := range sentTxs {
+		// check transaction nonce against transaction reported L2 block number
+		receipt, err := client.TransactionReceipt(ctx, txTemp.Hash())
+		if err != nil {
+			return nil, err
+		}
+
+		// get L2 block number
+		l2BlockNumbers = append(l2BlockNumbers, receipt.BlockNumber)
+		if confirmationLevel == TrustedConfirmationLevel {
+			continue
+		}
+
+		if confirmationLevel == VirtualConfirmationLevel {
+			continue
+		}
+	}
+
+	return l2BlockNumbers, nil
+}
+
+func applyTxs(ctx context.Context, txs []*types.Transaction, auth *bind.TransactOpts, client *rtclient.RealtimeClient, waitToBeMined bool) ([]types.Transaction, error) {
+	var sentTxs []types.Transaction
+
+	for i := 0; i < len(txs); i++ {
+		signedTx, err := auth.Signer(auth.From, *txs[i])
+		if err != nil {
+			return nil, err
+		}
+		log.Infof("Sending Tx %v Nonce %v", signedTx.Hash(), signedTx.GetNonce())
+		err = client.SendTransaction(context.Background(), signedTx)
+		if err != nil {
+			return nil, err
+		}
+
+		sentTxs = append(sentTxs, signedTx)
+	}
+	if !waitToBeMined {
+		return nil, nil
+	}
+
+	// wait for TX to be mined
+	timeout := 180 * time.Second //nolint:gomnd
+	for _, tx := range sentTxs {
+		log.Infof("Waiting Tx %s to be mined", tx.Hash())
+		err := WaitTxToBeMined(ctx, client, tx, timeout)
+		if err != nil {
+			return nil, err
+		}
+		log.Infof("Tx %s mined successfully", tx.Hash())
+	}
+	nTxs := len(txs)
+	if nTxs > 1 {
+		log.Infof("%d transactions added into the trusted state successfully.", nTxs)
+	} else {
+		log.Info("transaction added into the trusted state successfully.")
+	}
+
+	return sentTxs, nil
+}
