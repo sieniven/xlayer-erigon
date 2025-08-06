@@ -9,6 +9,7 @@ import (
 	"github.com/ledgerwatch/erigon-lib/common/hexutil"
 	"github.com/ledgerwatch/erigon-lib/common/hexutility"
 	"github.com/ledgerwatch/erigon/common"
+	"github.com/ledgerwatch/erigon/core/state"
 	"github.com/ledgerwatch/erigon/rpc"
 )
 
@@ -17,9 +18,23 @@ func (api *RealtimeAPIImpl) GetBalance(ctx context.Context, address libcommon.Ad
 		return api.APIImpl.GetBalance(ctx, address, blockNrOrHash)
 	}
 
-	if blockNrOrHash.BlockNumber != nil && *blockNrOrHash.BlockNumber == rpc.PendingBlockNumber {
+	if blockNrOrHash.BlockNumber != nil {
+		// Realtime supports pending and latest tags only
+		var reader state.StateReader
+		if *blockNrOrHash.BlockNumber == rpc.PendingBlockNumber {
+			reader = api.cacheDB.GetLatestPendingStateCache()
+		} else if *blockNrOrHash.BlockNumber == rpc.LatestBlockNumber {
+			reader = api.cacheDB.State
+		} else {
+			return api.APIImpl.GetBalance(ctx, address, blockNrOrHash)
+		}
+
+		if reader == nil {
+			reader = api.cacheDB.State
+		}
+
 		// Realtime supported only for pending tags
-		acc, err := api.cacheDB.State.ReadAccountData(address)
+		acc, err := reader.ReadAccountData(address)
 		if err != nil {
 			return nil, fmt.Errorf("cant get a balance for account %x: %w", address.String(), err)
 		}
@@ -39,15 +54,28 @@ func (api *RealtimeAPIImpl) GetTransactionCount(ctx context.Context, address lib
 		return api.APIImpl.GetTransactionCount(ctx, address, blockNrOrHash)
 	}
 
-	if blockNrOrHash.BlockNumber != nil && *blockNrOrHash.BlockNumber == rpc.PendingBlockNumber {
-		// Realtime supported only for pending tags
+	if blockNrOrHash.BlockNumber != nil {
+		// Realtime supports pending and latest tags only
+		var reader state.StateReader
+		if *blockNrOrHash.BlockNumber == rpc.PendingBlockNumber {
+			reader = api.cacheDB.GetLatestPendingStateCache()
+		} else if *blockNrOrHash.BlockNumber == rpc.LatestBlockNumber {
+			reader = api.cacheDB.State
+		} else {
+			return api.APIImpl.GetTransactionCount(ctx, address, blockNrOrHash)
+		}
+
+		if reader == nil {
+			reader = api.cacheDB.State
+		}
+
 		ethNonce, err := api.APIImpl.GetTransactionCount(ctx, address, blockNrOrHash)
 		if err != nil {
 			ethNonce = nil
 		}
 
 		var cacheNonce *hexutil.Uint64
-		acc, err := api.cacheDB.State.ReadAccountData(address)
+		acc, err := reader.ReadAccountData(address)
 		if err != nil {
 			cacheNonce = nil
 		} else if acc != nil {
@@ -80,13 +108,26 @@ func (api *RealtimeAPIImpl) GetCode(ctx context.Context, address libcommon.Addre
 		return api.APIImpl.GetCode(ctx, address, blockNrOrHash)
 	}
 
-	if blockNrOrHash.BlockNumber != nil && *blockNrOrHash.BlockNumber == rpc.PendingBlockNumber {
-		// Realtime supported only for pending tags
-		acc, err := api.cacheDB.State.ReadAccountData(address)
+	if blockNrOrHash.BlockNumber != nil {
+		// Realtime supports pending and latest tags only
+		var reader state.StateReader
+		if *blockNrOrHash.BlockNumber == rpc.PendingBlockNumber {
+			reader = api.cacheDB.GetLatestPendingStateCache()
+		} else if *blockNrOrHash.BlockNumber == rpc.LatestBlockNumber {
+			reader = api.cacheDB.State
+		} else {
+			return api.APIImpl.GetCode(ctx, address, blockNrOrHash)
+		}
+
+		if reader == nil {
+			reader = api.cacheDB.State
+		}
+
+		acc, err := reader.ReadAccountData(address)
 		if acc == nil || err != nil {
 			return hexutility.Bytes(""), nil
 		}
-		res, _ := api.cacheDB.State.ReadAccountCode(address, acc.Incarnation, acc.CodeHash)
+		res, _ := reader.ReadAccountCode(address, acc.Incarnation, acc.CodeHash)
 		if res == nil {
 			return hexutility.Bytes(""), nil
 		}
@@ -101,17 +142,29 @@ func (api *RealtimeAPIImpl) GetStorageAt(ctx context.Context, address libcommon.
 		return api.APIImpl.GetStorageAt(ctx, address, index, blockNrOrHash)
 	}
 
-	if blockNrOrHash.BlockNumber != nil && *blockNrOrHash.BlockNumber == rpc.PendingBlockNumber {
-		// Realtime supported only for pending tags
-		var empty []byte
+	if blockNrOrHash.BlockNumber != nil {
+		// Realtime supports pending and latest tags only
+		var reader state.StateReader
+		if *blockNrOrHash.BlockNumber == rpc.PendingBlockNumber {
+			reader = api.cacheDB.GetLatestPendingStateCache()
+		} else if *blockNrOrHash.BlockNumber == rpc.LatestBlockNumber {
+			reader = api.cacheDB.State
+		} else {
+			return api.APIImpl.GetStorageAt(ctx, address, index, blockNrOrHash)
+		}
 
-		acc, err := api.cacheDB.State.ReadAccountData(address)
+		if reader == nil {
+			reader = api.cacheDB.State
+		}
+
+		var empty []byte
+		acc, err := reader.ReadAccountData(address)
 		if acc == nil || err != nil {
 			return hexutility.Encode(common.LeftPadBytes(empty, 32)), err
 		}
 
 		location := libcommon.HexToHash(index)
-		res, err := api.cacheDB.State.ReadAccountStorage(address, acc.Incarnation, &location)
+		res, err := reader.ReadAccountStorage(address, acc.Incarnation, &location)
 		if err != nil {
 			res = empty
 		}
