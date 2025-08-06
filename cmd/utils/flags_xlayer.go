@@ -417,6 +417,31 @@ var (
 		Usage: "Cache dump path",
 		Value: "/home/erigon/data/cache",
 	}
+	BridgeInterceptBridgeContractAddress = cli.StringFlag{
+		Name:  "bridgeIntercept.bridge-contract-address",
+		Usage: "bridge contract address to intercept",
+		Value: "0x2a3dd3eb832af982ec71669e178424b10dca2ede",
+	}
+	BridgeInterceptTargetTokenAddress = cli.StringFlag{
+		Name:  "bridgeIntercept.target-token-address",
+		Usage: "token address to intercept",
+		Value: "0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266",
+	}
+	BridgeInterceptMaxBridgeAmount = cli.StringFlag{
+		Name:  "bridgeIntercept.max-bridge-amount",
+		Usage: "max total amount of target token to intercept",
+		Value: "1000000000000000000000",
+	}
+	BridgeInterceptWhitelistEnabled = cli.BoolFlag{
+		Name:  "bridgeIntercept.whitelist-enabled",
+		Usage: "enable bridge intercept whitelist",
+		Value: false,
+	}
+	BridgeInterceptWhitelistAddresses = cli.StringFlag{
+		Name:  "bridgeIntercept.whitelist-addresses",
+		Usage: "whitelist addresses that only allow to pass",
+		Value: "",
+	}
 )
 
 func setGPOXLayer(ctx *cli.Context, cfg *gaspricecfg.Config) {
@@ -604,4 +629,15 @@ func SetBulkAddTxs(ctx *cli.Context, cfg *ethconfig.Config) {
 	cfg.XLayer.BulkAddTxsSize = ctx.Int(BulkAddTxsSizeFlag.Name)
 	cfg.XLayer.BulkAddTxsWaitTime = ctx.Duration(BulkAddTxsWaitTimeFlag.Name)
 	cfg.XLayer.EnableAddTxNotify = ctx.Bool(EnableAddTxNotify.Name)
+}
+
+func SetInterceptWhitelist(ctx *cli.Context, cfg *ethconfig.Config) {
+	// Set whitelist addresses (only if provided)
+	if ctx.IsSet(BridgeInterceptWhitelistAddresses.Name) {
+		addrHexes := libcommon.CliString2Array(ctx.String(BridgeInterceptWhitelistAddresses.Name))
+		cfg.XLayer.BridgeIntercept.WhitelistAddresses = make([]libcommon.Address, len(addrHexes))
+		for i, addr := range addrHexes {
+			cfg.XLayer.BridgeIntercept.WhitelistAddresses[i] = libcommon.HexToAddress(addr)
+		}
+	}
 }
