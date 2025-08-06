@@ -123,7 +123,7 @@ services:
       cdk-erigon --http.vhosts=* --http.corsdomain=* --ws --config=/usr/src/app/config.yaml
 
   xlayer-mainnet-rpc:
-    container_name: xlayer-rpc
+    container_name: xlayer-mainnet-rpc
     image: cdk-erigon
     environment:
       - CDK_ERIGON_SEQUENCER=0

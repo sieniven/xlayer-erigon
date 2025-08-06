@@ -22,8 +22,8 @@ sed_inplace() {
 }
 
 echo "Cleaning all docker containers..."
-docker stop $(docker ps -aq) || true
-docker rm $(docker ps -aq) || true
+# docker stop $(docker ps -aq) || true
+# docker rm $(docker ps -aq) || true
 
 echo "Starting zkevm-mock-l1-network..."
 docker-compose up -d zkevm-mock-l1-network
@@ -53,7 +53,7 @@ fi
 
 if [ ! -d "./agglayer-contracts" ]; then
   echo "Cloning contract repository..."
-  git clone -b v10.0.0-rc.6 https://github.com/agglayer/agglayer-contracts.git
+  git clone -b v11.0.0-rc.3 https://github.com/agglayer/agglayer-contracts.git
 fi
 
 cd ./agglayer-contracts
@@ -88,7 +88,7 @@ cat > create_rollup_parameters.json << EOF
     "trustedSequencer": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
     "trustedSequencerURL": "http://xlayer-seq:8545",
     "trustedAggregator":"0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
-    "programVKey": "0x00d6e4bdab9cac75a50d58262bb4e60b3107a6b61131ccdff649576c624b6fb7"
+    "programVKey": "0x00eff0b6998df46ec388bb305618089ae3dc74e513e7676b2e1909694f49cc30"
 }
 EOF
 
@@ -114,7 +114,7 @@ cat > deploy_parameters.json << EOF
     "trustedAggregatorTimeout": 604799,
     "forkID": 13,
     "test": true,
-    "ppVKey": "0x00d6e4bdab9cac75a50d58262bb4e60b3107a6b61131ccdff649576c624b6fb7",
+    "ppVKey": "0x00eff0b6998df46ec388bb305618089ae3dc74e513e7676b2e1909694f49cc30",
     "ppVKeySelector": "0x00000001",
     "realVerifier": $VERIFIER_TYPE,
     "defaultAdminAddress": "$DEPLOYER_ADDRESS",
@@ -223,6 +223,17 @@ sed_inplace "s|\"rollupCreationBlockNumber\": [0-9]*|\"rollupCreationBlockNumber
 sed_inplace "s|\"rollupManagerCreationBlockNumber\": [0-9]*|\"rollupManagerCreationBlockNumber\": $L1_FIRST_BLOCK|" "$GENESIS_CONFIG_FILE"
 AGGLAYER_CONFIG_FILE="./test/config/agglayer-config.toml"
 sed_inplace "s|polygon-zkevm-global-exit-root-v2-contract = \"[^\"]*\"|polygon-zkevm-global-exit-root-v2-contract = \"$GLOBAL_EXIT_ROOT_ADDRESS\"|" "$AGGLAYER_CONFIG_FILE"
+
+CONFIG_FILE="./test/config/test.bridge.config.toml"
+sed_inplace "s|PolygonBridgeAddress = \"[^\"]*\"|PolygonBridgeAddress = \"$BRIDGE_ADDRESS\"|" "$CONFIG_FILE"
+sed_inplace "s|L2PolygonBridgeAddresses = \\[\"[^\"]*\"\\]|L2PolygonBridgeAddresses = [\"$BRIDGE_ADDRESS\"]|" "$CONFIG_FILE"
+echo "Successfully updated bridge contract addresses in test.bridge.config.toml" 
+
+
+CONFIG_FILE="./test/docker-compose.yml"
+sed_inplace "s|- ETHEREUM_BRIDGE_CONTRACT_ADDRESS=0x[a-fA-F0-9]*|- ETHEREUM_BRIDGE_CONTRACT_ADDRESS=$BRIDGE_ADDRESS|g" "$CONFIG_FILE"
+sed_inplace "s|- POLYGON_ZK_EVM_BRIDGE_CONTRACT_ADDRESS=0x[a-fA-F0-9]*|- POLYGON_ZK_EVM_BRIDGE_CONTRACT_ADDRESS=$BRIDGE_ADDRESS|g" "$CONFIG_FILE"
+echo "Successfully updated bridge contract addresses in docker-compose.yml"
 
 echo "Initialization script completed!"
 
