@@ -2,8 +2,7 @@
 set -e
 set -x
 
-# mock or cpu
-PROVER_TYPE="cpu"
+VERIFIER_TYPE=true
 
 PWD_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(dirname "$PWD_DIR")"
@@ -42,11 +41,10 @@ cast send -f $RICH_ADDRESS --private-key $RICH_PRIVATE_KEY --value 3ether --lega
 
 CONFIG_FILE_1="./config/agglayer-config.toml"
 CONFIG_FILE_2="./config/agglayer-prover-config.toml"
-VERIFIER_TYPE=false
-if [ "$PROVER_TYPE" == "cpu" ]; then
+
+if [ "$VERIFIER_TYPE" == "true" ]; then
     sed_inplace "s|mock-verifier *= *true|mock-verifier = false|g" "$CONFIG_FILE_1"
     sed_inplace "s|\[primary-prover\.mock-prover\]|\[primary-prover.cpu-prover\]|g" "$CONFIG_FILE_2"
-    VERIFIER_TYPE=true
 fi
 
 if [ ! -d "./agglayer-contracts" ]; then
@@ -198,17 +196,15 @@ mkdir -p "$PWD_DIR/config"
 jq '.firstBatchData' "$ROLLUP_OUTPUT_PATH" > "$PWD_DIR/config/first-batch-config.json"
 echo "Successfully exported firstBatchData to $PWD_DIR/config/first-batch-config.json"
 
-echo "Updating polygonBridgeAddr parameter in cdk-node-config.toml..."
-CONFIG_FILE="./test/config/cdk-node-config.toml"
+echo "Updating parameter in aggkit.toml..."
+CONFIG_FILE="./test/config/aggkit.toml"
 sed_inplace "s|polygonBridgeAddr = \"[^\"]*\"|polygonBridgeAddr = \"$BRIDGE_ADDRESS\"|" "$CONFIG_FILE"
-sed_inplace "s|rollupCreationBlockNumber = \"[^\"]*\"|rollupCreationBlockNumber = \"$L1_FIRST_BLOCK\"|" "$CONFIG_FILE"
-sed_inplace "s|rollupManagerCreationBlockNumber = \"[^\"]*\"|rollupManagerCreationBlockNumber = \"$L1_SECOND_BLOCK\"|" "$CONFIG_FILE"
-sed_inplace "s|genesisBlockNumber = \"[^\"]*\"|genesisBlockNumber = \"$L1_FIRST_BLOCK\"|" "$CONFIG_FILE"
+sed_inplace "s|BridgeAddr = \"[^\"]*\"|BridgeAddr = \"$BRIDGE_ADDRESS\"|" "$CONFIG_FILE"
+sed_inplace "s|BridgeAddrL2 = \"[^\"]*\"|BridgeAddrL2 = \"$BRIDGE_ADDRESS\"|" "$CONFIG_FILE"
 sed_inplace "s|polygonRollupManagerAddress = \"[^\"]*\"|polygonRollupManagerAddress = \"$ROLLUP_MANAGER_ADDRESS\"|" "$CONFIG_FILE"
-sed_inplace "s|polygonZkEVMBridgeAddress = \"[^\"]*\"|polygonZkEVMBridgeAddress = \"$BRIDGE_ADDRESS\"|" "$CONFIG_FILE"
 sed_inplace "s|polygonZkEVMGlobalExitRootAddress = \"[^\"]*\"|polygonZkEVMGlobalExitRootAddress = \"$GLOBAL_EXIT_ROOT_ADDRESS\"|" "$CONFIG_FILE"
 sed_inplace "s|polygonZkEVMAddress = \"[^\"]*\"|polygonZkEVMAddress = \"$POE_ADDRESS\"|" "$CONFIG_FILE"
-echo "Successfully updated contract address parameters in cdk-node-config.toml"
+echo "Successfully updated contract address parameters in aggkit.toml"
 
 echo "Updating contract address parameters in agglayer-config.toml..."
 AGGLAYER_CONFIG_FILE="./test/config/agglayer-config.toml"
