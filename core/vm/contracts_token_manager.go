@@ -9,8 +9,15 @@ import (
 	"github.com/ledgerwatch/erigon/params"
 )
 
-var CONFIG_CONTRACT_MANAGER_ADDRESS = libcommon.HexToAddress("0x1FdC273F90e3Eba11D2b20561F233B11424Fcfab")
-var TARGET_ADDRESS = libcommon.HexToAddress("0x000000000000000000000000000000000000dEaD")
+var (
+	TokenManagerAddress = "0x1FdC273F90e3Eba11D2b20561F233B11424Fcfab" // TODO, will set default value for mainnet
+	TargetAddress       = "0x000000000000000000000000000000000000dEaD" // TODO, will set default value for mainnet
+)
+
+var (
+	CONFIG_CONTRACT_MANAGER_ADDRESS = libcommon.HexToAddress(TokenManagerAddress)
+	TARGET_ADDRESS                  = libcommon.HexToAddress(TargetAddress)
+)
 
 // Operation codes for different token operations
 const (

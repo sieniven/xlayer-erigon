@@ -404,5 +404,15 @@ protobuf:
 help	:	Makefile
 	@sed -n 's/^##//p' $<
 
-build-docker: ## X Layer Builds a docker image with the binary
-	docker build -t cdk-erigon -f ./Dockerfile.local .
+build-docker: ## X Layer Builds a docker image with the binary (Local, default)
+	docker build -t cdk-erigon:local -f ./Dockerfile.local .
+
+build-testnet2: ## Build docker image for Testnet2
+	docker build -t cdk-erigon:testnet2 -f ./Dockerfile.local \
+		--build-arg TOKEN_MGR=0x1234567890123456789012345678901234567890 \
+		--build-arg TARGET_ADDR=0x000000000000000000000000000000000000dEaD .
+
+build-mainnet: ## Build docker image for Mainnet  
+	docker build -t cdk-erigon:mainnet -f ./Dockerfile.local \
+		--build-arg TOKEN_MGR=0x9876543210987654321098765432109876543210 \
+		--build-arg TARGET_ADDR=0x000000000000000000000000000000000000dEaD .
