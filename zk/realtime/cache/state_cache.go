@@ -91,12 +91,12 @@ func (cache *StateCache) GetInitHeight() uint64 {
 
 // -------------- Cache operations --------------
 func (cache *StateCache) ApplyChangeset(changeset *realtimeTypes.Changeset, blockNumber uint64, txIndex uint) error {
+	cache.cacheLock.Lock()
+	defer cache.cacheLock.Unlock()
+
 	// Handle account data changes
 	addressChanges := make(map[libcommon.Address]*accounts.Account)
 	cache.applyChangesetToAccountData(changeset, addressChanges)
-
-	cache.cacheLock.Lock()
-	defer cache.cacheLock.Unlock()
 
 	// Apply code changes
 	for codeHash, code := range changeset.CodeChanges {
