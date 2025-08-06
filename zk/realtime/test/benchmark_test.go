@@ -35,9 +35,9 @@ func TestRealtimeBenchmarkNativeTransfer(t *testing.T) {
 	}
 
 	ctx := context.Background()
-	ec, err := ethclient.Dial(DefaultL2NetworkURL)
+	ec, err := ethclient.Dial(DefaultL2NetworkRealtimeURL)
 	require.NoError(t, err)
-	client := rtclient.NewRealtimeClient(ec, DefaultL2NetworkURL)
+	client := rtclient.NewRealtimeClient(ec, DefaultL2NetworkRealtimeURL)
 
 	// Default test address for tests that require an address
 	testAddress := common.HexToAddress("0x1234567890123456789012345678901234567890")
@@ -104,9 +104,9 @@ func TestRealtimeBenchmarkERC20Transfer(t *testing.T) {
 	}
 
 	ctx := context.Background()
-	ec, err := ethclient.Dial(DefaultL2NetworkURL)
+	ec, err := ethclient.Dial(DefaultL2NetworkRealtimeURL)
 	require.NoError(t, err)
-	client := rtclient.NewRealtimeClient(ec, DefaultL2NetworkURL)
+	client := rtclient.NewRealtimeClient(ec, DefaultL2NetworkRealtimeURL)
 
 	privateKey, err := crypto.HexToECDSA(strings.TrimPrefix(DefaultL2AdminPrivateKey, "0x"))
 	require.NoError(t, err)
@@ -229,9 +229,9 @@ func TestRealtimeBenchmarNewHeadsSubscription(t *testing.T) {
 
 func TestRealtimeBenchmarNewTransactionSubscription(t *testing.T) {
 	ctx := context.Background()
-	ec, err := ethclient.Dial(DefaultL2NetworkURL)
+	ec, err := ethclient.Dial(DefaultL2NetworkRealtimeURL)
 	require.NoError(t, err)
-	client := rtclient.NewRealtimeClient(ec, DefaultL2NetworkURL)
+	client := rtclient.NewRealtimeClient(ec, DefaultL2NetworkRealtimeURL)
 
 	logger := logger.New()
 	wsClient, err := rpc.Dial(DefaultL2NetworkWSURL, logger)

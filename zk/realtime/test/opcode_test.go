@@ -20,9 +20,9 @@ func TestIterativeCreate2AndDestroy(t *testing.T) {
 	}
 
 	ctx := context.Background()
-	ec, err := ethclient.Dial(DefaultL2NetworkURL)
+	ec, err := ethclient.Dial(DefaultL2NetworkRealtimeURL)
 	require.NoError(t, err)
-	client := rtclient.NewRealtimeClient(ec, DefaultL2NetworkURL)
+	client := rtclient.NewRealtimeClient(ec, DefaultL2NetworkRealtimeURL)
 
 	privateKey, err := crypto.HexToECDSA(DefaultL2AdminPrivateKey[2:])
 	require.NoError(t, err)
@@ -54,9 +54,9 @@ func TestMultipleCreate2AndDestroy(t *testing.T) {
 	}
 
 	ctx := context.Background()
-	ec, err := ethclient.Dial(DefaultL2NetworkURL)
+	ec, err := ethclient.Dial(DefaultL2NetworkRealtimeURL)
 	require.NoError(t, err)
-	client := rtclient.NewRealtimeClient(ec, DefaultL2NetworkURL)
+	client := rtclient.NewRealtimeClient(ec, DefaultL2NetworkRealtimeURL)
 
 	privateKey, err := crypto.HexToECDSA(DefaultL2AdminPrivateKey[2:])
 	require.NoError(t, err)
@@ -89,9 +89,9 @@ func TestCreate2AndDestroyInSameTx(t *testing.T) {
 	}
 
 	ctx := context.Background()
-	ec, err := ethclient.Dial(DefaultL2NetworkURL)
+	ec, err := ethclient.Dial(DefaultL2NetworkRealtimeURL)
 	require.NoError(t, err)
-	client := rtclient.NewRealtimeClient(ec, DefaultL2NetworkURL)
+	client := rtclient.NewRealtimeClient(ec, DefaultL2NetworkRealtimeURL)
 
 	privateKey, err := crypto.HexToECDSA(DefaultL2AdminPrivateKey[2:])
 	require.NoError(t, err)
