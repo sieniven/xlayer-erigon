@@ -48,6 +48,8 @@ if ! command -v solc &> /dev/null; then
     exit 1
 fi
 
+npm install
+
 if ! solc --bin --evm-version paris TokenManagerV1.sol -o . --overwrite --base-path . --include-path node_modules/ > /dev/null 2>&1; then
     echo "❌ 错误：编译 TokenManagerV1.sol 失败"
     exit 1
