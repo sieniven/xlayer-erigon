@@ -2,6 +2,9 @@
 set -e
 set -x
 
+# mock or cpu
+PROVER_TYPE="cpu"
+
 PWD_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(dirname "$PWD_DIR")"
 
@@ -36,6 +39,16 @@ TOKEN_ADDRESS="0x5FbDB2315678afecb367f032d93F642f64180aa3"
 echo "Sending funds to deployer..."
 cast send -f $RICH_ADDRESS --private-key $RICH_PRIVATE_KEY --value 3ether --legacy $DEPLOYER_ADDRESS
 
+
+CONFIG_FILE_1="./config/agglayer-config.toml"
+CONFIG_FILE_2="./config/agglayer-prover-config.toml"
+VERIFIER_TYPE=false
+if [ "$PROVER_TYPE" == "cpu" ]; then
+    sed_inplace "s|mock-verifier *= *true|mock-verifier = false|g" "$CONFIG_FILE_1"
+    sed_inplace "s|\[primary-prover\.mock-prover\]|\[primary-prover.cpu-prover\]|g" "$CONFIG_FILE_2"
+    VERIFIER_TYPE=true
+fi
+
 if [ ! -d "./agglayer-contracts" ]; then
   echo "Cloning contract repository..."
   git clone -b v10.0.0-rc.6 https://github.com/agglayer/agglayer-contracts.git
@@ -69,7 +82,7 @@ cat > create_rollup_parameters.json << EOF
     "maxPriorityFeePerGas": "",
     "multiplierGas": "",
     "networkName": "zkevm",
-    "realVerifier": false,
+    "realVerifier": $VERIFIER_TYPE,
     "trustedSequencer": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
     "trustedSequencerURL": "http://xlayer-seq:8545",
     "trustedAggregator":"0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
@@ -101,7 +114,7 @@ cat > deploy_parameters.json << EOF
     "test": true,
     "ppVKey": "0x00d6e4bdab9cac75a50d58262bb4e60b3107a6b61131ccdff649576c624b6fb7",
     "ppVKeySelector": "0x00000001",
-    "realVerifier": false,
+    "realVerifier": $VERIFIER_TYPE,
     "defaultAdminAddress": "$DEPLOYER_ADDRESS",
     "aggchainDefaultVKeyRoleAddress": "$DEPLOYER_ADDRESS",
     "addRouteRoleAddress": "$DEPLOYER_ADDRESS",
@@ -116,15 +129,15 @@ npm i
 npm run deploy:v2:localhost
 
 cd "$ROOT_DIR"
-ROLLUP_OUTPUT_PATH=$(find ./test-pp/agglayer-contracts/deployment/v2 -name "create_rollup_output_*.json" | sort -r | head -n 1)
-rm -rf ./test-pp/contract/*
-cp -rf $ROLLUP_OUTPUT_PATH ./test-pp/contract/create_rollup_output.json
-cp -rf ./test-pp/agglayer-contracts/deployment/v2/create_rollup_parameters.json ./test-pp/contract/
-cp -rf ./test-pp/agglayer-contracts/deployment/v2/deploy_parameters.json ./test-pp/contract/
-cp -rf ./test-pp/agglayer-contracts/deployment/v2/deploy_output.json ./test-pp/contract/
-cp -rf ./test-pp/agglayer-contracts/deployment/v2/genesis.json ./test-pp/contract/
-ROLLUP_OUTPUT_PATH="./test-pp/contract/create_rollup_output.json"
-DEPLOY_OUTPUT_PATH="./test-pp/contract/deploy_output.json"
+ROLLUP_OUTPUT_PATH=$(find ./test/agglayer-contracts/deployment/v2 -name "create_rollup_output_*.json" | sort -r | head -n 1)
+rm -rf ./test/contract/*
+cp -rf $ROLLUP_OUTPUT_PATH ./test/contract/create_rollup_output.json
+cp -rf ./test/agglayer-contracts/deployment/v2/create_rollup_parameters.json ./test/contract/
+cp -rf ./test/agglayer-contracts/deployment/v2/deploy_parameters.json ./test/contract/
+cp -rf ./test/agglayer-contracts/deployment/v2/deploy_output.json ./test/contract/
+cp -rf ./test/agglayer-contracts/deployment/v2/genesis.json ./test/contract/
+ROLLUP_OUTPUT_PATH="./test/contract/create_rollup_output.json"
+DEPLOY_OUTPUT_PATH="./test/contract/deploy_output.json"
 
 echo "Transferring ERC20 token to Sequencer..."
 cast send --legacy --from $SEQ_ADDRESS --private-key $SEQ_PRIVATE_KEY $TOKEN_ADDRESS "transfer(address,uint256)" $SEQ_ADDRESS 1000
@@ -161,10 +174,10 @@ fi
 echo "Generating configuration files..."
 go install ./cmd/hack/allocs
 which allocs
-allocs ./test-pp/agglayer-contracts/deployment/v2/genesis.json
-mv allocs.json ./test-pp/config/dynamic-mynetwork-allocs.json
+allocs ./test/agglayer-contracts/deployment/v2/genesis.json
+mv allocs.json ./test/config/dynamic-mynetwork-allocs.json
 
-cat > ./test-pp/config/dynamic-mynetwork-conf.json << EOF
+cat > ./test/config/dynamic-mynetwork-conf.json << EOF
 {
   "root": "$GENESIS_VALUE",
   "timestamp": $TIMESTAMP_VALUE,
@@ -175,7 +188,7 @@ EOF
 echo "dynamic-mynetwork-conf.json file updated"
 
 echo "Updating test.erigon.seq.config.yaml file..."
-CONFIG_FILE="./test-pp/config/test.erigon.seq.config.yaml"
+CONFIG_FILE="./test/config/test.erigon.seq.config.yaml"
 sed_inplace "s|zkevm.address-zkevm: \"[^\"]*\"|zkevm.address-zkevm: \"$POE_ADDRESS\"|g" $CONFIG_FILE
 sed_inplace "s|zkevm.address-rollup: \"[^\"]*\"|zkevm.address-rollup: \"$ROLLUP_MANAGER_ADDRESS\"|g" $CONFIG_FILE
 sed_inplace "s|zkevm.address-ger-manager: \"[^\"]*\"|zkevm.address-ger-manager: \"$GLOBAL_EXIT_ROOT_ADDRESS\"|g" $CONFIG_FILE
@@ -186,9 +199,8 @@ jq '.firstBatchData' "$ROLLUP_OUTPUT_PATH" > "$PWD_DIR/config/first-batch-config
 echo "Successfully exported firstBatchData to $PWD_DIR/config/first-batch-config.json"
 
 echo "Updating polygonBridgeAddr parameter in cdk-node-config.toml..."
-CONFIG_FILE="./test-pp/config/cdk-node-config.toml"
+CONFIG_FILE="./test/config/cdk-node-config.toml"
 sed_inplace "s|polygonBridgeAddr = \"[^\"]*\"|polygonBridgeAddr = \"$BRIDGE_ADDRESS\"|" "$CONFIG_FILE"
-CONFIG_FILE="./test-pp/config/cdk-node-config.toml"
 sed_inplace "s|rollupCreationBlockNumber = \"[^\"]*\"|rollupCreationBlockNumber = \"$L1_FIRST_BLOCK\"|" "$CONFIG_FILE"
 sed_inplace "s|rollupManagerCreationBlockNumber = \"[^\"]*\"|rollupManagerCreationBlockNumber = \"$L1_SECOND_BLOCK\"|" "$CONFIG_FILE"
 sed_inplace "s|genesisBlockNumber = \"[^\"]*\"|genesisBlockNumber = \"$L1_FIRST_BLOCK\"|" "$CONFIG_FILE"
@@ -199,32 +211,41 @@ sed_inplace "s|polygonZkEVMAddress = \"[^\"]*\"|polygonZkEVMAddress = \"$POE_ADD
 echo "Successfully updated contract address parameters in cdk-node-config.toml"
 
 echo "Updating contract address parameters in agglayer-config.toml..."
-AGGLAYER_CONFIG_FILE="./test-pp/config/agglayer-config.toml"
+AGGLAYER_CONFIG_FILE="./test/config/agglayer-config.toml"
 sed_inplace "s|rollup-manager-contract = \"[^\"]*\"|rollup-manager-contract = \"$ROLLUP_MANAGER_ADDRESS\"|" "$AGGLAYER_CONFIG_FILE"
 sed_inplace "s|polygon-zkevm-global-exit-root-v2-contract = \"[^\"]*\"|polygon-zkevm-global-exit-root-v2-contract = \"$GLOBAL_EXIT_ROOT_ADDRESS\"|" "$AGGLAYER_CONFIG_FILE"
-GENESIS_CONFIG_FILE="./test-pp/config/test.genesis.config.json"
+GENESIS_CONFIG_FILE="./test/config/test.genesis.config.json"
 sed_inplace "s|\"genesisBlockNumber\": [0-9]*|\"genesisBlockNumber\": $L1_FIRST_BLOCK|" "$GENESIS_CONFIG_FILE"
 sed_inplace "s|\"rollupCreationBlockNumber\": [0-9]*|\"rollupCreationBlockNumber\": $L1_SECOND_BLOCK|" "$GENESIS_CONFIG_FILE"
 sed_inplace "s|\"rollupManagerCreationBlockNumber\": [0-9]*|\"rollupManagerCreationBlockNumber\": $L1_FIRST_BLOCK|" "$GENESIS_CONFIG_FILE"
-AGGLAYER_CONFIG_FILE="./test-pp/config/agglayer-config.toml"
+AGGLAYER_CONFIG_FILE="./test/config/agglayer-config.toml"
 sed_inplace "s|polygon-zkevm-global-exit-root-v2-contract = \"[^\"]*\"|polygon-zkevm-global-exit-root-v2-contract = \"$GLOBAL_EXIT_ROOT_ADDRESS\"|" "$AGGLAYER_CONFIG_FILE"
 
-cd $PWD_DIR
-if [ ! -d "./cdk" ]; then
-  echo "Cloning contract repository..."
-  git clone -b v0.5.4-rc1 https://github.com/0xPolygon/cdk.git
-fi
-
-cd ./cdk
-make build-docker
-cd -
-
-if [ ! -d "./agglayer" ]; then
-  echo "Cloning contract repository..."
-  git clone -b v0.3.0-rc.16 https://github.com/agglayer/agglayer.git
-fi
-
-cd ./agglayer
-docker build -t agglayer .
-
 echo "Initialization script completed!"
+
+docker-compose up -d xlayer-agg-db
+docker-compose up -d xlayer-bridge-db
+docker-compose up -d xlayer-pool-db
+docker-compose up -d xlayer-agglayer-prover
+docker-compose up -d xlayer-agglayer
+docker-compose up -d xlayer-bridge-redis
+docker-compose up -d kafka-zookeeper
+docker-compose up -d xlayer-bridge-coin-kafka
+
+sleep 3
+docker-compose up -d xlayer-approve
+docker-compose up -d xlayer-seq
+docker-compose up -d xlayer-pool-manager
+
+sleep 5
+docker-compose up -d xlayer-rpc
+
+sleep 10
+docker-compose up -d xlayer-bridge-service
+docker-compose up -d xlayer-bridge-ui
+$(INIT_BRIDGE_ACCOUNT)
+$(INIT_OKB_ISSUER)
+
+mkdir -p data/aggkit
+chmod -R 777 data 
+docker-compose up -d xlayer-aggkit
