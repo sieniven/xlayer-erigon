@@ -9,6 +9,7 @@ import (
 
 	ethereum "github.com/ledgerwatch/erigon"
 	"github.com/ledgerwatch/erigon-lib/common"
+	"github.com/ledgerwatch/erigon-lib/common/hexutil"
 	"github.com/ledgerwatch/erigon/core/types"
 	"github.com/ledgerwatch/erigon/ethclient"
 	rpcTypes "github.com/ledgerwatch/erigon/zk/rpcdaemon"
@@ -87,16 +88,9 @@ func (rc *RealtimeClient) RealtimeCall(from, to common.Address, gas string, gasP
 	return result, nil
 }
 
-// RealtimeEstimateGas estimates the gas cost of a transaction in real-time
-func (rc *RealtimeClient) RealtimeEstimateGas(ctx context.Context, from, to common.Address, value string, data string) (uint64, error) {
-	txParams := map[string]any{
-		"from":  from,
-		"to":    to,
-		"value": value,
-		"data":  data,
-	}
-
-	response, err := client.JSONRPCCall(rc.url, "eth_estimateGas", txParams, PendingTag)
+// RealtimeEstimateGas estimates gas for a transaction using realtime cache
+func (rc *RealtimeClient) RealtimeEstimateGas(args map[string]interface{}) (uint64, error) {
+	response, err := client.JSONRPCCall(rc.url, "eth_estimateGas", args)
 	if err != nil {
 		return 0, err
 	}
@@ -104,13 +98,19 @@ func (rc *RealtimeClient) RealtimeEstimateGas(ctx context.Context, from, to comm
 		return 0, fmt.Errorf("%d - %s", response.Error.Code, response.Error.Message)
 	}
 
-	var result uint64
+	var result string
 	err = json.Unmarshal(response.Result, &result)
 	if err != nil {
 		return 0, err
 	}
 
-	return result, nil
+	// Convert hex string to uint64
+	gasEstimate, err := hexutil.DecodeUint64(result)
+	if err != nil {
+		return 0, err
+	}
+
+	return gasEstimate, nil
 }
 
 // RealtimeGetBalance returns the balance of an account in real-time

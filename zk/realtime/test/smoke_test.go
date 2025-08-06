@@ -20,6 +20,7 @@ import (
 
 	"github.com/holiman/uint256"
 	"github.com/ledgerwatch/erigon-lib/common"
+	"github.com/ledgerwatch/erigon-lib/common/hexutil"
 	"github.com/ledgerwatch/erigon-lib/kv"
 	"github.com/ledgerwatch/erigon-lib/kv/mdbx"
 	"github.com/ledgerwatch/erigon/accounts/abi"
@@ -271,6 +272,37 @@ func TestRealtimeRPC(t *testing.T) {
 		} else {
 			log.Info("RealtimeEnabled: Realtime feature is disabled or cache is not ready")
 		}
+	})
+
+	t.Run("RealtimeEstimateGas", func(t *testing.T) {
+		// Test standard eth_estimateGas with a simple transfer
+		transferArgs := map[string]interface{}{
+			"from":  fromAddress,
+			"to":    testAddress,
+			"value": (*hexutil.Big)(big.NewInt(1)),
+		}
+
+		gasEstimate, err := client.RealtimeEstimateGas(transferArgs)
+		require.NoError(t, err)
+		require.Greater(t, gasEstimate, uint64(0), "Gas estimate should be greater than 0")
+		require.LessOrEqual(t, gasEstimate, uint64(1000000), "Gas estimate should be reasonable")
+		log.Info(fmt.Sprintf("Standard eth_estimateGas for transfer: %d gas", gasEstimate))
+
+		// Test gas estimation for a contract call (ERC20 transfer)
+		transferData, err := erc20ABI.Pack("transfer", erc20Address, big.NewInt(1))
+		require.NoError(t, err)
+
+		contractCallArgs := map[string]interface{}{
+			"from": fromAddress,
+			"to":   erc20Address,
+			"data": (*hexutil.Bytes)(&transferData),
+		}
+
+		gasEstimateCall, err := client.RealtimeEstimateGas(contractCallArgs)
+		require.NoError(t, err)
+		require.Greater(t, gasEstimateCall, gasEstimate, "Contract call should require more gas than simple transfer")
+		require.LessOrEqual(t, gasEstimateCall, uint64(1000000), "Contract call gas estimate should be reasonable")
+		log.Info(fmt.Sprintf("Standard eth_estimateGas for ERC20 transfer: %d gas", gasEstimateCall))
 	})
 }
 func TestRealtimeStateIsConsistent(t *testing.T) {
