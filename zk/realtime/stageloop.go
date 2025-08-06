@@ -45,7 +45,7 @@ func ListenKafkaProducer(
 			return
 		case header := <-blockInfoChan:
 			currHeight = header.Number.Uint64()
-			err := kafkaProducer.SendKafkaBlockHeader(header)
+			err := kafkaProducer.SendKafkaBlockInfo(header)
 			if err != nil {
 				log.Error(fmt.Sprintf("[Realtime] Failed to send kafka block info message. error: %v, currHeight: %d", err, currHeight))
 				err = kafkaProducer.SendKafkaErrorTrigger(currHeight)
