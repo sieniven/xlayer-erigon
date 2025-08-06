@@ -5,6 +5,8 @@ DOCKER_BRIDGE_UI := xlayer-bridge-ui
 DOCKER_APPROVE := xlayer-approve
 DOCKER_SEQ := xlayer-seq
 DOCKER_RPC := xlayer-rpc
+DOCKER_RPC_RT := xlayer-rpc-rt
+DOCKER_RPC_NO_RT := xlayer-rpc-no-rt
 DOCKER_L1_NETWORK := xlayer-mock-l1-network
 DOCKER_POOL_DB := xlayer-pool-db
 DOCKER_POOL_MANAGER := xlayer-pool-manager
@@ -28,6 +30,8 @@ RUN_DOCKER_BRIDGE_UI := $(DOCKER_COMPOSE) up -d $(DOCKER_BRIDGE_UI)
 RUN_DOCKER_APPROVE := $(DOCKER_COMPOSE) up -d $(DOCKER_APPROVE)
 RUN_DOCKER_SEQ := $(DOCKER_COMPOSE) up -d $(DOCKER_SEQ)
 RUN_DOCKER_RPC := $(DOCKER_COMPOSE) up -d $(DOCKER_RPC)
+RUN_DOCKER_RPC_RT := $(DOCKER_COMPOSE) up -d $(DOCKER_RPC_RT)
+RUN_DOCKER_RPC_NO_RT := $(DOCKER_COMPOSE) up -d $(DOCKER_RPC_NO_RT)
 RUN_DOCKER_MAINNET_SEQ := $(DOCKER_COMPOSE) up -d $(DOCKER_MAINNET_SEQ)
 RUN_DOCKER_MAINNET_RPC := $(DOCKER_COMPOSE) up -d $(DOCKER_MAINNET_RPC)
 RUN_DOCKER_L1_NETWORK := $(DOCKER_COMPOSE) up -d $(DOCKER_L1_NETWORK)
@@ -107,7 +111,8 @@ realtime-run: stop build-docker
 	$(DOCKER_COMPOSE) up -d xlayer-pool-manager
 
 	sleep 5
-	$(DOCKER_COMPOSE) up -d xlayer-rpc
+	$(DOCKER_COMPOSE) up -d xlayer-rpc-rt
+	$(DOCKER_COMPOSE) up -d xlayer-rpc-no-rt
 
 	sleep 10
 	$(DOCKER_COMPOSE) up -d xlayer-bridge-service
@@ -232,6 +237,13 @@ lint:
 
 .PHONY: test-e2e
 test-e2e: stop all ## Runs group xlayer feature e2e tests checking race conditions
+	sleep 3
+	docker ps -a
+	trap '$(STOP)' EXIT; MallocNanoZone=0 go test -count=1 -failfast -race -v -p 1 -timeout 600s ../ci/e2e-1/...
+	echo "E2E tests passed"
+
+.PHONY: test-realtime-e2e
+test-realtime-e2e: stop realtime-run
 	sleep 3
 	docker ps -a
 	trap '$(STOP)' EXIT; MallocNanoZone=0 go test -count=1 -failfast -race -v -p 1 -timeout 600s ../ci/e2e-1/...

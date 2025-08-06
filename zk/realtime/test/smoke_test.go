@@ -43,9 +43,9 @@ func TestRealtimeRPC(t *testing.T) {
 
 	// Preapre to deploy a ERC20 contract
 	ctx := context.Background()
-	ec, err := ethclient.Dial(DefaultL2NetworkURL)
+	ec, err := ethclient.Dial(DefaultL2NetworkRealtimeURL)
 	require.NoError(t, err)
-	client := rtclient.NewRealtimeClient(ec, DefaultL2NetworkURL)
+	client := rtclient.NewRealtimeClient(ec, DefaultL2NetworkRealtimeURL)
 	blockNumber := setupRealtimeTestEnvironment(t, client)
 
 	privateKey, err := crypto.HexToECDSA(strings.TrimPrefix(DefaultL2AdminPrivateKey, "0x"))
@@ -279,9 +279,9 @@ func TestRealtimeStateIsConsistent(t *testing.T) {
 	}
 
 	ctx := context.Background()
-	ec, err := ethclient.Dial(DefaultL2NetworkURL)
+	ec, err := ethclient.Dial(DefaultL2NetworkRealtimeURL)
 	require.NoError(t, err)
-	client := rtclient.NewRealtimeClient(ec, DefaultL2NetworkURL)
+	client := rtclient.NewRealtimeClient(ec, DefaultL2NetworkRealtimeURL)
 
 	privateKey, err := crypto.HexToECDSA(strings.TrimPrefix(DefaultL2AdminPrivateKey, "0x"))
 	require.NoError(t, err)
