@@ -3,6 +3,10 @@ set -e
 set -x
 
 VERIFIER_TYPE=true
+JUST_INIT=false
+
+INIT_BRIDGE_ACCOUNT="cast send -f 0x8f8E2d6cF621f30e9a11309D6A56A876281Fd534  --private-key 0x815405dddb0e2a99b12af775fd2929e526704e1d1aea6a0b4e74dc33e2f7fcd2 --value 0.01ether 0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266 --legacy --rpc-url http://127.0.0.1:8123"
+INIT_OKB_ISSUER="cast send 0xDE282DC882bbB5100b8A24E30D38a2D5B3080c15 --value 10ether --private-key 0x815405dddb0e2a99b12af775fd2929e526704e1d1aea6a0b4e74dc33e2f7fcd2 --rpc-url http://127.0.0.1:8123 --legacy"
 
 PWD_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(dirname "$PWD_DIR")"
@@ -163,10 +167,13 @@ cast send --legacy --from $DEPLOYER_ADDRESS --private-key $DEPLOYER_PRIVATE_KEY 
 
 cast send --legacy --from $DEPLOYER_ADDRESS --private-key $DEPLOYER_PRIVATE_KEY $BRIDGE_ADDRESS 'function bridgeAsset(uint32 destinationNetwork, address destinationAddress, uint256 amount, address token, bool forceUpdateGlobalExitRoot, bytes permitData) returns()' 7 0x0000000000000000000000000000000000000000 0 0x0000000000000000000000000000000000000000 true 0x
 
-CONTAINER_ID=$(docker ps | grep zkevm-mock-l1-network | awk '{print $1}')
-if [ -n "$CONTAINER_ID" ]; then
-  echo "Entering container $CONTAINER_ID..."
-  docker exec -it $CONTAINER_ID /bin/sh -c "ps -ef | grep geth; kill -15 \$(ps -ef | grep geth | grep -v grep | awk '{print \$1}')"
+
+if [ "$JUST_INIT" == "true" ]; then
+  CONTAINER_ID=$(docker ps | grep zkevm-mock-l1-network | awk '{print $1}')
+  if [ -n "$CONTAINER_ID" ]; then
+    echo "Entering container $CONTAINER_ID..."
+    docker exec -it $CONTAINER_ID /bin/sh -c "ps -ef | grep geth; kill -15 \$(ps -ef | grep geth | grep -v grep | awk '{print \$1}')"
+  fi
 fi
 
 echo "Generating configuration files..."
@@ -219,10 +226,35 @@ sed_inplace "s|polygon-zkevm-global-exit-root-v2-contract = \"[^\"]*\"|polygon-z
 
 echo "Initialization script completed!"
 
+if [ "$JUST_INIT" == "true" ]; then
+  echo "Just init completed!"
+  exit 0
+fi
+
+
+CONFIG_FILE_AGGKIT="./test/config/aggkit.toml"
+CONFIG_FILE_AGGLAYER="./test/config/agglayer-config.toml"
+CONFIG_FILE_AGGLAYER_PROVER="./test/config/agglayer-prover-config.toml"
+CONFIG_FILE_SEQ="./test/config/test.erigon.seq.config.yaml"
+CONFIG_FILE_RPC="./test/config/test.erigon.rpc.config.yaml"
+CONFIG_FILE_NODE="./test/config/test.node.config.toml"
+CONFIG_FILE_BRIDGE="./test/config/test.bridge.config.toml"
+
+sed_inplace "s|xlayer-mock-l1-network|zkevm-mock-l1-network|g" "$CONFIG_FILE_AGGKIT"
+sed_inplace "s|xlayer-mock-l1-network|zkevm-mock-l1-network|g" "$CONFIG_FILE_AGGLAYER"
+sed_inplace "s|xlayer-mock-l1-network|zkevm-mock-l1-network|g" "$CONFIG_FILE_AGGLAYER_PROVER"
+sed_inplace "s|xlayer-mock-l1-network|zkevm-mock-l1-network|g" "$CONFIG_FILE_SEQ"
+sed_inplace "s|xlayer-mock-l1-network|zkevm-mock-l1-network|g" "$CONFIG_FILE_RPC"
+sed_inplace "s|xlayer-mock-l1-network|zkevm-mock-l1-network|g" "$CONFIG_FILE_NODE"
+sed_inplace "s|xlayer-mock-l1-network|zkevm-mock-l1-network|g" "$CONFIG_FILE_BRIDGE"
+
+cd $PWD_DIR
+
 docker-compose up -d xlayer-agg-db
 docker-compose up -d xlayer-bridge-db
 docker-compose up -d xlayer-pool-db
 docker-compose up -d xlayer-agglayer-prover
+sleep 10
 docker-compose up -d xlayer-agglayer
 docker-compose up -d xlayer-bridge-redis
 docker-compose up -d kafka-zookeeper
@@ -239,8 +271,10 @@ docker-compose up -d xlayer-rpc
 sleep 10
 docker-compose up -d xlayer-bridge-service
 docker-compose up -d xlayer-bridge-ui
-$(INIT_BRIDGE_ACCOUNT)
-$(INIT_OKB_ISSUER)
+
+$INIT_BRIDGE_ACCOUNT
+sleep 10
+$INIT_OKB_ISSUER
 
 mkdir -p data/aggkit
 chmod -R 777 data 
