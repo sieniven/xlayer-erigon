@@ -85,10 +85,10 @@ func (client *KafkaProducer) SendKafkaBlockInfo(header *types.Header) error {
 		PrevBlockInfo: prevBlockInfo,
 	}
 
-	return client.sendKafkaBlockInfo(msg)
+	return client.SendKafkaBlockMessage(msg)
 }
 
-func (client *KafkaProducer) sendKafkaBlockInfo(msg kafkaTypes.BlockMessage) error {
+func (client *KafkaProducer) SendKafkaBlockMessage(msg kafkaTypes.BlockMessage) error {
 	// Marshal message to JSON
 	jsonData, err := msg.MarshalJSON()
 	if err != nil {

@@ -38,6 +38,7 @@ func APIList(db kv.RoDB, dbsmt kv.RoDB, eth rpchelper.ApiBackend, txPool txpool.
 	realtimeCache *realtimeCache.RealtimeCache,
 	realtimeSub *realtimeSub.RealtimeSubscription,
 	NewRealtimeAPI func(base *APIImpl, cacheDB *realtimeCache.RealtimeCache, subService *realtimeSub.RealtimeSubscription) interface{},
+	NewRealtimeDebugApi func(debugApi *PrivateDebugAPIImpl, ethApi *APIImpl, cacheDB *realtimeCache.RealtimeCache) interface{},
 ) (list []rpc.API, gpCache *GasPriceCache) {
 	// non-sequencer nodes should forward on requests to the sequencer
 	rpcUrl := ""
@@ -111,12 +112,21 @@ func APIList(db kv.RoDB, dbsmt kv.RoDB, eth rpchelper.ApiBackend, txPool txpool.
 				})
 			}
 		case "debug":
-			list = append(list, rpc.API{
-				Namespace: "debug",
-				Public:    true,
-				Service:   PrivateDebugAPI(debugImpl),
-				Version:   "1.0",
-			})
+			if realtimeEnabled {
+				list = append(list, rpc.API{
+					Namespace: "debug",
+					Public:    true,
+					Service:   NewRealtimeDebugApi(debugImpl, ethImpl, realtimeCache),
+					Version:   "1.0",
+				})
+			} else {
+				list = append(list, rpc.API{
+					Namespace: "debug",
+					Public:    true,
+					Service:   PrivateDebugAPI(debugImpl),
+					Version:   "1.0",
+				})
+			}
 		case "net":
 			list = append(list, rpc.API{
 				Namespace: "net",

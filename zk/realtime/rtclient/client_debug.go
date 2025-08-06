@@ -8,7 +8,7 @@ import (
 
 // RealtimeDumpStateCache dumps the state cache
 func (rc *RealtimeClient) RealtimeDumpCache() error {
-	response, err := client.JSONRPCCall(rc.url, "eth_debugDumpRealtimeCache")
+	response, err := client.JSONRPCCall(rc.url, "debug_realtimeDumpCache")
 	if err != nil {
 		return err
 	}
