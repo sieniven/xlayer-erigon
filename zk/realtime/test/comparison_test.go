@@ -68,8 +68,8 @@ func TestRealtimeComparison(t *testing.T) {
 
 	log.Info("Starting realtime comparison test", "realtimeURL", DefaultL2NetworkRealtimeURL, "nonRealtimeURL", DefaultL2NetworkNoRealtimeURL)
 
-	// Stateless Tests - Block and Transaction Data
-	t.Run("stateless", func(t *testing.T) {
+	// TestStatelessAPIs - Block and Transaction Data
+	t.Run("TestStatelessAPIs", func(t *testing.T) {
 		log.Info("Running stateless comparison tests")
 
 		t.Run("getBlockByNumber", func(t *testing.T) {
@@ -302,8 +302,8 @@ func TestRealtimeComparison(t *testing.T) {
 		})
 	})
 
-	// State Tests - Balances, Code, Storage, and Contract Calls
-	t.Run("state", func(t *testing.T) {
+	// TestStateAPIs - Balances, Code, Storage, and Contract Calls
+	t.Run("TestStateAPIs", func(t *testing.T) {
 		log.Info("Running state comparison tests")
 
 		t.Run("blockNumber", func(t *testing.T) {
