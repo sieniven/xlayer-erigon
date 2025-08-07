@@ -11,11 +11,13 @@ import (
 	"github.com/ledgerwatch/erigon-lib/common/hexutility"
 	"github.com/ledgerwatch/erigon/core"
 	"github.com/ledgerwatch/erigon/core/state"
+	"github.com/ledgerwatch/erigon/core/vm"
 	"github.com/ledgerwatch/erigon/params"
 	"github.com/ledgerwatch/erigon/rpc"
 	"github.com/ledgerwatch/erigon/turbo/adapter/ethapi"
 	ethapi2 "github.com/ledgerwatch/erigon/turbo/adapter/ethapi"
 	"github.com/ledgerwatch/erigon/turbo/transactions"
+	"github.com/ledgerwatch/erigon/zkevm/log"
 )
 
 // Call implements realtime_call.
@@ -88,53 +90,31 @@ func (api *RealtimeAPIImpl) EstimateGas(ctx context.Context, argsOrNil *ethapi.C
 		args = *argsOrNil
 	}
 
-	// Use zero address if sender unspecified
-	if args.From == nil {
-		args.From = new(libcommon.Address)
-	}
-
-	// Default to pending block for realtime estimation
-	bNrOrHash := rpc.BlockNumberOrHashWithNumber(rpc.PendingBlockNumber)
-	if blockNrOrHash != nil {
-		bNrOrHash = *blockNrOrHash
-	}
-
-	// Only support pending block for realtime gas estimation
-	if bNrOrHash.BlockNumber == nil || *bNrOrHash.BlockNumber != rpc.PendingBlockNumber {
-		return api.APIImpl.EstimateGas(ctx, argsOrNil, blockNrOrHash)
-	}
-
-	// Begin database transaction
-	tx, err := api.APIImpl.GetDB().BeginRo(ctx)
-	if err != nil {
-		return api.APIImpl.EstimateGas(ctx, &args, nil)
-	}
-	defer tx.Rollback()
-
-	chainConfig, err := api.APIImpl.GetChainConfig(ctx, tx)
-	if err != nil {
-		return api.APIImpl.EstimateGas(ctx, &args, nil)
-	}
-
-	// Get the latest pending block from realtime cache
-	blockNumber, _, err := api.getBlockNumber(rpc.PendingBlockNumber)
-	if err != nil {
-		return api.APIImpl.EstimateGas(ctx, &args, nil)
-	}
-
-	header, _, _, ok := api.cacheDB.Stateless.GetHeader(blockNumber)
-	if !ok {
-		return api.APIImpl.EstimateGas(ctx, &args, nil)
-	}
-
-	// Binary search for gas estimation
+	// Binary search the gas requirement, as it may be higher than the amount used
 	var (
 		lo     = params.TxGas - 1
 		hi     uint64
 		gasCap uint64
 	)
+	// Use zero address if sender unspecified
+	if args.From == nil {
+		args.From = new(libcommon.Address)
+	}
 
-	// Determine the highest gas limit
+	bNrOrHash := rpc.BlockNumberOrHashWithNumber(rpc.PendingBlockNumber)
+	if blockNrOrHash != nil {
+		bNrOrHash = *blockNrOrHash
+	}
+	stateReader, blockNumber, err := api.createStateReader(&bNrOrHash)
+	if err != nil || stateReader == nil {
+		return api.APIImpl.EstimateGas(ctx, argsOrNil, blockNrOrHash)
+	}
+	header, _, _, ok := api.cacheDB.Stateless.GetHeader(blockNumber)
+	if !ok {
+		return 0, fmt.Errorf("header not found for block number %d", blockNumber)
+	}
+
+	// Determine the highest gas limit can be used during the estimation.
 	if args.Gas != nil && uint64(*args.Gas) >= params.TxGas {
 		hi = uint64(*args.Gas)
 	} else {
@@ -151,22 +131,15 @@ func (api *RealtimeAPIImpl) EstimateGas(ctx context.Context, argsOrNil *ethapi.C
 	} else {
 		feeCap = libcommon.Big0
 	}
-
-	// Check balance using realtime state cache
+	// Recap the highest gas limit with account's available balance.
 	if feeCap.Sign() != 0 {
-		account, err := api.cacheDB.State.ReadAccountData(*args.From)
-		if err != nil {
-			return api.APIImpl.EstimateGas(ctx, &args, nil)
+		account, err := stateReader.ReadAccountData(*args.From) // from cannot be nil
+		if err != nil || account == nil {
+			return 0, err
 		}
 
-		var balance *big.Int
-		if account != nil {
-			balance = account.Balance.ToBig()
-		} else {
-			balance = big.NewInt(0)
-		}
-
-		available := balance
+		balance := &account.Balance
+		available := balance.ToBig()
 		if args.Value != nil {
 			if args.Value.ToInt().Cmp(available) >= 0 {
 				return 0, errors.New("insufficient funds for transfer")
@@ -175,60 +148,67 @@ func (api *RealtimeAPIImpl) EstimateGas(ctx context.Context, argsOrNil *ethapi.C
 		}
 		allowance := new(big.Int).Div(available, feeCap)
 
+		// If the allowance is larger than maximum uint64, skip checking
 		if allowance.IsUint64() && hi > allowance.Uint64() {
+			transfer := args.Value
+			if transfer == nil {
+				transfer = new(hexutil.Big)
+			}
+			log.Debug("Gas estimation capped by limited funds", "original", hi, "balance", balance,
+				"sent", transfer.ToInt(), "maxFeePerGas", feeCap, "fundable", allowance)
 			hi = allowance.Uint64()
 		}
 	}
 
-	// Cap gas limit with API gas cap
-	if hi > api.APIImpl.GasCap {
-		hi = api.APIImpl.GasCap
+	// Recap the highest gas allowance with specified gascap.
+	if hi > api.GasCap {
+		log.Debug("Caller gas above allowance, capping", "requested", hi, "cap", api.GasCap)
+		hi = api.GasCap
 	}
 	gasCap = hi
 
+	tx, err := api.APIImpl.GetDB().BeginRo(ctx)
+	if err != nil {
+		return api.APIImpl.EstimateGas(ctx, &args, nil)
+	}
+	defer tx.Rollback()
+
+	chainConfig, err := api.APIImpl.GetChainConfig(ctx, tx)
+	if err != nil {
+		return api.APIImpl.EstimateGas(ctx, &args, nil)
+	}
 	engine := api.APIImpl.GetEngine()
-	bn := rpc.BlockNumber(blockNumber)
-	rpcBlockNr := rpc.BlockNumberOrHash{BlockNumber: &bn}
+
+	caller, err := NewRealtimeReusableCaller(engine, stateReader, nil, header, args, api.GasCap, bNrOrHash, tx, api.cacheDB.Stateless, chainConfig, api.APIImpl.GetEvmCallTimeout())
+	if err != nil {
+		return 0, err
+	}
 
 	// Create a helper to check if a gas allowance results in an executable transaction
 	executable := func(gas uint64) (bool, *core.ExecutionResult, error) {
-		// Create temporary args with the new gas limit
-		tempArgs := args
-		gasVal := hexutil.Uint64(gas)
-		tempArgs.Gas = &gasVal
-
-		// Use the simpler DoCall function that doesn't require ZK database data
-		result, err := transactions.DoCall(
-			ctx,
-			engine,
-			tempArgs,
-			tx,
-			rpcBlockNr,
-			header,
-			nil, // no overrides
-			gas,
-			chainConfig,
-			api.cacheDB.State,     // Use realtime state cache
-			api.cacheDB.Stateless, // Use realtime cache as header reader
-			api.APIImpl.GetEvmCallTimeout(),
-		)
+		result, err := caller.DoCallWithNewGas(ctx, gas)
 		if err != nil {
 			if errors.Is(err, core.ErrIntrinsicGas) {
 				// Special case, raise gas limit
 				return true, nil, nil
 			}
+
+			// Bail out
 			return true, nil, err
 		}
 
 		return result.Failed(), result, nil
 	}
 
-	// Execute binary search to find optimal gas limit
+	// Execute the binary search and hone in on an executable gas limit
 	for lo+1 < hi {
 		mid := (hi + lo) / 2
 		failed, _, err := executable(mid)
+		// If the error is not nil(consensus error), it means the provided message
+		// call or transaction will never be accepted no matter how much gas it is
+		// assigened. Return the error directly, don't struggle any more.
 		if err != nil {
-			return api.APIImpl.EstimateGas(ctx, &args, nil)
+			return 0, err
 		}
 		if failed {
 			lo = mid
@@ -237,22 +217,22 @@ func (api *RealtimeAPIImpl) EstimateGas(ctx context.Context, argsOrNil *ethapi.C
 		}
 	}
 
-	// Reject the transaction if it still fails at the highest allowance
+	// Reject the transaction as invalid if it still fails at the highest allowance
 	if hi == gasCap {
 		failed, result, err := executable(hi)
 		if err != nil {
-			return api.APIImpl.EstimateGas(ctx, &args, nil)
+			return 0, err
 		}
 		if failed {
-			if result != nil && result.Err != nil && result.Err.Error() != "out of gas" {
+			if result != nil && !errors.Is(result.Err, vm.ErrOutOfGas) {
 				if len(result.Revert()) > 0 {
-					return 0, ethapi.NewRevertError(result)
+					return 0, ethapi2.NewRevertError(result)
 				}
 				return 0, result.Err
 			}
+			// Otherwise, the specified gas cap is too low
 			return 0, fmt.Errorf("gas required exceeds allowance (%d)", gasCap)
 		}
 	}
-
 	return hexutil.Uint64(hi), nil
 }
