@@ -20,34 +20,12 @@ func (api *RealtimeAPIImpl) Call(ctx context.Context, args ethapi2.CallArgs, blo
 		return api.APIImpl.Call(ctx, args, blockNrOrHash, overrides)
 	}
 
-	if blockNrOrHash.BlockNumber != nil {
-		// Realtime supports pending and latest tags only
-		var reader state.StateReader
-		var blockNumber uint64
-		var err error
-		if *blockNrOrHash.BlockNumber == rpc.PendingBlockNumber {
-			blockNumber, _, err = api.getBlockNumber(rpc.PendingBlockNumber)
-			reader = api.cacheDB.GetLatestPendingStateCache()
-			if err != nil {
-				return nil, err
-			}
-		} else if *blockNrOrHash.BlockNumber == rpc.LatestBlockNumber {
-			blockNumber, _, err = api.getBlockNumber(rpc.LatestBlockNumber)
-			reader = api.cacheDB.State
-			if err != nil {
-				return nil, err
-			}
-		} else {
-			return api.APIImpl.Call(ctx, args, blockNrOrHash, overrides)
-		}
-
-		if reader == nil {
-			reader = api.cacheDB.State
-		}
-		return api.doRealtimeCall(ctx, args, overrides, blockNumber, reader)
+	reader, blockNumber, err := api.createStateReader(&blockNrOrHash)
+	if err != nil || reader == nil {
+		return api.APIImpl.Call(ctx, args, blockNrOrHash, overrides)
 	}
 
-	return api.APIImpl.Call(ctx, args, blockNrOrHash, overrides)
+	return api.doRealtimeCall(ctx, args, overrides, blockNumber, reader)
 }
 
 func (api *RealtimeAPIImpl) doRealtimeCall(ctx context.Context, args ethapi2.CallArgs, overrides *ethapi2.StateOverrides, blockNumber uint64, reader state.StateReader) (hexutility.Bytes, error) {
