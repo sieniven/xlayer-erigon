@@ -134,6 +134,13 @@ func (cache *RealtimeCache) UpdateExecution(finishEntry realtimeTypes.FinishedEn
 	}
 }
 
+func (cache *RealtimeCache) GetCurrentPendingHeight() uint64 {
+	if cache.GetHighestPendingHeight() == 0 {
+		return 0
+	}
+	return cache.GetHighestConfirmHeight() + 1
+}
+
 func (cache *RealtimeCache) GetHighestPendingHeight() uint64 {
 	return cache.highestPendingHeight.Load()
 }
@@ -144,11 +151,17 @@ func (cache *RealtimeCache) PutHighestPendingHeight(blockNum uint64) {
 	}
 }
 
-func (cache *RealtimeCache) GetLatestPendingStateCache() *PendingStateCache {
+func (cache *RealtimeCache) GetPendingStateCache(blockNum uint64) *PendingStateCache {
 	if cache.pendingBlocks.Size() == 0 {
 		return nil
 	}
-	return cache.pendingBlocks.Items()[cache.pendingBlocks.Size()-1].pendingStateCache
+
+	for _, context := range cache.pendingBlocks.Items() {
+		if context.blockNum == blockNum {
+			return context.pendingStateCache
+		}
+	}
+	return nil
 }
 
 func (cache *RealtimeCache) TryInitStateCache(executionHeight uint64) error {

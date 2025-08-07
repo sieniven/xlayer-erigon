@@ -88,9 +88,9 @@ func (api *RealtimeAPIImpl) getBlockNumber(blockNr rpc.BlockNumber) (uint64, boo
 }
 
 func (api *RealtimeAPIImpl) getPendingHeightFromCache() (uint64, error) {
-	pendingHeight := api.cacheDB.GetHighestPendingHeight()
+	pendingHeight := api.cacheDB.GetCurrentPendingHeight()
 	if pendingHeight == 0 {
-		return 0, fmt.Errorf("no block number found in stateless cache")
+		return 0, fmt.Errorf("no pending block number found in stateless cache")
 	}
 	return pendingHeight, nil
 }
@@ -98,7 +98,7 @@ func (api *RealtimeAPIImpl) getPendingHeightFromCache() (uint64, error) {
 func (api *RealtimeAPIImpl) getConfirmHeightFromCache() (uint64, error) {
 	confirmHeight := api.cacheDB.GetHighestConfirmHeight()
 	if confirmHeight == 0 {
-		return 0, fmt.Errorf("no block number found in stateless cache")
+		return 0, fmt.Errorf("no confirmed block number found in stateless cache")
 	}
 	return confirmHeight, nil
 }
@@ -120,10 +120,11 @@ func (api *RealtimeAPIImpl) createStateReader(blockNrOrHash *rpc.BlockNumberOrHa
 
 	// Realtime supports pending and latest tags only
 	if *blockNrOrHash.BlockNumber == rpc.PendingBlockNumber || *blockNrOrHash.BlockNumber == rpc.BlockNumber(pendingHeight) {
-		pendingReader := api.cacheDB.GetLatestPendingStateCache()
+		pendingReader := api.cacheDB.GetPendingStateCache(pendingHeight)
 		if pendingReader != nil {
 			reader = pendingReader
 		} else {
+			// Pending block was closed, we use the latest confirmed global state
 			reader = api.cacheDB.State
 		}
 		blockNumber = pendingHeight
