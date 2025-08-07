@@ -467,3 +467,109 @@ func RevertReasonRealtime(
 
 	return unpackedMsg, nil
 }
+
+// CompareBlockData compares two block data maps and returns true if identical
+func CompareBlock(realtimeBlock, nonRealtimeBlock map[string]interface{}, testName string) error {
+	if realtimeBlock == nil && nonRealtimeBlock == nil {
+		return nil
+	}
+	if realtimeBlock == nil || nonRealtimeBlock == nil {
+		return fmt.Errorf("one response is nil: realtime=%v, non-realtime=%v", realtimeBlock == nil, nonRealtimeBlock == nil)
+	}
+
+	for key, realtimeValue := range realtimeBlock {
+		nonRealtimeValue, exists := nonRealtimeBlock[key]
+		if !exists {
+			return fmt.Errorf("field '%s' missing in non-realtime response", key)
+		}
+
+		if !DeepEqual(realtimeValue, nonRealtimeValue) {
+			return fmt.Errorf("field '%s' differs: realtime=%v, non-realtime=%v", key, realtimeValue, nonRealtimeValue)
+		}
+	}
+
+	// Check for fields that exist in non-realtime but not in realtime
+	for key := range nonRealtimeBlock {
+		if _, exists := realtimeBlock[key]; !exists {
+			return fmt.Errorf("field '%s' missing in realtime response", key)
+		}
+	}
+
+	return nil
+}
+
+// DeepEqual performs deep comparison of two interface{} values
+func DeepEqual(a, b interface{}) bool {
+	switch aVal := a.(type) {
+	case map[string]interface{}:
+		bMap, ok := b.(map[string]interface{})
+		if !ok {
+			return false
+		}
+		if len(aVal) != len(bMap) {
+			return false
+		}
+		for key, aValue := range aVal {
+			bValue, exists := bMap[key]
+			if !exists || !DeepEqual(aValue, bValue) {
+				return false
+			}
+		}
+		return true
+	case []interface{}:
+		bSlice, ok := b.([]interface{})
+		if !ok || len(aVal) != len(bSlice) {
+			return false
+		}
+		for i, aValue := range aVal {
+			if !DeepEqual(aValue, bSlice[i]) {
+				return false
+			}
+		}
+		return true
+	default:
+		return a == b
+	}
+}
+
+// convertBlockParam converts string block parameters to uint64 for realtime client
+func convertBlockParam(client *rtclient.RealtimeClient, blockParam string) (uint64, error) {
+	switch blockParam {
+	case "latest", "pending":
+		return client.RealtimeBlockNumber()
+	case "earliest":
+		return 0, nil
+	default:
+		if strings.HasPrefix(blockParam, "0x") {
+			bigInt := new(big.Int)
+			_, ok := bigInt.SetString(blockParam[2:], 16)
+			if !ok {
+				return 0, fmt.Errorf("invalid hex block number: %s", blockParam)
+			}
+			return bigInt.Uint64(), nil
+		}
+		return 0, fmt.Errorf("unsupported block parameter: %s", blockParam)
+	}
+}
+
+// extractBlockHash extracts a valid block hash from a block response
+// Returns the hash and a boolean indicating if extraction was successful
+func extractBlockHash(blockByNumber map[string]interface{}, blockParam string) (common.Hash, bool) {
+	// Extract the block hash
+	hashInterface, exists := blockByNumber["hash"]
+	if !exists {
+		return common.Hash{}, false
+	}
+
+	hashStr, ok := hashInterface.(string)
+	if !ok {
+		return common.Hash{}, false
+	}
+
+	if hashStr == "" || hashStr == "0x0000000000000000000000000000000000000000000000000000000000000000" {
+		return common.Hash{}, false
+	}
+
+	blockHash := common.HexToHash(hashStr)
+	return blockHash, true
+}
