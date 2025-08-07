@@ -174,9 +174,7 @@ func TestRealtimeRPC(t *testing.T) {
 
 		gasEstimate, err := client.RealtimeEstimateGas(transferArgs)
 		require.NoError(t, err)
-		require.Greater(t, gasEstimate, uint64(0), "Gas estimate should be greater than 0")
-		require.LessOrEqual(t, gasEstimate, uint64(1000000), "Gas estimate should be reasonable")
-		log.Info(fmt.Sprintf("Standard eth_estimateGas for transfer: %d gas", gasEstimate))
+		require.Equal(t, gasEstimate, uint64(21_000), "Mative transfer txs gas should be 21_000")
 
 		// Test gas estimation for a contract call (ERC20 transfer)
 		transferData, err := erc20ABI.Pack("transfer", erc20Address, big.NewInt(1))
@@ -191,8 +189,6 @@ func TestRealtimeRPC(t *testing.T) {
 		gasEstimateCall, err := client.RealtimeEstimateGas(contractCallArgs)
 		require.NoError(t, err)
 		require.Greater(t, gasEstimateCall, gasEstimate, "Contract call should require more gas than simple transfer")
-		require.LessOrEqual(t, gasEstimateCall, uint64(1000000), "Contract call gas estimate should be reasonable")
-		log.Info(fmt.Sprintf("Standard eth_estimateGas for ERC20 transfer: %d gas", gasEstimateCall))
 	})
 
 	t.Run("RealtimeGetBlockByNumber", func(t *testing.T) {
