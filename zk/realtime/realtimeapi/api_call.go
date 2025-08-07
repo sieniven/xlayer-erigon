@@ -6,6 +6,7 @@ import (
 
 	"github.com/ledgerwatch/erigon-lib/common/hexutil"
 	"github.com/ledgerwatch/erigon-lib/common/hexutility"
+	"github.com/ledgerwatch/erigon/core/state"
 	"github.com/ledgerwatch/erigon/rpc"
 	ethapi2 "github.com/ledgerwatch/erigon/turbo/adapter/ethapi"
 	"github.com/ledgerwatch/erigon/turbo/transactions"
@@ -19,15 +20,15 @@ func (api *RealtimeAPIImpl) Call(ctx context.Context, args ethapi2.CallArgs, blo
 		return api.APIImpl.Call(ctx, args, blockNrOrHash, overrides)
 	}
 
-	if blockNrOrHash.BlockNumber != nil && *blockNrOrHash.BlockNumber == rpc.PendingBlockNumber {
-		// Realtime supported only for pending tags
-		return api.doRealtimeCall(ctx, args, overrides)
+	reader, blockNumber, err := api.createStateReader(&blockNrOrHash)
+	if err != nil || reader == nil {
+		return api.APIImpl.Call(ctx, args, blockNrOrHash, overrides)
 	}
 
-	return api.APIImpl.Call(ctx, args, blockNrOrHash, overrides)
+	return api.doRealtimeCall(ctx, args, overrides, blockNumber, reader)
 }
 
-func (api *RealtimeAPIImpl) doRealtimeCall(ctx context.Context, args ethapi2.CallArgs, overrides *ethapi2.StateOverrides) (hexutility.Bytes, error) {
+func (api *RealtimeAPIImpl) doRealtimeCall(ctx context.Context, args ethapi2.CallArgs, overrides *ethapi2.StateOverrides, blockNumber uint64, reader state.StateReader) (hexutility.Bytes, error) {
 	tx, err := api.APIImpl.GetDB().BeginRo(ctx)
 	if err != nil {
 		return nil, err
@@ -44,11 +45,6 @@ func (api *RealtimeAPIImpl) doRealtimeCall(ctx context.Context, args ethapi2.Cal
 		args.Gas = (*hexutil.Uint64)(&api.APIImpl.GasCap)
 	}
 
-	blockNumber, _, err := api.getBlockNumber(rpc.PendingBlockNumber)
-	if err != nil {
-		return nil, err
-	}
-
 	header, _, _, ok := api.cacheDB.Stateless.GetHeader(blockNumber)
 	if !ok {
 		return nil, fmt.Errorf("header not found for block number %d", blockNumber)
@@ -56,7 +52,7 @@ func (api *RealtimeAPIImpl) doRealtimeCall(ctx context.Context, args ethapi2.Cal
 
 	bn := rpc.BlockNumber(blockNumber)
 	rpcBlockNr := rpc.BlockNumberOrHash{BlockNumber: &bn}
-	result, err := transactions.DoCall(ctx, engine, args, tx, rpcBlockNr, header, overrides, api.APIImpl.GasCap, chainConfig, api.cacheDB.State, api.cacheDB.Stateless, api.APIImpl.GetEvmCallTimeout())
+	result, err := transactions.DoCall(ctx, engine, args, tx, rpcBlockNr, header, overrides, api.APIImpl.GasCap, chainConfig, reader, api.cacheDB.Stateless, api.APIImpl.GetEvmCallTimeout())
 	if err != nil {
 		return nil, err
 	}

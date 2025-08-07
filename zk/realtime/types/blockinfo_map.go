@@ -56,8 +56,7 @@ func (bm *BlockInfoMap) PutHeader(blockNum uint64, header *ethTypes.Header, prev
 
 	// Update previous block info
 	prevBlockNum := blockNum - 1
-	_, exists := bm.blockInfos[prevBlockNum]
-	if exists && prevBlockInfo != nil {
+	if prevBlockInfo != nil {
 		bm.blockInfos[prevBlockNum] = prevBlockInfo
 		bm.blockHashToHeight[prevBlockInfo.Hash] = prevBlockNum
 	}

@@ -6,6 +6,7 @@ import (
 
 	libcommon "github.com/ledgerwatch/erigon-lib/common"
 	"github.com/ledgerwatch/erigon-lib/common/hexutil"
+	"github.com/ledgerwatch/erigon/core/state"
 	"github.com/ledgerwatch/erigon/core/types"
 	"github.com/ledgerwatch/erigon/rpc"
 	"github.com/ledgerwatch/erigon/turbo/adapter/ethapi"
@@ -54,9 +55,9 @@ func (api *RealtimeAPIImpl) getBlockNumber(blockNr rpc.BlockNumber) (uint64, boo
 		return 0, false, ErrRealtimeNotEnabled
 	}
 
-	confirmHeight := api.cacheDB.GetHighestConfirmHeight()
-	if confirmHeight == 0 {
-		return 0, false, fmt.Errorf("no block number found in stateless cache")
+	confirmHeight, err := api.getConfirmHeightFromCache()
+	if err != nil {
+		return 0, false, err
 	}
 
 	switch blockNr {
@@ -70,9 +71,9 @@ func (api *RealtimeAPIImpl) getBlockNumber(blockNr rpc.BlockNumber) (uint64, boo
 	case rpc.SafeBlockNumber:
 		return confirmHeight, true, nil
 	case rpc.PendingBlockNumber:
-		pendingHeight := api.cacheDB.GetHighestPendingHeight()
-		if pendingHeight == 0 {
-			return 0, false, fmt.Errorf("no block number found in stateless cache")
+		pendingHeight, err := api.getPendingHeightFromCache()
+		if err != nil {
+			return 0, false, err
 		}
 		return pendingHeight, true, nil
 	case rpc.LatestExecutedBlockNumber:
@@ -84,6 +85,54 @@ func (api *RealtimeAPIImpl) getBlockNumber(blockNr rpc.BlockNumber) (uint64, boo
 		}
 		return blockNumber, blockNumber == confirmHeight, nil
 	}
+}
+
+func (api *RealtimeAPIImpl) getPendingHeightFromCache() (uint64, error) {
+	pendingHeight := api.cacheDB.GetCurrentPendingHeight()
+	if pendingHeight == 0 {
+		return 0, fmt.Errorf("no pending block number found in stateless cache")
+	}
+	return pendingHeight, nil
+}
+
+func (api *RealtimeAPIImpl) getConfirmHeightFromCache() (uint64, error) {
+	confirmHeight := api.cacheDB.GetHighestConfirmHeight()
+	if confirmHeight == 0 {
+		return 0, fmt.Errorf("no confirmed block number found in stateless cache")
+	}
+	return confirmHeight, nil
+}
+
+func (api *RealtimeAPIImpl) createStateReader(blockNrOrHash *rpc.BlockNumberOrHash) (reader state.StateReader, blockNumber uint64, err error) {
+	if blockNrOrHash.BlockNumber == nil {
+		// todo: add support for latest block hash
+		return nil, 0, fmt.Errorf("failed to create state reader: block number is nil")
+	}
+
+	confirmHeight, err := api.getConfirmHeightFromCache()
+	if err != nil {
+		return nil, 0, err
+	}
+	pendingHeight, err := api.getPendingHeightFromCache()
+	if err != nil {
+		return nil, 0, err
+	}
+
+	// Realtime supports pending and latest tags only
+	if *blockNrOrHash.BlockNumber == rpc.PendingBlockNumber || *blockNrOrHash.BlockNumber == rpc.BlockNumber(pendingHeight) {
+		pendingReader := api.cacheDB.GetPendingStateCache(pendingHeight)
+		if pendingReader != nil {
+			reader = pendingReader
+		} else {
+			// Pending block was closed, we use the latest confirmed global state
+			reader = api.cacheDB.State
+		}
+		blockNumber = pendingHeight
+	} else if *blockNrOrHash.BlockNumber == rpc.LatestBlockNumber || *blockNrOrHash.BlockNumber == rpc.BlockNumber(confirmHeight) {
+		reader = api.cacheDB.State
+		blockNumber = confirmHeight
+	}
+	return
 }
 
 // newRPCTransaction_realtime returns a transaction that will serialize to the RPC

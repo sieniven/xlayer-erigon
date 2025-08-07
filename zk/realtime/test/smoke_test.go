@@ -272,7 +272,47 @@ func TestRealtimeRPC(t *testing.T) {
 			log.Info("RealtimeEnabled: Realtime feature is disabled or cache is not ready")
 		}
 	})
+
+	t.Run("RealtimeLatest", func(t *testing.T) {
+		latestBlockNum, err := client.RealtimeBlockNumber()
+		require.NoError(t, err)
+		require.Greater(t, latestBlockNum, uint64(0), "Latest block number should be greater than 0")
+
+		// Change chain-state
+		fromAddress := common.HexToAddress(DefaultL2AdminAddress)
+		testAddress := common.HexToAddress("0x1234567890123456789012345678901234567890")
+		transferAmount := new(big.Int).Mul(big.NewInt(1), big.NewInt(1e18))
+		nonce, err := client.RealtimeGetTransactionCount(fromAddress)
+		require.NoError(t, err)
+		signedTx := erc20TransferTx(t, ctx, privateKey, client, transferAmount, testAddress, erc20Address, nonce)
+		err = WaitTxToBeMined(ctx, client, signedTx, DefaultTimeoutTxToBeMined)
+		require.NoError(t, err)
+
+		// Test state APIs
+		balance, err := client.RealtimeGetBalance(fromAddress)
+		require.NoError(t, err)
+		require.Greater(t, balance.Uint64(), uint64(0), "Balance should be greater than 0")
+
+		tokenBalance, err := client.RealtimeGetTokenBalance(fromAddress, testAddress, erc20Address)
+		require.NoError(t, err)
+		require.Greater(t, tokenBalance.Uint64(), uint64(0), "Token balance should be greater than 0")
+
+		// Test stateless APIs
+		block, err := client.RealtimeGetBlockByNumber(latestBlockNum)
+		require.NoError(t, err)
+		require.NotNil(t, block, "Block should not be nil")
+		require.NotNil(t, block["hash"], "Block hash should not be nil")
+
+		blockByHash, err := client.RealtimeGetBlockByHash(common.HexToHash(block["hash"].(string)), true)
+		require.NoError(t, err)
+		require.NotNil(t, blockByHash, "Block should not be nil")
+		require.NotNil(t, blockByHash["hash"], "Block hash should not be nil")
+
+		require.Equal(t, block["hash"], blockByHash["hash"], "Block hashes should match")
+		require.Equal(t, block["number"], blockByHash["number"], "Block numbers should match")
+	})
 }
+
 func TestRealtimeStateIsConsistent(t *testing.T) {
 	if testing.Short() {
 		t.Skip()
