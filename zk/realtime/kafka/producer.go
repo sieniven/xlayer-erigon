@@ -75,7 +75,7 @@ func (client *KafkaProducer) SendKafkaTransaction(blockNumber uint64, tx types.T
 	return nil
 }
 
-func (client *KafkaProducer) SendKafkaBlockHeader(header *types.Header) error {
+func (client *KafkaProducer) SendKafkaBlockInfo(header *types.Header) error {
 	prevBlockInfo, err := client.getPrevBlockData(header.Number.Uint64())
 	if err != nil {
 		return err
@@ -85,10 +85,10 @@ func (client *KafkaProducer) SendKafkaBlockHeader(header *types.Header) error {
 		PrevBlockInfo: prevBlockInfo,
 	}
 
-	return client.SendKafkaBlockInfo(msg)
+	return client.SendKafkaBlockMessage(msg)
 }
 
-func (client *KafkaProducer) SendKafkaBlockInfo(msg kafkaTypes.BlockMessage) error {
+func (client *KafkaProducer) SendKafkaBlockMessage(msg kafkaTypes.BlockMessage) error {
 	// Marshal message to JSON
 	jsonData, err := msg.MarshalJSON()
 	if err != nil {

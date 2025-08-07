@@ -45,8 +45,11 @@ func TestBlockInfoMap(t *testing.T) {
 		assert.Equal(t, int64(-1), cacheTxCount)
 
 		// Check previous header should not exist
-		_, _, _, exists = bm.Get(blockNum - 1)
-		assert.False(t, exists)
+		cacheHeader, cacheTxCount, cacheHash, exists = bm.Get(blockNum - 1)
+		assert.True(t, exists)
+		assert.Equal(t, prevHeader, cacheHeader)
+		assert.Equal(t, prevTxCount, cacheTxCount)
+		assert.Equal(t, hash, cacheHash)
 	})
 
 	t.Run("Get non-existent", func(t *testing.T) {
@@ -93,15 +96,10 @@ func TestBlockInfoMap(t *testing.T) {
 
 			// Check previous block txCount
 			cacheHeader, cacheTxCount, cacheHash, exists = bm.Get(prevBlockNum)
-			if i == 0 {
-				assert.False(t, exists)
-			} else {
-				assert.True(t, exists)
-				assert.Equal(t, prevHeader, cacheHeader)
-				assert.Equal(t, prevTxCount, cacheTxCount)
-				assert.Equal(t, prevHash, cacheHash)
-			}
-
+			assert.True(t, exists)
+			assert.Equal(t, prevHeader, cacheHeader)
+			assert.Equal(t, prevTxCount, cacheTxCount)
+			assert.Equal(t, prevHash, cacheHash)
 		}
 
 		// Test delete

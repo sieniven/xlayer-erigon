@@ -45,7 +45,7 @@ func ListenKafkaProducer(
 			return
 		case header := <-blockInfoChan:
 			currHeight = header.Number.Uint64()
-			err := kafkaProducer.SendKafkaBlockHeader(header)
+			err := kafkaProducer.SendKafkaBlockInfo(header)
 			if err != nil {
 				log.Error(fmt.Sprintf("[Realtime] Failed to send kafka block info message. error: %v, currHeight: %d", err, currHeight))
 				err = kafkaProducer.SendKafkaErrorTrigger(currHeight)
@@ -114,7 +114,7 @@ func ListenKafkaConsumer(
 				log.Debug(fmt.Sprintf("[Realtime] Chain rollback detected, resetting realtime cache. finishHeight: %d", finishEntry.Height))
 			}
 			realtimeCache.UpdateExecution(finishEntry)
-			log.Debug("[Realtime] Received finish signal from execution", "finishHeight", finishEntry.Height)
+			log.Debug(fmt.Sprintf("[Realtime] Received finish signal from execution. finishHeight: %d", finishEntry.Height))
 		case blockMsg := <-blockMsgsChan:
 			if err := blockMsg.Validate(realtimeCache.GetExecutionHeight()); err != nil {
 				log.Error(fmt.Sprintf("[Realtime] Failed to consume block message from kafka. error: %v", err))

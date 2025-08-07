@@ -129,7 +129,7 @@ func TestKafka(t *testing.T) {
 			},
 		}
 		assert.NilError(t, err)
-		err = producer.SendKafkaBlockInfo(blockMsg)
+		err = producer.SendKafkaBlockMessage(blockMsg)
 		assert.NilError(t, err)
 
 		err = producer.SendKafkaErrorTrigger(uint64(i))

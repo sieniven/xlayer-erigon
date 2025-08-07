@@ -44,9 +44,9 @@ func TestRealtimeRPC(t *testing.T) {
 
 	// Preapre to deploy a ERC20 contract
 	ctx := context.Background()
-	ec, err := ethclient.Dial(DefaultL2NetworkURL)
+	ec, err := ethclient.Dial(DefaultL2NetworkRealtimeURL)
 	require.NoError(t, err)
-	client := rtclient.NewRealtimeClient(ec, DefaultL2NetworkURL)
+	client := rtclient.NewRealtimeClient(ec, DefaultL2NetworkRealtimeURL)
 	blockNumber := setupRealtimeTestEnvironment(t, client)
 
 	privateKey, err := crypto.HexToECDSA(strings.TrimPrefix(DefaultL2AdminPrivateKey, "0x"))
@@ -164,6 +164,37 @@ func TestRealtimeRPC(t *testing.T) {
 		log.Info(fmt.Sprintf("RealtimeCall result for erc20 contract %s calling method balanceOf %s: %s", erc20Address, fromAddress, value))
 	})
 
+	t.Run("RealtimeEstimateGas", func(t *testing.T) {
+		// Test standard eth_estimateGas with a simple transfer
+		transferArgs := map[string]interface{}{
+			"from":  fromAddress,
+			"to":    testAddress,
+			"value": (*hexutil.Big)(big.NewInt(1)),
+		}
+
+		gasEstimate, err := client.RealtimeEstimateGas(transferArgs)
+		require.NoError(t, err)
+		require.Greater(t, gasEstimate, uint64(0), "Gas estimate should be greater than 0")
+		require.LessOrEqual(t, gasEstimate, uint64(1000000), "Gas estimate should be reasonable")
+		log.Info(fmt.Sprintf("Standard eth_estimateGas for transfer: %d gas", gasEstimate))
+
+		// Test gas estimation for a contract call (ERC20 transfer)
+		transferData, err := erc20ABI.Pack("transfer", erc20Address, big.NewInt(1))
+		require.NoError(t, err)
+
+		contractCallArgs := map[string]interface{}{
+			"from": fromAddress,
+			"to":   erc20Address,
+			"data": (*hexutil.Bytes)(&transferData),
+		}
+
+		gasEstimateCall, err := client.RealtimeEstimateGas(contractCallArgs)
+		require.NoError(t, err)
+		require.Greater(t, gasEstimateCall, gasEstimate, "Contract call should require more gas than simple transfer")
+		require.LessOrEqual(t, gasEstimateCall, uint64(1000000), "Contract call gas estimate should be reasonable")
+		log.Info(fmt.Sprintf("Standard eth_estimateGas for ERC20 transfer: %d gas", gasEstimateCall))
+	})
+
 	t.Run("RealtimeGetBlockByNumber", func(t *testing.T) {
 		latestBlockNumber, err := client.RealtimeBlockNumber()
 		if err != nil {
@@ -274,46 +305,55 @@ func TestRealtimeRPC(t *testing.T) {
 		}
 	})
 
-	t.Run("RealtimeEstimateGas", func(t *testing.T) {
-		// Test standard eth_estimateGas with a simple transfer
-		transferArgs := map[string]interface{}{
-			"from":  fromAddress,
-			"to":    testAddress,
-			"value": (*hexutil.Big)(big.NewInt(1)),
-		}
-
-		gasEstimate, err := client.RealtimeEstimateGas(transferArgs)
+	t.Run("RealtimeLatest", func(t *testing.T) {
+		latestBlockNum, err := client.RealtimeBlockNumber()
 		require.NoError(t, err)
-		require.Greater(t, gasEstimate, uint64(0), "Gas estimate should be greater than 0")
-		require.LessOrEqual(t, gasEstimate, uint64(1000000), "Gas estimate should be reasonable")
-		log.Info(fmt.Sprintf("Standard eth_estimateGas for transfer: %d gas", gasEstimate))
+		require.Greater(t, latestBlockNum, uint64(0), "Latest block number should be greater than 0")
 
-		// Test gas estimation for a contract call (ERC20 transfer)
-		transferData, err := erc20ABI.Pack("transfer", erc20Address, big.NewInt(1))
+		// Change chain-state
+		fromAddress := common.HexToAddress(DefaultL2AdminAddress)
+		testAddress := common.HexToAddress("0x1234567890123456789012345678901234567890")
+		transferAmount := new(big.Int).Mul(big.NewInt(1), big.NewInt(1e18))
+		nonce, err := client.RealtimeGetTransactionCount(fromAddress)
+		require.NoError(t, err)
+		signedTx := erc20TransferTx(t, ctx, privateKey, client, transferAmount, testAddress, erc20Address, nonce)
+		err = WaitTxToBeMined(ctx, client, signedTx, DefaultTimeoutTxToBeMined)
 		require.NoError(t, err)
 
-		contractCallArgs := map[string]interface{}{
-			"from": fromAddress,
-			"to":   erc20Address,
-			"data": (*hexutil.Bytes)(&transferData),
-		}
-
-		gasEstimateCall, err := client.RealtimeEstimateGas(contractCallArgs)
+		// Test state APIs
+		balance, err := client.RealtimeGetBalance(fromAddress)
 		require.NoError(t, err)
-		require.Greater(t, gasEstimateCall, gasEstimate, "Contract call should require more gas than simple transfer")
-		require.LessOrEqual(t, gasEstimateCall, uint64(1000000), "Contract call gas estimate should be reasonable")
-		log.Info(fmt.Sprintf("Standard eth_estimateGas for ERC20 transfer: %d gas", gasEstimateCall))
+		require.Greater(t, balance.Uint64(), uint64(0), "Balance should be greater than 0")
+
+		tokenBalance, err := client.RealtimeGetTokenBalance(fromAddress, testAddress, erc20Address)
+		require.NoError(t, err)
+		require.Greater(t, tokenBalance.Uint64(), uint64(0), "Token balance should be greater than 0")
+
+		// Test stateless APIs
+		block, err := client.RealtimeGetBlockByNumber(latestBlockNum)
+		require.NoError(t, err)
+		require.NotNil(t, block, "Block should not be nil")
+		require.NotNil(t, block["hash"], "Block hash should not be nil")
+
+		blockByHash, err := client.RealtimeGetBlockByHash(common.HexToHash(block["hash"].(string)), true)
+		require.NoError(t, err)
+		require.NotNil(t, blockByHash, "Block should not be nil")
+		require.NotNil(t, blockByHash["hash"], "Block hash should not be nil")
+
+		require.Equal(t, block["hash"], blockByHash["hash"], "Block hashes should match")
+		require.Equal(t, block["number"], blockByHash["number"], "Block numbers should match")
 	})
 }
+
 func TestRealtimeStateIsConsistent(t *testing.T) {
 	if testing.Short() {
 		t.Skip()
 	}
 
 	ctx := context.Background()
-	ec, err := ethclient.Dial(DefaultL2NetworkURL)
+	ec, err := ethclient.Dial(DefaultL2NetworkRealtimeURL)
 	require.NoError(t, err)
-	client := rtclient.NewRealtimeClient(ec, DefaultL2NetworkURL)
+	client := rtclient.NewRealtimeClient(ec, DefaultL2NetworkRealtimeURL)
 
 	privateKey, err := crypto.HexToECDSA(strings.TrimPrefix(DefaultL2AdminPrivateKey, "0x"))
 	require.NoError(t, err)

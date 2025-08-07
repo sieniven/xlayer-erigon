@@ -4,10 +4,30 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/ledgerwatch/erigon/turbo/jsonrpc"
+	realtimeCache "github.com/ledgerwatch/erigon/zk/realtime/cache"
 	"github.com/ledgerwatch/erigon/zkevm/log"
 )
 
-func (api *RealtimeAPIImpl) DebugDumpRealtimeCache(ctx context.Context) error {
+type RealtimeDebugApiImpl struct {
+	*jsonrpc.PrivateDebugAPIImpl
+	ethApi  *jsonrpc.APIImpl
+	cacheDB *realtimeCache.RealtimeCache
+}
+
+func NewRealtimeDebugApiImpl(debugApi *jsonrpc.PrivateDebugAPIImpl, ethApi *jsonrpc.APIImpl, cacheDB *realtimeCache.RealtimeCache) *RealtimeDebugApiImpl {
+	return &RealtimeDebugApiImpl{
+		PrivateDebugAPIImpl: debugApi,
+		ethApi:              ethApi,
+		cacheDB:             cacheDB,
+	}
+}
+
+func NewRealtimeDebugApi(debugApi *jsonrpc.PrivateDebugAPIImpl, ethApi *jsonrpc.APIImpl, cacheDB *realtimeCache.RealtimeCache) interface{} {
+	return NewRealtimeDebugApiImpl(debugApi, ethApi, cacheDB)
+}
+
+func (api *RealtimeDebugApiImpl) RealtimeDumpCache(ctx context.Context) error {
 	if api.cacheDB == nil || !api.cacheDB.ReadyFlag.Load() {
 		// Custom for realtime
 		return ErrRealtimeNotEnabled
@@ -21,13 +41,13 @@ func (api *RealtimeAPIImpl) DebugDumpRealtimeCache(ctx context.Context) error {
 	return nil
 }
 
-func (api *RealtimeAPIImpl) DebugCompareRealtimeStateCache(ctx context.Context) (*RealtimeDebugResult, error) {
+func (api *RealtimeDebugApiImpl) RealtimeCompareStateCache(ctx context.Context) (*RealtimeDebugResult, error) {
 	if api.cacheDB == nil || !api.cacheDB.ReadyFlag.Load() {
 		// Custom for realtime
 		return nil, ErrRealtimeNotEnabled
 	}
 
-	reader, tx, err := api.APIImpl.CreateLatestStateReader(ctx)
+	reader, tx, err := api.ethApi.CreateLatestStateReader(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("compareStateCache cannot create latest state reader: %w", err)
 	}
