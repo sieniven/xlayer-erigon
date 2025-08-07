@@ -469,19 +469,7 @@ func RevertReasonRealtime(
 }
 
 // CompareBlockData compares two block data maps and returns true if identical
-func CompareBlockData(realtimeBlock, nonRealtimeBlock map[string]interface{}, testName string) bool {
-	// Compare the actual data
-	err := CompareBlockResponses(realtimeBlock, nonRealtimeBlock, testName)
-	if err != nil {
-		log.Error(fmt.Sprintf("Block comparison failed for %s: %v", testName, err))
-		return false
-	}
-	return true
-}
-
-// CompareBlockResponses compares two block responses and reports differences
-func CompareBlockResponses(realtimeBlock, nonRealtimeBlock map[string]interface{}, testName string) error {
-	// First check if both are nil or both are non-nil
+func CompareBlock(realtimeBlock, nonRealtimeBlock map[string]interface{}, testName string) error {
 	if realtimeBlock == nil && nonRealtimeBlock == nil {
 		return nil
 	}
@@ -489,14 +477,12 @@ func CompareBlockResponses(realtimeBlock, nonRealtimeBlock map[string]interface{
 		return fmt.Errorf("one response is nil: realtime=%v, non-realtime=%v", realtimeBlock == nil, nonRealtimeBlock == nil)
 	}
 
-	// Compare each field in realtime response
 	for key, realtimeValue := range realtimeBlock {
 		nonRealtimeValue, exists := nonRealtimeBlock[key]
 		if !exists {
 			return fmt.Errorf("field '%s' missing in non-realtime response", key)
 		}
 
-		// Direct comparison of all fields
 		if !DeepEqual(realtimeValue, nonRealtimeValue) {
 			return fmt.Errorf("field '%s' differs: realtime=%v, non-realtime=%v", key, realtimeValue, nonRealtimeValue)
 		}
@@ -555,7 +541,6 @@ func convertBlockParam(client *rtclient.RealtimeClient, blockParam string) (uint
 		return 0, nil
 	default:
 		if strings.HasPrefix(blockParam, "0x") {
-			// Parse hex
 			bigInt := new(big.Int)
 			_, ok := bigInt.SetString(blockParam[2:], 16)
 			if !ok {
