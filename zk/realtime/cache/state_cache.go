@@ -57,8 +57,8 @@ func (cache *stateCache) Clear() {
 }
 
 // GlobalStateCache implements the plain state reader with a changeset cache layer.
-// The global cache holds the finalized chainstate - it holds the chainstate db,
-// with a changeset cache layer that stores in-memory the finalized state changes.
+// The global cache holds the latest chainstate - it holds the chainstate db,
+// with a changeset cache layer that stores in-memory the latest state changes.
 type GlobalStateCache struct {
 	ctx        context.Context
 	db         kv.RoDB
