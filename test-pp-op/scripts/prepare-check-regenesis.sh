@@ -6,6 +6,18 @@ TEST_DIR="$ROOT_DIR/test-pp-op"
 TMP_DIR="$TEST_DIR/tmp"
 SA_BENCH_DIR="$TMP_DIR/SA-Benchmark"
 
+SEQ_NAME="xlayer-seq"
+SLEEP_TIME=5
+DATA_DIR="data"
+EXENV_FILE="example.env"
+TX_VALUE=10
+if [ $# -gt 0 ] && [ "$1" == "mainnet" ]; then
+  SEQ_NAME="xlayer-mainnet-seq"
+  SLEEP_TIME=30
+  DATA_DIR="mainnet"
+  EXENV_FILE="example-fm.env"
+fi
+
 # Clone relevant repos
 function clone_repos {
     cd $TMP_DIR
@@ -26,7 +38,9 @@ cleanup
 
 # 1. Run SA-Benchmark setup only for state0
 cd $SA_BENCH_DIR
-cp example.env .env
+cp $EXENV_FILE .env
+PRIVATE_KEY=$(cat .env | grep "PRIVATE_KEY" | cut -d '=' -f 2)
+GAS_PRICE=$(cat .env | grep "GAS_PRICE" | cut -d '=' -f 2)
 export NVM_DIR="$HOME/.nvm"
 if ! [ -s "$NVM_DIR/nvm.sh" ]; then
     echo "nvm not found, installing..."
@@ -37,30 +51,30 @@ nvm use v22
 ./1-setup.sh
 sleep 5
 cd $TEST_DIR
-docker compose stop xlayer-seq
-cp -r data data_state0
+docker compose stop $SEQ_NAME
+cp -r -a -P $DATA_DIR data_state0
 
 # 2. Send one tx and save state1.json
 cd $TEST_DIR
-docker compose start xlayer-seq
-sleep 5
-cast send 0xa03666Fb51Aa9aD2DE70e0434072A007b3C91A9E --value 200000 \
---private-key 0x815405dddb0e2a99b12af775fd2929e526704e1d1aea6a0b4e74dc33e2f7fcd2 \
---legacy --gas-price 100000000 \
+docker compose start $SEQ_NAME
+sleep $SLEEP_TIME
+cast send 0xa03666Fb51Aa9aD2DE70e0434072A007b3C91A9E --value $TX_VALUE \
+--private-key $PRIVATE_KEY \
+--legacy --gas-price $GAS_PRICE \
 --rpc-url http://localhost:8123
 sleep 5
 cd $TEST_DIR
-docker compose stop xlayer-seq
-cp -r data data_state1
+docker compose stop $SEQ_NAME
+cp -r -a -P $DATA_DIR data_state1
 
 # 3. Send deterministic tx and save state2.json
 cd $TEST_DIR
-docker compose start xlayer-seq
-sleep 5
+docker compose start $SEQ_NAME
+sleep $SLEEP_TIME
 cd $SA_BENCH_DIR
 git checkout dumi/senddet
 yarn run senduop:local
 sleep 5
 cd $TEST_DIR
-docker compose stop xlayer-seq
-cp -r data data_state2
+docker compose stop $SEQ_NAME
+cp -r -a -P $DATA_DIR data_state2

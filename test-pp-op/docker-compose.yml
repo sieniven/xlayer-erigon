@@ -40,7 +40,7 @@ services:
   l1-fix-genesis-fork-times:
     image: "alpine:3.19.0"
     container_name: l1-fix-genesis-fork-times
-    command: 
+    command:
       - /bin/sh
       - -c
       - |
@@ -93,7 +93,7 @@ services:
       - --gcmode=archive
       - --ipcdisable
       - --rpc.allow-unprotected-txs
-      - --verbosity=3 
+      - --verbosity=3
     ports:
       - 8551:8551
       - 8545:8545
@@ -195,6 +195,23 @@ services:
       - ./config/dynamic-mynetwork-allocs.json:/usr/src/app/dynamic-mynetwork-allocs.json
       - ./config/dynamic-mynetwork-chainspec.json:/usr/src/app/dynamic-mynetwork-chainspec.json
       - ./config/dynamic-mynetwork-conf.json:/usr/src/app/dynamic-mynetwork-conf.json
+    command: >
+      cdk-erigon --http.vhosts=* --http.corsdomain=* --ws --config=/usr/src/app/config.yaml
+
+  xlayer-mainnet-seq:
+    container_name: xlayer-seq
+    image: cdk-erigon
+    environment:
+      - CDK_ERIGON_SEQUENCER=1
+      - WRITE_MAP=true
+    ports:
+      - 6062:6060
+      - 8123:8545
+      - 6900:6900
+      - 9092:9095
+    volumes:
+      - ./mainnet/seq:/home/erigon/data/
+      - ./config/xlayerconfig-mainnet.yaml:/usr/src/app/config.yaml
     command: >
       cdk-erigon --http.vhosts=* --http.corsdomain=* --ws --config=/usr/src/app/config.yaml
 
@@ -474,7 +491,7 @@ services:
       - --private-key=${OP_BATCHER_PRIVATE_KEY}
     depends_on:
       - op-node
-      
+
   op-proposer:
     image: "${OP_STACK_IMAGE_TAG}"
     container_name: op-proposer
