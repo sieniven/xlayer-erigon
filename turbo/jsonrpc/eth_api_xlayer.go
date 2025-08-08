@@ -65,6 +65,10 @@ func (apii *APIImpl) listenApollo(ctx context.Context) {
 	}
 }
 
+func (api *APIImpl) RealtimeEnabled(ctx context.Context) (bool, error) {
+	return false, nil
+}
+
 func (apii *APIImpl) GetDB() kv.RoDB {
 	return apii.db
 }

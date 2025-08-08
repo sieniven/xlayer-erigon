@@ -15,7 +15,9 @@ func (api *RealtimeAPIImpl) BlockNumber(ctx context.Context, tag *RealtimeTag) (
 	}
 
 	if tag == nil {
-		return api.APIImpl.BlockNumber(ctx)
+		// Default to latest block number if no tag is provided
+		latestTag := Latest
+		tag = &latestTag
 	}
 
 	blockNumber, _, err := api.getBlockNumber(rpc.BlockNumber(*tag))
