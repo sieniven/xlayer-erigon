@@ -65,7 +65,7 @@ cast send 0xa03666Fb51Aa9aD2DE70e0434072A007b3C91A9E --value $TX_VALUE \
 sleep 5
 cd $TEST_DIR
 docker compose stop $SEQ_NAME
-cp -r -a -P $DATA_DIR data_state1
+cp -a -P $DATA_DIR data_state1
 
 # 3. Send deterministic tx and save state2.json
 cd $TEST_DIR
