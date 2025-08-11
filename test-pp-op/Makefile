@@ -20,7 +20,7 @@ STOP := $(DOCKER_COMPOSE) down --remove-orphans; \
 	rm -Rf ./config-op/substate.json; \
 	rm -Rf ./config-op/implementations.json;
 
-DEPLOY_ERC20_L1 := cd contracts && forge create OKBToken.sol:StandardERC20 --private-key 0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80 --rpc-url http://127.0.0.1:8545 --legacy --constructor-args "OKBToken" "OKB" 1000000000
+DEPLOY_ERC20_L1 := cd contracts && forge create OKBToken.sol:StandardERC20 --private-key 0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80 --rpc-url http://127.0.0.1:8545 --legacy --broadcast --constructor-args "OKBToken" "OKB" 1000000000
 INIT_ACCOUNT_1 := cast send -f 0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266  --private-key 0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80 --value 10ether 0x8f8E2d6cF621f30e9a11309D6A56A876281Fd534 --legacy --rpc-url http://127.0.0.1:8545
 INIT_ACCOUNT_2 := cast send -f 0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266  --private-key 0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80 --value 10ether 0x70997970c51812dc3a010c7d01b50e0d17dc79c8 --legacy --rpc-url http://127.0.0.1:8545
 INIT_ACCOUNT_3 := cast send -f 0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266  --private-key 0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80 --value 10ether 0x14dC79964da2C08b23698B3D3cc7Ca32193d9955 --legacy --rpc-url http://127.0.0.1:8545
