@@ -63,21 +63,21 @@ func (api *RealtimeAPIImpl) getBlockNumber(blockNr rpc.BlockNumber) (uint64, boo
 	switch blockNr {
 	case rpc.LatestBlockNumber:
 		return confirmHeight, true, nil
-	case rpc.EarliestBlockNumber:
-		// Unsupported
-		return 0, false, fmt.Errorf("earliest block number is not supported")
-	case rpc.FinalizedBlockNumber:
-		return confirmHeight, true, nil
-	case rpc.SafeBlockNumber:
-		return confirmHeight, true, nil
 	case rpc.PendingBlockNumber:
 		pendingHeight, err := api.getPendingHeightFromCache()
 		if err != nil {
 			return 0, false, err
 		}
 		return pendingHeight, true, nil
+	// Unsupported tags
+	case rpc.EarliestBlockNumber:
+		return 0, false, fmt.Errorf("earliest block number is not realtime supported")
+	case rpc.FinalizedBlockNumber:
+		return 0, false, fmt.Errorf("finalized block number is not realtime supported")
+	case rpc.SafeBlockNumber:
+		return 0, false, fmt.Errorf("safe block number is not realtime supported")
 	case rpc.LatestExecutedBlockNumber:
-		return confirmHeight, true, nil
+		return 0, false, fmt.Errorf("latest executed block number is not realtime supported")
 	default:
 		blockNumber := uint64(blockNr.Int64())
 		if blockNumber > confirmHeight {
