@@ -450,6 +450,43 @@ data-loss-8:
 	echo "data-loss-8-step-4"
 	make data-recovery
 
+# start with async-commit disabled at boot, stop sequencer, then enable async-commit and verify roots
+.PHONY: data-loss-9
+data-loss-9:
+	make stop
+	make build-docker
+	mkdir -p data
+	# run sequencer with async-commit OFF
+	$(DOCKER_COMPOSE) up -d xlayer-mock-l1-network
+	$(DOCKER_COMPOSE) up -d xlayer-agg-db
+	$(DOCKER_COMPOSE) up -d xlayer-bridge-db
+	$(DOCKER_COMPOSE) up -d xlayer-pool-db
+	$(DOCKER_COMPOSE) up -d xlayer-agglayer-prover
+	$(DOCKER_COMPOSE) up -d xlayer-agglayer
+	$(DOCKER_COMPOSE) up -d xlayer-bridge-redis
+	$(DOCKER_COMPOSE) up -d kafka-zookeeper
+	$(DOCKER_COMPOSE) up -d xlayer-bridge-coin-kafka
+	sleep 3
+	$(DOCKER_COMPOSE) up -d xlayer-approve
+	# start async-off sequencer service
+	$(DOCKER_COMPOSE) up -d xlayer-seq-async-off
+	sleep 20
+	$(DOCKER_COMPOSE) up -d xlayer-rpc
+	sleep 20
+	# stop sequencer
+	$(DOCKER_COMPOSE) stop xlayer-seq-async-off
+	# collect async-off logs for debugging
+	docker logs xlayer-seq-async-off > data/seq_async_off.log 2>&1 || true
+	# switch back to async-commit ON by restoring default compose service
+	$(RUN_DOCKER_SEQ)
+	sleep 60
+	# stop sequencer to avoid cross-OS MDBX locking issues while reading DB from host
+	$(DOCKER_COMPOSE) stop $(DOCKER_SEQ)
+	# verify SMT DB and header root consistency (no -race to reduce memory)
+	go test -count=1 -v -p 1 -timeout 300s -run TestVerifySmtRootMatchesHeaderRoot ./e2e/data_loss_test.go
+	# collect seq logs after verification
+	docker logs $(DOCKER_SEQ) > data/seq_after.log 2>&1 || true
+
 # comment handleShutdown, disable the graceful shutdown
 # shutdown manually
 # align chaindata to smt

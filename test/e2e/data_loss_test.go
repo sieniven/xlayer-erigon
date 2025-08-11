@@ -7,18 +7,25 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/holiman/uint256"
 	"github.com/ledgerwatch/erigon-lib/common"
+	kv2 "github.com/ledgerwatch/erigon-lib/kv/mdbx"
+	"github.com/ledgerwatch/erigon/core/rawdb"
 	"github.com/ledgerwatch/erigon/core/types"
 	"github.com/ledgerwatch/erigon/crypto"
 	"github.com/ledgerwatch/erigon/ethclient"
+	smtDb "github.com/ledgerwatch/erigon/smt/pkg/db"
 	"github.com/ledgerwatch/erigon/test/operations"
+	"github.com/ledgerwatch/erigon/zk/hermez_db"
 	"github.com/ledgerwatch/erigon/zkevm/encoding"
 	"github.com/ledgerwatch/erigon/zkevm/log"
+	elog "github.com/ledgerwatch/log/v3"
 	"github.com/stretchr/testify/require"
 )
 
@@ -540,6 +547,89 @@ func TestCheckVerify(t *testing.T) {
 	require.NoError(t, err)
 	err = writeNonce(nonce)
 	require.NoError(t, err)
+}
+
+// Verify SMT root equals block header root for latest finished block
+func TestVerifySmtRootMatchesHeaderRoot(t *testing.T) {
+	if testing.Short() {
+		t.Skip()
+	}
+
+	ctx := context.Background()
+
+	// resolve host data directories (relative to test/e2e)
+	chainDir := filepath.Clean("../data/seq/chaindata")
+	smtDir := filepath.Clean("../data/seq/smt")
+
+	logger := elog.New()
+
+	// open chain db (always exists)
+	chainDB, err := kv2.NewMDBX(logger).Path(chainDir).Open(ctx)
+	require.NoError(t, err)
+	defer chainDB.Close()
+
+	// transactions will be opened inside the loop each iteration
+
+	// construct read-only SMT DB wrapper
+	// We'll open fresh txs inside the retry loop to avoid stale snapshots.
+
+	deadline := time.Now().Add(180 * time.Second)
+	for {
+		chainTx, err := chainDB.BeginRo(ctx)
+		if err != nil {
+			if time.Now().After(deadline) {
+				require.NoError(t, err)
+			}
+			time.Sleep(1 * time.Second)
+			continue
+		}
+		// prefer latest closed batch end block to avoid racing with head
+		var headerRoot common.Hash
+		if closedBlk, err := hermez_db.NewHermezDbReader(chainTx).GetLatestBatchEndBlock(); err == nil && closedBlk > 0 {
+			if hdr := rawdb.ReadHeaderByNumber(chainTx, closedBlk); hdr != nil {
+				headerRoot = hdr.Root
+			}
+		} else {
+			if head, _ := rawdb.ReadLastBlockSynced(chainTx); head != nil {
+				headerRoot = head.Root()
+			}
+		}
+
+		// read SMT last root, prefer standalone SMT DB if present; otherwise fall back to chainDB
+		var smtRoot common.Hash
+		smtDat := filepath.Join(smtDir, "mdbx.dat")
+		if info, statErr := os.Stat(smtDat); statErr == nil && info.Size() > 0 {
+			// sequencer has been stopped in make, so it's safe to open host SMT DB
+			smtDB, openErr := kv2.NewMDBX(logger).Path(smtDir).Open(ctx)
+			require.NoError(t, openErr)
+			smtTx, txErr := smtDB.BeginRo(ctx)
+			require.NoError(t, txErr)
+			ro := smtDb.NewRoEriDb(smtTx, chainTx)
+			lastRootBig, getErr := ro.GetLastRoot()
+			require.NoError(t, getErr)
+			smtRoot = common.BigToHash(lastRootBig)
+			smtTx.Rollback()
+			smtDB.Close()
+		} else {
+			ro := smtDb.NewRoEriDb(chainTx, chainTx)
+			lastRootBig, getErr := ro.GetLastRoot()
+			require.NoError(t, getErr)
+			smtRoot = common.BigToHash(lastRootBig)
+		}
+
+		chainTx.Rollback()
+
+		if smtRoot == headerRoot {
+			log.Info(fmt.Sprintf("SMT root matches header root: %s", smtRoot.Hex()))
+			break
+		}
+
+		if time.Now().After(deadline) {
+			require.Equal(t, headerRoot, smtRoot, "timeout waiting for SMT root to match header root")
+		}
+		time.Sleep(1 * time.Second)
+	}
+
 }
 
 func writeNonce(nonce uint64) error {
