@@ -77,4 +77,4 @@ yarn run senduop:local
 sleep 5
 cd $TEST_DIR
 docker compose stop $SEQ_NAME
-cp -r -a -P $DATA_DIR data_state2
+cp -a -P $DATA_DIR data_state2
