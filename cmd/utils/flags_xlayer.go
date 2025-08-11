@@ -420,12 +420,12 @@ var (
 	BridgeInterceptBridgeContractAddress = cli.StringFlag{
 		Name:  "bridgeIntercept.bridge-contract-address",
 		Usage: "bridge contract address to intercept",
-		Value: "0x2a3dd3eb832af982ec71669e178424b10dca2ede",
+		Value: "0x4B24266C13AFEf2bb60e2C69A4C08A482d81e3CA",
 	}
 	BridgeInterceptTargetTokenAddress = cli.StringFlag{
 		Name:  "bridgeIntercept.target-token-address",
 		Usage: "token address to intercept",
-		Value: "0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266",
+		Value: "0x5FbDB2315678afecb367f032d93F642f64180aa3",
 	}
 	BridgeInterceptMaxBridgeAmount = cli.StringFlag{
 		Name:  "bridgeIntercept.max-bridge-amount",
