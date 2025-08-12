@@ -4,15 +4,17 @@ import (
 	"encoding/json"
 	"fmt"
 	"strconv"
+	"sync"
+	"sync/atomic"
+	"time"
 
-	"github.com/ledgerwatch/erigon-lib/common/hexutil"
 	"github.com/ledgerwatch/erigon-lib/kv"
 
 	"github.com/ledgerwatch/erigon/eth/stagedsync/stages"
-	"github.com/ledgerwatch/erigon/rpc"
 	"github.com/ledgerwatch/erigon/zk/hermez_db"
 	"github.com/ledgerwatch/erigon/zk/sequencer"
 	"github.com/ledgerwatch/erigon/zkevm/jsonrpc/client"
+	"github.com/ledgerwatch/erigon/zkevm/log"
 )
 
 var (
@@ -20,6 +22,12 @@ var (
 	// use a global variable to avoid passing the sequencer RPC URL to
 	//  every function (which is used in multiple places)
 	sequencerRpcUrl string
+
+	// Global variable to store current finalized batch number
+	currentFinalizedBatchNumber atomic.Uint64
+
+	// Once to ensure the background goroutine is started only once
+	startBackgroundQueryOnce sync.Once
 )
 
 // SetSequencerRpcUrl sets the global sequencer RPC URL
@@ -57,7 +65,7 @@ func getFinalizedBatchNumberWithSequencerUrl(tx kv.Tx, sequencerRpcUrl string) (
 	if sequencer.IsSequencer() {
 		return getFinalizedBatchNumberAsSequencer(tx)
 	} else {
-		return getFinalizedBatchNumberAsRPC(tx, sequencerRpcUrl)
+		return getFinalizedBatchNumberAsRPC(sequencerRpcUrl)
 	}
 }
 
@@ -65,14 +73,14 @@ func getFinalizedBatchNumberAsSequencer(tx kv.Tx) (uint64, error) {
 	return stages.GetStageProgress(tx, stages.AnalysisGroupVerifiedBatchNo)
 }
 
-func getFinalizedBatchNumberAsRPC(tx kv.Tx, sequencerRpcUrl string) (uint64, error) {
+func getFinalizedBatchNumberAsRPC(sequencerRpcUrl string) (uint64, error) {
 	if sequencerRpcUrl == "" {
 		return 0, fmt.Errorf("sequencerRpcUrl is not set")
 	}
 
 	response, err := client.JSONRPCCall(sequencerRpcUrl, "zkevm_finalizedBatchNumber")
 	if err != nil {
-		return 0, fmt.Errorf("failed to call sequencer RPC: %w", err)
+		return 0, fmt.Errorf("failed to call zkevm_finalizedBatchNumber to sequencer.err:%v. sequencerRpcUrl:%s", err, sequencerRpcUrl)
 	}
 	return transHexToUint64(response.Result)
 }
@@ -112,7 +120,7 @@ func getFinalizedBlockNumberAsRPC(tx kv.Tx, sequencerRpcUrl string) (uint64, err
 	}
 
 	// Query the sequencer for the finalized block header
-	blockNumber, err := querySequencerForFinalizedBlock(sequencerRpcUrl)
+	blockNumber, err := querySequencerForFinalizedBlock(tx, sequencerRpcUrl)
 	if err != nil {
 		return 0, fmt.Errorf("failed to query sequencer for finalized block: %w", err)
 	}
@@ -120,34 +128,22 @@ func getFinalizedBlockNumberAsRPC(tx kv.Tx, sequencerRpcUrl string) (uint64, err
 	return blockNumber, nil
 }
 
-// querySequencerForFinalizedBlock sends a request to the sequencer to get the finalized block number
-func querySequencerForFinalizedBlock(sequencerRpcUrl string) (uint64, error) {
-	// Send eth_getBlockByNumber request with "finalized" parameter
-	response, err := client.JSONRPCCall(sequencerRpcUrl, "eth_getBlockByNumber", rpc.FinalizedBlockNumber.String(), false)
+// querySequencerForFinalizedBlock gets the finalized block number from the current finalized batch number
+func querySequencerForFinalizedBlock(tx kv.Tx, sequencerRpcUrl string) (uint64, error) {
+	// Ensure background query is started
+	startBackgroundQueryOnce.Do(startBackgroundQuery)
+
+	// Get current finalized batch number
+	batchNumber := currentFinalizedBatchNumber.Load()
+	if batchNumber == 0 {
+		return 0, fmt.Errorf("no finalized batch number available yet")
+	}
+
+	// Use hermez database to get the highest block in the finalized batch
+	hermezDb := hermez_db.NewHermezDbReader(tx)
+	blockNumber, _, err := hermezDb.GetHighestBlockInBatch(batchNumber)
 	if err != nil {
-		return 0, fmt.Errorf("failed to call sequencer RPC: %w", err)
-	}
-
-	if response.Error != nil {
-		return 0, fmt.Errorf("sequencer RPC error: %s", response.Error.Message)
-	}
-
-	// Parse the response to extract block number
-	var blockHeader map[string]interface{}
-	if err := json.Unmarshal(response.Result, &blockHeader); err != nil {
-		return 0, fmt.Errorf("failed to unmarshal block header: %w", err)
-	}
-
-	// Extract block number from the response
-	blockNumberHex, ok := blockHeader["number"].(string)
-	if !ok {
-		return 0, fmt.Errorf("invalid block number in response")
-	}
-
-	// Convert hex string to uint64
-	blockNumber, err := hexutil.DecodeUint64(blockNumberHex)
-	if err != nil {
-		return 0, fmt.Errorf("failed to decode block number: %w", err)
+		return 0, fmt.Errorf("failed to get highest block in batch %d: %w", batchNumber, err)
 	}
 
 	return blockNumber, nil
@@ -170,4 +166,27 @@ func transHexToUint64(hex json.RawMessage) (uint64, error) {
 	}
 
 	return result1, nil
+}
+
+// startBackgroundQuery starts a background goroutine that queries the sequencer
+// for finalized batch number every second
+func startBackgroundQuery() {
+	go func() {
+		ticker := time.NewTicker(1 * time.Second)
+		defer ticker.Stop()
+
+		for {
+			select {
+			case <-ticker.C:
+				if sequencerRpcUrl == "" {
+					panic("only should be called in rpc")
+				}
+				batchNumber, err := getFinalizedBatchNumberAsRPC(sequencerRpcUrl)
+				if err != nil {
+					log.Error("failed to get finalized batch number from sequencer", "err", err)
+				}
+				currentFinalizedBatchNumber.Store(batchNumber)
+			}
+		}
+	}()
 }
