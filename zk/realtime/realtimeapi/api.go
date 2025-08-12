@@ -90,7 +90,7 @@ func (api *RealtimeAPIImpl) getBlockNumber(blockNr rpc.BlockNumber) (uint64, boo
 func (api *RealtimeAPIImpl) getPendingHeightFromCache() (uint64, error) {
 	pendingHeight := api.cacheDB.GetCurrentPendingHeight()
 	if pendingHeight == 0 {
-		return 0, fmt.Errorf("no pending block number found in stateless cache")
+		return 0, fmt.Errorf("no pending block number found in realtime cache")
 	}
 	return pendingHeight, nil
 }
@@ -98,7 +98,7 @@ func (api *RealtimeAPIImpl) getPendingHeightFromCache() (uint64, error) {
 func (api *RealtimeAPIImpl) getConfirmHeightFromCache() (uint64, error) {
 	confirmHeight := api.cacheDB.GetHighestConfirmHeight()
 	if confirmHeight == 0 {
-		return 0, fmt.Errorf("no confirmed block number found in stateless cache")
+		return 0, fmt.Errorf("no confirmed block number found in realtime cache")
 	}
 	return confirmHeight, nil
 }
