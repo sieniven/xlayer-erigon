@@ -1,4 +1,9 @@
+# Prefer docker-compose if available; fallback to docker compose (Compose v2)
+ifeq ($(shell command -v docker-compose >/dev/null 2>&1; echo $$?),0)
+DOCKER_COMPOSE := docker-compose -f docker-compose.yml
+else
 DOCKER_COMPOSE := docker compose -f docker-compose.yml
+endif
 DOCKER_BRIDGE_DB := xlayer-bridge-db
 DOCKER_BRIDGE_SERVICE := xlayer-bridge-service
 DOCKER_BRIDGE_UI := xlayer-bridge-ui
@@ -473,15 +478,15 @@ data-loss-9:
 	sleep 20
 	$(DOCKER_COMPOSE) up -d xlayer-rpc
 	sleep 20
-	# stop sequencer
-	$(DOCKER_COMPOSE) stop xlayer-seq-async-off
+	# stop sequencer (graceful)
+	$(DOCKER_COMPOSE) stop -t 120 xlayer-seq-async-off
 	# collect async-off logs for debugging
 	docker logs xlayer-seq-async-off > data/seq_async_off.log 2>&1 || true
 	# switch back to async-commit ON by restoring default compose service
 	$(RUN_DOCKER_SEQ)
 	sleep 60
-	# stop sequencer to avoid cross-OS MDBX locking issues while reading DB from host
-	$(DOCKER_COMPOSE) stop $(DOCKER_SEQ)
+	# stop sequencer to avoid cross-OS MDBX locking issues while reading DB from host (graceful)
+	$(DOCKER_COMPOSE) stop -t 120 $(DOCKER_SEQ)
 	# verify SMT DB and header root consistency (no -race to reduce memory)
 	go test -count=1 -v -p 1 -timeout 300s -run TestVerifySmtRootMatchesHeaderRoot ./e2e/data_loss_test.go
 	# collect seq logs after verification

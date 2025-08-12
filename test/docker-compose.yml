@@ -189,6 +189,32 @@ services:
       - ./config/dynamic-mynetwork-conf.json:/usr/src/app/dynamic-mynetwork-conf.json
     command: >
       cdk-erigon --http.vhosts=* --http.corsdomain=* --ws --config=/usr/src/app/config.yaml
+    stop_signal: SIGTERM
+    stop_grace_period: 120s
+
+  xlayer-seq-async-off:
+    container_name: xlayer-seq-async-off
+    image: cdk-erigon
+    environment:
+      - CDK_ERIGON_SEQUENCER=1
+      - WRITE_MAP=true
+    ports:
+      - 6060:6060
+      - 8123:8545
+      - 8547:8546
+      - 6900:6900
+      - 9092:9095
+    volumes:
+      - ./data/seq/:/home/erigon/data/
+      - ./config/test.erigon.seq.config.async-off.yaml:/usr/src/app/config.yaml
+      - ./config/first-batch-config.json:/usr/src/app/first-batch-config.json
+      - ./config/dynamic-mynetwork-allocs.json:/usr/src/app/dynamic-mynetwork-allocs.json
+      - ./config/dynamic-mynetwork-chainspec.json:/usr/src/app/dynamic-mynetwork-chainspec.json
+      - ./config/dynamic-mynetwork-conf.json:/usr/src/app/dynamic-mynetwork-conf.json
+    command: >
+      cdk-erigon --http.vhosts=* --http.corsdomain=* --ws --config=/usr/src/app/config.yaml
+    stop_signal: SIGTERM
+    stop_grace_period: 120s
 
   xlayer-mock-l1-network:
     container_name: xlayer-mock-l1-network

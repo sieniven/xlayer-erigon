@@ -4,12 +4,22 @@ FROM docker.io/library/golang:1.24-alpine3.21 AS builder
 RUN apk --no-cache add build-base linux-headers git bash ca-certificates libstdc++
 
 WORKDIR /app
+ENV GOMAXPROCS=6
+ENV GOFLAGS=-p=4
+ENV GOPROXY=https://goproxy.cn,direct
+ENV GOSUMDB=sum.golang.org
 ADD go.mod go.mod
 ADD go.sum go.sum
 ADD erigon-lib/go.mod erigon-lib/go.mod
 ADD erigon-lib/go.sum erigon-lib/go.sum
 
-RUN go mod download
+# retry go mod download to mitigate transient network/TLS issues
+RUN set -e; \
+    for i in 1 2 3 4 5; do \
+        echo "[go mod download] attempt $i"; \
+        go mod download && break; \
+        sleep 5; \
+    done
 ADD . .
 
 RUN --mount=type=cache,target=/root/.cache \
