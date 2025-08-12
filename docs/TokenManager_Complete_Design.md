@@ -6,11 +6,11 @@
 
 ## 系统概述
 
-Token Manager 是一个基于 Erigon 的双层架构代币管理系统，结合了高性能的 Precompile 合约和灵活的 Solidity 智能合约，提供安全、可升级的代币铸造和清理功能。
+Token Manager 是一个基于 Erigon 的双层架构代币管理系统，结合了高性能的 Precompile 合约和灵活的 Solidity 智能合约，提供安全、可升级的代币跨链和清理功能。
 
 ### 核心特性
 
-- ✅ **高性能操作**: 使用 Precompile (0x1001) 实现原子级 mint/cleanup 操作
+- ✅ **高性能操作**: 使用 Precompile (0x1001) 实现原子级 bridgeFrom/cleanup 操作
 - ✅ **OpenZeppelin 安全标准**: 基于经过审计的 OwnableUpgradeable、PausableUpgradeable 等标准合约
 - ✅ **可升级设计**: 使用 TransparentUpgradeableProxy 支持合约升级
 - ✅ **权限分离**: Owner(系统权限) 与 Admin(业务权限) 完全分离，降低单点故障风险  
@@ -77,7 +77,7 @@ Token Manager 是一个基于 Erigon 的双层架构代币管理系统，结合�
 │  │  ┌─────────────────┐  ┌─────────────────┐  ┌─────────────────┐         │ │
 │  │  │   状态存储       │  │   执行引擎       │  │   预编译合约     │         │ │
 │  │  │ • 账户余额       │  │ • 交易执行      │  │ • 地址: 0x1001  │         │ │
-│  │  │ • 合约状态       │  │ • Gas计算       │  │ • Mint操作      │         │ │
+│  │  │ • 合约状态       │  │ • Gas计算       │  │ • BridgeFrom操作      │         │ │
 │  │  │ • 事件日志       │  │ • 权限验证      │  │ • Cleanup操作   │         │ │
 │  │  │ • 角色数据       │  │ • 错误处理      │  │ • 测试操作      │         │ │
 │  │  └─────────────────┘  └─────────────────┘  └─────────────────┘         │ │
@@ -120,7 +120,7 @@ ProxyAdmin → TokenManagerProxy → 新实现合约 (保持状态不变)
 │  └─ Admin权限完全独立于Owner                                     │
 ├─────────────────────────────────────────────────────────────────┤
 │  Level 3: Operator (业务执行权限)                                │
-│  ├─ 代币铸造 (mint)                                             │
+│  ├─ 代币跨链 (bridgeFrom)                                             │
 │  ├─ 地址清理 (cleanup)                                          │
 │  └─ 单一持有者模式                                              │
 └─────────────────────────────────────────────────────────────────┘
@@ -156,31 +156,31 @@ ProxyAdmin → TokenManagerProxy → 新实现合约 (保持状态不变)
 
 ## 核心功能模块
 
-### 1. 代币铸造 (Mint)
+### 1. 代币跨链 (BridgeFrom)
 
 #### 设计原理
-- **目标**: 简化铸造流程，提高安全性
-- **方法**: 直接铸造到操作员地址，避免白名单管理复杂性
+- **目标**: 简化跨链流程，提高安全性
+- **方法**: 直接跨链到操作员地址，避免白名单管理复杂性
 - **安全**: 单一操作员设计，权限控制清晰
 
 #### 流程图
 ```
-Operator调用mint() 
+Operator调用bridgeFrom() 
     ↓
 权限验证 (onlyRole(OPERATOR_ROLE))
     ↓
 状态检查 (isActive + !paused + hasPrecompile)
     ↓
-调用Precompile (MINT_OP)
+调用Precompile (BRIDGE_OP)
     ↓
 余额增加到Operator地址
     ↓
-发射事件 (TokenMinted)
+发射事件 (TokenBridged)
 ```
 
 #### 技术实现
 ```solidity
-function mint(uint256 amount) 
+function bridgeFrom(uint256 amount) 
     external 
     onlyRole(OPERATOR_ROLE) 
     onlyActive 
@@ -189,13 +189,13 @@ function mint(uint256 amount)
     nonReentrant
 {
     // 准备调用数据: [操作码:1][金额:32]
-    bytes memory callData = abi.encodePacked(MINT_OP, amount);
+    bytes memory callData = abi.encodePacked(BRIDGE_OP, amount);
     
     // 调用预编译合约
     (bool success, ) = PRECOMPILE_ADDRESS.call(callData);
     require(success, "Precompile call failed");
     
-    emit TokenMinted(_msgSender(), amount);
+    emit TokenBridged(_msgSender(), amount);
 }
 ```
 
@@ -247,7 +247,7 @@ function cleanup()
 #### 地址与操作码
 - **地址**: `0x0000000000000000000000000000000000001001`
 - **TEST_OP**: `0x01` - 测试连接
-- **MINT_OP**: `0x02` - 铸造操作
+- **BRIDGE_OP**: `0x02` - 跨链操作
 - **CLEAN_OP**: `0x03` - 清理操作
 
 #### 目标地址
@@ -265,7 +265,7 @@ type tokenManagerPrecompile struct {
 // 操作码定义
 const (
     TEST_OP  = 0x01
-    MINT_OP  = 0x02
+    BRIDGE_OP  = 0x02
     CLEAN_OP = 0x03
 )
 
@@ -309,7 +309,7 @@ function setOperator(address newOperator) external onlyRole(ADMIN_ROLE) {
 
 #### 实现示例
 ```solidity
-function mint(uint256 amount) 
+function bridgeFrom(uint256 amount) 
     external 
     onlyRole(OPERATOR_ROLE) 
     nonReentrant  // 重入保护
@@ -323,7 +323,7 @@ function mint(uint256 amount)
 #### Pausable 保护
 - 紧急情况下可以暂停所有关键操作
 - 只有Owner可以执行暂停/恢复操作
-- 暂停状态下禁止mint/cleanup操作
+- 暂停状态下禁止bridgeFrom/cleanup操作
 
 #### 状态检查
 ```solidity
@@ -391,7 +391,7 @@ event AdminRoleTransferred(address indexed oldAdmin, address indexed newAdmin);
 
 #### 业务事件
 ```solidity
-event TokenMinted(address indexed operator, uint256 amount);
+event TokenBridged(address indexed operator, uint256 amount);
 event TargetAddressCleaned(address indexed operator);
 ```
 
@@ -407,7 +407,7 @@ event RoleRevoked(bytes32 indexed role, address indexed account, address indexed
 ### 2. 监控要点
 
 #### 关键指标监控
-- 代币铸造频率和数量
+- 代币跨链频率和数量
 - 地址清理操作频率
 - 权限变更操作
 - 合约暂停/恢复状态
@@ -556,7 +556,7 @@ cast call $PROXY_ADDRESS "VERSION()" --rpc-url $RPC_URL
 - 错误率统计
 
 #### 业务监控
-- 代币铸造统计
+- 代币跨链统计
 - 清理操作统计
 - 权限变更记录
 - 异常行为检测

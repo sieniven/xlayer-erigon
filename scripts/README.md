@@ -125,7 +125,7 @@ ADMIN_PRIVATE_KEY="0x815405dddb0e2a99b12af775fd2929e526704e1d1aea6a0b4e74dc33e2f
 OPERATOR_PRIVATE_KEY="0x3c9229289a6125f7fdf1885a77bb12c37a8d3b4962d936f7e3084dece32a3ca1"
 
 # 测试金额
-MINT_AMOUNT="1000000000000000000"    # 1 ETH
+BRIDGE_AMOUNT="1000000000000000000"    # 1 ETH
 TRANSFER_AMOUNT="100000000000000000"  # 0.1 ETH (用于测试账户初始化)
 ```
 
@@ -136,7 +136,7 @@ TRANSFER_AMOUNT="100000000000000000"  # 0.1 ETH (用于测试账户初始化)
 | **操作员管理** | setOperator (支持零地址移除) |
 | **管理员管理** | setAdmin |
 | **角色查询** | operator(), admin() (自动生成getter) |
-| **核心功能** | mint (铸造到操作员), cleanup (清理目标地址) |
+| **核心功能** | bridgeFrom (跨链到操作员), cleanup (清理目标地址) |
 | **权限控制** | 无权限操作被正确拒绝，权限转移验证 |
 | **暂停控制** | pause, unpause, 暂停状态下操作被拒绝 |
 | **所有者管理** | transferOwnership, renounceOwnership (禁用) |
@@ -146,7 +146,7 @@ TRANSFER_AMOUNT="100000000000000000"  # 0.1 ETH (用于测试账户初始化)
 #### 测试流程
 
 1. **Operator管理测试** - 设置、替换、移除(零地址)操作员
-2. **Mint操作测试** - 测试代币铸造到操作员账户
+2. **BridgeFrom操作测试** - 测试代币跨链到操作员账户
 3. **Cleanup操作测试** - 测试目标地址清理功能，验证1 wei保留机制
 4. **暂停/恢复功能测试** - 测试pause/unpause机制
 5. **查询功能测试** - 测试所有自动生成的getter接口
@@ -164,7 +164,7 @@ TRANSFER_AMOUNT="100000000000000000"  # 0.1 ETH (用于测试账户初始化)
 **保留的核心接口**:
 - ✅ `setAdmin(address)` - 设置新admin
 - ✅ `setOperator(address)` - 设置operator (支持零地址移除)
-- ✅ `mint(uint256)` - 铸造代币到operator
+- ✅ `bridgeFrom(uint256)` - 跨链代币到operator
 - ✅ `cleanup()` - 清理目标地址到1 wei
 - ✅ `pause()` / `unpause()` - 系统控制
 - ✅ `transferOwnership(address)` - 所有权转移
@@ -174,7 +174,7 @@ TRANSFER_AMOUNT="100000000000000000"  # 0.1 ETH (用于测试账户初始化)
 ```
 🎉 所有测试完成!
   ✅ Operator管理正常
-  ✅ Mint操作正常
+  ✅ BridgeFrom操作正常
   ✅ Cleanup操作正常
   ✅ 暂停/恢复功能正常
   ✅ 查询功能正常
@@ -213,7 +213,7 @@ Admin (业务级权限)
 └── setOperator()          - 设置/移除operator
 
 Operator (操作级权限)
-├── mint()                 - 铸造代币
+├── bridgeFrom()           - 跨链代币
 └── cleanup()              - 清理目标地址
 ```
 
@@ -253,7 +253,7 @@ Operator (操作级权限)
 3. **权限分离**:
    - Owner控制系统级操作 (pause/unpause/transferOwnership)
    - Admin控制业务级操作 (setAdmin/setOperator)
-   - Operator执行业务操作 (mint/cleanup)
+   - Operator执行业务操作 (bridgeFrom/cleanup)
    - 确保权限分配符合安全原则
 
 4. **测试环境**:
