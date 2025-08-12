@@ -19,7 +19,6 @@ import (
 	"github.com/ledgerwatch/erigon/ethclient"
 	"github.com/ledgerwatch/erigon/rpc"
 	"github.com/ledgerwatch/erigon/zk/realtime/rtclient"
-	rpcTypes "github.com/ledgerwatch/erigon/zk/rpcdaemon"
 	zktypes "github.com/ledgerwatch/erigon/zk/types"
 	"github.com/ledgerwatch/erigon/zkevm/encoding"
 	"github.com/ledgerwatch/erigon/zkevm/log"
@@ -252,12 +251,13 @@ func TestRealtimeComparison(t *testing.T) {
 		})
 
 		t.Run("getTransactionByHash", func(t *testing.T) {
-			realtimeTransaction, err := client.RealtimeGetTransactionByHash(txHashCommon, nil)
+			txHashNew := transToken(t, context.Background(), client, uint256.NewInt(encoding.Gwei), testAddress.String())
+			realtimeTransaction, err := client.RealtimeGetTransactionByHash(common.HexToHash(txHashNew), nil)
 			require.NoError(t, err)
 
 			// Make direct RPC call to non-realtime node to get JSON response
-			var nonRealtimeTransaction rpcTypes.Transaction
-			err = nonRealtimeRPCClient.CallContext(context.Background(), &nonRealtimeTransaction, "eth_getTransactionByHash", txHashCommon)
+			var nonRealtimeTransaction rtclient.RpcTransaction
+			err = nonRealtimeRPCClient.CallContext(context.Background(), &nonRealtimeTransaction, "eth_getTransactionByHash", common.HexToHash(txHashNew))
 			require.NoError(t, err)
 
 			require.Equal(t, realtimeTransaction, nonRealtimeTransaction, fmt.Sprintf("Transactions should be identical for hash %s", txHash))
