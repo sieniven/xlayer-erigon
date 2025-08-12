@@ -4,15 +4,16 @@ import (
 	"context"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"math/big"
+	"strconv"
 
 	ethereum "github.com/ledgerwatch/erigon"
 	"github.com/ledgerwatch/erigon-lib/common"
 	"github.com/ledgerwatch/erigon-lib/common/hexutil"
 	"github.com/ledgerwatch/erigon/core/types"
 	"github.com/ledgerwatch/erigon/ethclient"
-	rpcTypes "github.com/ledgerwatch/erigon/zk/rpcdaemon"
 	zktypes "github.com/ledgerwatch/erigon/zk/types"
 	"github.com/ledgerwatch/erigon/zkevm/jsonrpc/client"
 )
@@ -32,6 +33,72 @@ func NewRealtimeClient(ethClient *ethclient.Client, url string) *RealtimeClient 
 		Client: ethClient,
 		url:    url,
 	}
+}
+
+type BigInt struct {
+	*big.Int
+}
+
+// UnmarshalJSON implements json.Unmarshaler for BigInt
+func (bi *BigInt) UnmarshalJSON(data []byte) error {
+	if bi.Int == nil {
+		bi.Int = new(big.Int)
+	}
+	// Remove quotes
+	unquotedData, err := strconv.Unquote(string(data))
+	if err != nil {
+		return err
+	}
+
+	if len(unquotedData) > 2 && unquotedData[0] == '0' && unquotedData[1] == 'x' {
+		unquotedData = unquotedData[2:]
+	}
+	_, success := bi.SetString(unquotedData, 16)
+	if !success {
+		return errors.New("failed to convert string to big.Int")
+	}
+	return nil
+}
+
+type Int int
+
+// UnmarshalJSON implements json.Unmarshaler for Int
+func (i *Int) UnmarshalJSON(data []byte) error {
+	unquotedData, err := strconv.Unquote(string(data))
+	if err != nil {
+		return err
+	}
+
+	if len(unquotedData) > 2 && unquotedData[0] == '0' && unquotedData[1] == 'x' {
+		unquotedData = unquotedData[2:]
+	}
+
+	num, err := strconv.ParseInt(unquotedData, 16, 64)
+	if err != nil {
+		return err
+	}
+
+	*i = Int(num)
+	return nil
+}
+
+// RpcTransaction represents a transaction that will serialize to the RPC representation of a transaction
+type RpcTransaction struct {
+	BlockNumber      *string         `json:"blockNumber,omitempty"`
+	BlockHash        *common.Hash    `json:"blockHash,omitempty"`
+	From             *common.Address `json:"from,omitempty"`
+	Gas              *BigInt         `json:"gas,omitempty"`
+	GasPrice         *BigInt         `json:"gasPrice,omitempty"`
+	Hash             *string         `json:"hash,omitempty"`
+	Input            *string         `json:"input,omitempty"`
+	Nonce            *BigInt         `json:"nonce,omitempty"`
+	R                *string         `json:"r,omitempty"`
+	S                *string         `json:"s,omitempty"`
+	To               *common.Address `json:"to,omitempty"`
+	TransactionIndex *Int            `json:"transactionIndex,omitempty"`
+	Type             *Int            `json:"type,omitempty"`
+	V                *string         `json:"v,omitempty"`
+	Value            *BigInt         `json:"value,omitempty"`
 }
 
 // RealtimeBlockNumber returns the number of the most recent block in real-time
@@ -233,19 +300,19 @@ func (rc *RealtimeClient) RealtimeGetBlockTransactionCountByNumber(blockNumber u
 }
 
 // RealtimeGetTransactionByHash returns the information about a transaction requested by transaction hash in real-time
-func (rc *RealtimeClient) RealtimeGetTransactionByHash(txHash common.Hash, includeExtraInfo *bool) (rpcTypes.Transaction, error) {
+func (rc *RealtimeClient) RealtimeGetTransactionByHash(txHash common.Hash, includeExtraInfo *bool) (RpcTransaction, error) {
 	response, err := client.JSONRPCCall(rc.url, "eth_getTransactionByHash", txHash, includeExtraInfo)
 	if err != nil {
-		return rpcTypes.Transaction{}, err
+		return RpcTransaction{}, err
 	}
 	if response.Error != nil {
-		return rpcTypes.Transaction{}, fmt.Errorf("%d - %s", response.Error.Code, response.Error.Message)
+		return RpcTransaction{}, fmt.Errorf("%d - %s", response.Error.Code, response.Error.Message)
 	}
 
-	result := rpcTypes.Transaction{}
+	result := RpcTransaction{}
 	err = json.Unmarshal(response.Result, &result)
 	if err != nil {
-		return rpcTypes.Transaction{}, err
+		return RpcTransaction{}, err
 	}
 
 	return result, nil
