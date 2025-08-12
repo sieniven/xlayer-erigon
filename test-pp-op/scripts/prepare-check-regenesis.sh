@@ -20,9 +20,10 @@ fi
 
 # Clone relevant repos
 function clone_repos {
+    echo "clone repos"
     cd $TMP_DIR
     if [ ! -d $SA_BENCH_DIR ]; then
-        git clone -b dumi/senddet git@github.com:okx/SA-Benchmark.git
+        git clone -b dumi/senddet https://github.com/okx/SA-Benchmark.git
     fi
     cd $ROOT_DIR
 }
@@ -52,7 +53,7 @@ nvm use v22
 sleep 5
 cd $TEST_DIR
 docker compose stop $SEQ_NAME
-cp -r -a -P $DATA_DIR data_state0
+cp -r -P $DATA_DIR data_state0
 
 # 2. Send one tx and save state1.json
 cd $TEST_DIR
@@ -60,12 +61,12 @@ docker compose start $SEQ_NAME
 sleep $SLEEP_TIME
 cast send 0xa03666Fb51Aa9aD2DE70e0434072A007b3C91A9E --value $TX_VALUE \
 --private-key $PRIVATE_KEY \
---legacy --gas-price $GAS_PRICE \
+--legacy --gas-price 1000000 \
 --rpc-url http://localhost:8123
 sleep 5
 cd $TEST_DIR
 docker compose stop $SEQ_NAME
-cp -r -a -P $DATA_DIR data_state1
+cp -r -P $DATA_DIR data_state1
 
 # 3. Send deterministic tx and save state2.json
 cd $TEST_DIR
@@ -77,4 +78,4 @@ yarn run senduop:local
 sleep 5
 cd $TEST_DIR
 docker compose stop $SEQ_NAME
-cp -r -a -P $DATA_DIR data_state2
+cp -r -P $DATA_DIR data_state2

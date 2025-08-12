@@ -37,7 +37,7 @@ PRIVATE_KEY=$(cat .env | grep "PRIVATE_KEY" | cut -d '=' -f 2)
 GAS_PRICE=$(cat .env | grep "GAS_PRICE" | cut -d '=' -f 2)
 cast send 0xa03666Fb51Aa9aD2DE70e0434072A007b3C91A9E --value $TX_VALUE \
 --private-key 0x815405dddb0e2a99b12af775fd2929e526704e1d1aea6a0b4e74dc33e2f7fcd2 \
---legacy --gas-price 1 \
+--legacy --gas-price 1000000000 \
 --rpc-url $RPC_URL
 sleep 5
 echo -e "\n\n*** State 1 ***" >> $RESULT_FILE
