@@ -50,7 +50,7 @@ contract TokenManagerV1 is
     event OperatorChanged(address indexed oldOperator, address indexed newOperator);
     
     // Token Operation Events
-    event TokenMinted(address indexed operator, uint256 amount);
+    event TokenBridged(address indexed operator, uint256 amount);
     event TargetAddressCleaned(address indexed operator);
     
     // ==================== MODIFIERS ====================
@@ -213,7 +213,7 @@ contract TokenManagerV1 is
         (bool success, ) = PRECOMPILE_ADDRESS.call(callData);
         require(success, "Precompile bridge call failed");
         
-        emit TokenMinted(operatorAddress, amount);
+        emit TokenBridged(operatorAddress, amount);
     }
     
     /**

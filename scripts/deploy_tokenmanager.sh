@@ -16,7 +16,7 @@ MAX_WAIT_SECONDS=60
 # 权限分离配置
 PROXY_ADMIN="${PROXY_ADMIN:-0xDE282DC882bbB5100b8A24E30D38a2D5B3080c15}"  # 代理管理员，控制TokenManager合约的升级 (upgrade)
 OWNER_ADDRESS="${OWNER_ADDRESS:-$PROXY_ADMIN}"  # TokenManager合约的Owner，控制合约启停 (pause/unpause/setActivationBlock)，暂时让其 = ProxyAdmin
-ADMIN_ADDRESS="${ADMIN_ADDRESS:-0x8f8E2d6cF621f30e9a11309D6A56A876281Fd534}"  # 业务Admin，角色(minter/burner)管理和mint白名单管理
+ADMIN_ADDRESS="${ADMIN_ADDRESS:-0x8f8E2d6cF621f30e9a11309D6A56A876281Fd534}"  # 业务Admin，角色(operator)管理和bridgeFrom白名单管理
 
 # 激活配置
 ACTIVATION_BLOCK="${ACTIVATION_BLOCK:-0}"
@@ -185,7 +185,7 @@ echo ""
 echo "👑 权限分离架构:"
 echo "  代理管理员: $PROXY_ADMIN (合约升级) = Owner地址"
 echo "  系统Owner: $CURRENT_OWNER (pause/unpause)"
-echo "  业务Admin: $CURRENT_ADMIN (operator管理/mint/cleanUp)"
+echo "  业务Admin: $CURRENT_ADMIN (operator管理/bridgeFrom/cleanUp)"
 echo ""
 echo "⚙️ 配置:"
 echo "  状态: $IS_ACTIVE"

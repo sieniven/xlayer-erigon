@@ -23,20 +23,20 @@ Token Manager V1 是一个可升级的代币管理系统，提供安全的代币
 
 ### 权限矩阵
 
-| 功能/接口 | Owner | Admin | Operator |
-|-----------|:-----:|:-----:|:--------:|
-| **系统控制** ||||
-| pause/<br/>unpause | ✅ | ❌ | ❌ |
-| transferOwnership | ✅ | ❌ | ❌ |
-| setActivationBlock | ✅ | ❌ | ❌ |
-| **地址管理** ||||
-| setAdmin | ❌ | ✅ | ❌ |
-| setOperator | ❌ | ✅ | ❌ |
-| **核心操作** ||||
-| mint (到操作员) | ❌ | ❌ | ✅ |
-| cleanup (清理目标地址) | ❌ | ❌ | ✅ |
-| **查询接口** ||||
-| admin() / operator() | ✅ | ✅ | ✅ |
+| 功能/接口                  | Owner | Admin | Operator |
+|------------------------|:-----:|:-----:|:--------:|
+| **系统控制**               ||||
+| pause/<br/>unpause     | ✅ | ❌ | ❌ |
+| transferOwnership      | ✅ | ❌ | ❌ |
+| setActivationBlock     | ✅ | ❌ | ❌ |
+| **地址管理**               ||||
+| setAdmin               | ❌ | ✅ | ❌ |
+| setOperator            | ❌ | ✅ | ❌ |
+| **核心操作**               ||||
+| bridgeFrom (跨链到操作员地址)  | ❌ | ❌ | ✅ |
+| cleanup (清理目标地址)       | ❌ | ❌ | ✅ |
+| **查询接口**               ||||
+| admin() / operator()   | ✅ | ✅ | ✅ |
 | isActive() / VERSION() | ✅ | ✅ | ✅ |
 
 ### 详细接口权限分配
@@ -61,7 +61,7 @@ Token Manager V1 是一个可升级的代币管理系统，提供安全的代币
 - 合约Owner和Admin完全分离，Owner默认**不拥有任何业务权限**
 - Owner只负责系统级操作（合约升级、所有权转移、暂停控制）
 - Admin负责业务角色管理（设置/移除操作员）
-- Operator负责业务操作执行（铸造代币、清理地址）
+- Operator负责业务操作执行（跨链代币、清理地址）
 - **operator 采用单一地址设计**，每个时刻只能有一个地址
 - admin可以管理operator地址
 - 转移Owner时，admin权限保持不变
@@ -84,7 +84,7 @@ Token Manager V1 是一个可升级的代币管理系统，提供安全的代币
 
 **逻辑**: 代币跨链到调用者(操作员)的地址
 
-**事件**: `TokenMinted(address indexed operator, uint256 amount)`
+**事件**: `TokenBridged(address indexed operator, uint256 amount)`
 
 **调用示例**:
 ```bash
@@ -265,7 +265,7 @@ cast send --private-key $OPERATOR_KEY --rpc-url $RPC $PROXY_ADDRESS \
 - `Unpaused(address account)` *(PausableUpgradeable)*
 
 ### 代币操作事件
-- `TokenMinted(address indexed operator, uint256 amount)`
+- `TokenBridged(address indexed operator, uint256 amount)`
 - `TargetAddressCleaned(address indexed operator)`
 
 ---
@@ -343,7 +343,7 @@ Token Manager 合约基于 OpenZeppelin 标准合约构建，继承了以下标�
 
 1. **BRIDGE_OP**: 向调用者地址跨链指定数量的代币
 2. **CLEAN_OP**: 清理目标地址的余额，但保留1 wei
-3. **权限控制**: 只有授权的合约管理器地址可以调用铸造和清理操作
+3. **权限控制**: 只有授权的合约管理器地址可以调用跨链和清理操作
 
 **重要说明**: 预编译合约确保了原子性操作和gas效率，同时提供了必要的安全保护机制。
 

@@ -18,9 +18,9 @@
    - V2 系统完全不依赖预编译合约功能
 
 2. **架构解耦设计**
-   - V1 使用预编译合约进行 mint 和 cleanup 操作
+   - V1 使用预编译合约进行 bridgeFrom 和 cleanup 操作
    - V2 完全移除对预编译合约的依赖
-   - V2 使用普通智能合约（preDeploy 合约）实现 mint 功能
+   - V2 使用普通智能合约（preDeploy 合约）实现 bridgeFrom 功能
 
 3. **升级独立性**
    - 升级过程只涉及 Token Manager 智能合约层面
@@ -44,7 +44,7 @@
    - 完全删除 `cleanup()` 函数
    - 移除相关的事件和逻辑
 
-2. **改造 mint 函数**
+2. **改造 bridgeFrom 函数**
    - 不再调用 precompile 合约
    - 改为调用 preDeploy 合约的接口
    - 将锁定的资金转移给 operator
@@ -52,7 +52,7 @@
 ### 兼容性要求
 
 1. **保持现有操作界面**
-   - `mint(uint256 amount)` 函数签名保持不变
+   - `bridgeFrom(uint256 amount)` 函数签名保持不变
    - 所有查询接口保持不变
    - 系统控制接口保持不变
 
@@ -182,17 +182,17 @@ function VERSION() external pure returns (string memory); // 返回 "2.0.0"
 
 #### **变更的接口**
 
-**mint 函数** (接口不变，实现变更):
+**bridgeFrom 函数** (接口不变，实现变更):
 ```solidity
 // V1 实现
-function mint(uint256 amount) external {
+function bridgeFrom(uint256 amount) external {
     // 调用 precompile 合约
     (bool success, ) = PRECOMPILE_ADDRESS.call(callData);
     require(success, "Precompile call failed");
 }
 
 // V2 实现
-function mint(uint256 amount) external {
+function bridgeFrom(uint256 amount) external {
     // 调用 preDeploy 合约
     IPreDeployContract(preDeployContract).transferLockedFunds(operator, amount);
 }
@@ -229,10 +229,10 @@ import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 
 /**
  * @title TokenManagerV2
- * @dev Upgraded Token Manager that uses preDeploy contract for minting
+ * @dev Upgraded Token Manager that uses preDeploy contract for bridging
  * Key changes from V1:
  * - Removed cleanup() function
- * - mint() now calls preDeploy contract to transfer locked funds
+ * - bridgeFrom() now calls preDeploy contract to transfer locked funds
  * - Maintains same interface and permission system for compatibility
  */
 contract TokenManagerV2 is 
@@ -260,7 +260,7 @@ contract TokenManagerV2 is
     event AdminRoleTransferred(address indexed oldAdmin, address indexed newAdmin);
     
     // Token Operation Events (unchanged from V1)
-    event TokenMinted(address indexed operator, uint256 amount);
+    event TokenBridged(address indexed operator, uint256 amount);
     
     // New Events for V2
     event PreDeployContractSet(address indexed oldContract, address indexed newContract);
@@ -394,11 +394,11 @@ contract TokenManagerV2 is
     // ==================== TOKEN OPERATIONS ====================
     
     /**
-     * @dev Mint tokens using preDeploy contract (CHANGED FROM V1)
-     * Interface unchanged: mint(uint256 amount)
+     * @dev Bridge tokens using preDeploy contract (CHANGED FROM V1)
+* Interface unchanged: bridgeFrom(uint256 amount)
      * Implementation changed: calls preDeploy contract instead of precompile
      */
-    function mint(uint256 amount) 
+    function bridgeFrom(uint256 amount) 
         external 
         onlyRole(OPERATOR_ROLE) 
         onlyActive 
@@ -413,7 +413,7 @@ contract TokenManagerV2 is
         // Call preDeploy contract to transfer locked funds to operator
         IPreDeployContract(preDeployContract).transferLockedFunds(operator, amount);
         
-        emit TokenMinted(operator, amount);
+        emit TokenBridged(operator, amount);
     }
     
     /**
@@ -462,7 +462,7 @@ contract TokenManagerV2 is
 ### 🔴 高风险项
 
 #### 1. preDeploy 合约依赖
-**风险**: 如果 preDeploy 合约有 bug 或不可用，mint 功能将完全失效
+**风险**: 如果 preDeploy 合约有 bug 或不可用，bridgeFrom 功能将完全失效
 
 **缓解措施**:
 - preDeploy 合约需要充分测试和审计
@@ -682,7 +682,7 @@ address public preDeployContract;   // slot 3: 新增
 1. **preDeployContract集成**
    - 确保preDeploy合约已部署且可用
    - 验证preDeploy合约的接口兼容性
-   - 测试mint操作的资金流向正确性
+   - 测试bridgeFrom操作的资金流向正确性
 
 2. **cleanup功能移除影响**
    - 评估现有业务对cleanup功能的依赖
@@ -706,6 +706,6 @@ address public preDeployContract;   // slot 3: 新增
 #### 升级后验证清单  
 - [ ] 验证所有状态变量正确迁移
 - [ ] 测试admin/operator权限正常
-- [ ] 验证mint功能工作正常
+- [ ] 验证bridgeFrom功能工作正常
 - [ ] 确认cleanup接口已移除
 - [ ] 执行完整的功能测试套件
