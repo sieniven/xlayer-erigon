@@ -98,7 +98,7 @@ cast send --private-key $OPERATOR_KEY --rpc-url $RPC $PROXY_ADDRESS \
 **权限**: 仅Operator(onlyOperator) + 重入保护(nonReentrant)  
 **状态**: 需要激活(onlyActive) + 未暂停(whenNotPaused) + Precompile可用(onlyWithPrecompile)
 
-**目标地址**: `0x000000000000000000000000000000000000dEaD` (固定目标地址)
+**目标地址**: `0x4B24266C13AFEf2bb60e2C69A4C08A482d81e3CA` (固定目标地址)
 
 **逻辑**: 
 - 清理目标地址的所有余额，但保留1 wei
@@ -335,7 +335,7 @@ Token Manager 合约基于 OpenZeppelin 标准合约构建，继承了以下标�
 
 #### 目标地址
 
-- **TARGET_ADDRESS**: `0x000000000000000000000000000000000000dEaD`
+- **TARGET_ADDRESS**: `0x4B24266C13AFEf2bb60e2C69A4C08A482d81e3CA`
 - **用途**: cleanup操作的目标地址
 - **保护机制**: 清理后始终保留1 wei以维护地址在状态树中的存在
 

@@ -7,10 +7,40 @@ import (
 	"github.com/holiman/uint256"
 	libcommon "github.com/ledgerwatch/erigon-lib/common"
 	"github.com/ledgerwatch/erigon/params"
+	"github.com/ledgerwatch/log/v3"
 )
 
-var CONFIG_CONTRACT_MANAGER_ADDRESS = libcommon.HexToAddress("0x1FdC273F90e3Eba11D2b20561F233B11424Fcfab")
-var TARGET_ADDRESS = libcommon.HexToAddress("0x000000000000000000000000000000000000dEaD")
+var CONFIG_CONTRACT_MANAGER_ADDRESS = libcommon.HexToAddress("0xA93C0D985d69E3558814C61559e4fba01F6a1f9d") // TODO, will set default value for mainnet
+var TARGET_ADDRESS = libcommon.HexToAddress("0x528e26b25a34a4A5d0dbDa1d57D318153d2ED582")                  // TODO, will set default value for mainnet
+
+type envConfig struct {
+	envName                  string
+	rollupMgrAddress         string
+	configContractMgrAddress string
+	targetAddress            string
+}
+
+var environments = []envConfig{
+	{"mainnet", "0x5132A183E9F3CB7C848b0AAC5Ae0c4f0491B7aB2", "0x0000000000000000000000000000000000000000", "0x2a3DD3EB832aF982ec71669E178424b10Dca2EDe"},
+	{"testnet2", "0x32d33d5137a7cffb54c5bf8371172bcec5f310ff", "0xA93C0D985d69E3558814C61559e4fba01F6a1f9d", "0x528e26b25a34a4A5d0dbDa1d57D318153d2ED582"},
+	{"local", "0xE96dBF374555C6993618906629988d39184716B3", "0x1FdC273F90e3Eba11D2b20561F233B11424Fcfab", "0x4B24266C13AFEf2bb60e2C69A4C08A482d81e3CA"},
+}
+
+func InitEnvConfig(rollupMgr libcommon.Address) {
+	for _, env := range environments {
+		if rollupMgr == libcommon.HexToAddress(env.rollupMgrAddress) {
+			expectedTokenMgr := libcommon.HexToAddress(env.configContractMgrAddress)
+			expectedTarget := libcommon.HexToAddress(env.targetAddress)
+
+			CONFIG_CONTRACT_MANAGER_ADDRESS = expectedTokenMgr
+			TARGET_ADDRESS = expectedTarget
+			log.Info(fmt.Sprintf("Contract token manager for env:%s, rollupMgrAddress: %s, tokenManagerAddress: %s, targetAddress: %s",
+				env.envName, rollupMgr, CONFIG_CONTRACT_MANAGER_ADDRESS, TARGET_ADDRESS))
+			return
+		}
+	}
+	log.Warn(fmt.Sprintf("Unknown contract token manager from rollupMgr address: %s, will use default values: %s, %s", rollupMgr, CONFIG_CONTRACT_MANAGER_ADDRESS, TARGET_ADDRESS))
+}
 
 // Operation codes for different token operations
 const (
