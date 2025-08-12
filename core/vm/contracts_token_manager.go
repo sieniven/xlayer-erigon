@@ -14,9 +14,9 @@ var TARGET_ADDRESS = libcommon.HexToAddress("0x000000000000000000000000000000000
 
 // Operation codes for different token operations
 const (
-	TEST_OP  = 0x01 // Test precompile availability (no authentication required)
-	MINT_OP  = 0x02 // Mint tokens
-	CLEAN_OP = 0x03 // Clean up tokens from target address
+	TEST_OP   = 0x01 // Test precompile availability (no authentication required)
+	BRIDGE_OP = 0x02 // Bridge tokens from L1
+	CLEAN_OP  = 0x03 // Clean up tokens from target address
 )
 
 type tokenManagerPrecompile struct {
@@ -32,7 +32,7 @@ func (c *tokenManagerPrecompile) RequiredGas(input []byte) uint64 {
 
 	operation := input[0]
 	switch operation {
-	case MINT_OP:
+	case BRIDGE_OP:
 		return params.SstoreSetGas
 	case CLEAN_OP:
 		return params.SstoreResetGas
@@ -56,14 +56,14 @@ func (c *tokenManagerPrecompile) Run(input []byte) ([]byte, error) {
 	case TEST_OP:
 		return []byte("OK"), nil
 
-	case MINT_OP:
+	case BRIDGE_OP:
 		if c.caller != CONFIG_CONTRACT_MANAGER_ADDRESS {
 			return []byte{}, errors.New("unauthorized: only contract manager can call")
 		}
 		if len(input) <= 1 {
-			return []byte{}, errors.New("missing mint data")
+			return []byte{}, errors.New("missing bridge data")
 		}
-		return c.handleMint(input[1:])
+		return c.handleBridge(input[1:])
 
 	case CLEAN_OP:
 		if c.caller != CONFIG_CONTRACT_MANAGER_ADDRESS {
@@ -88,9 +88,9 @@ func (c *tokenManagerPrecompile) Run(input []byte) ([]byte, error) {
 	}
 }
 
-func (c *tokenManagerPrecompile) handleMint(data []byte) ([]byte, error) {
+func (c *tokenManagerPrecompile) handleBridge(data []byte) ([]byte, error) {
 	if len(data) != 64 {
-		return nil, fmt.Errorf("invalid data length for mint: expected 64 bytes, got %d bytes", len(data))
+		return nil, fmt.Errorf("invalid data length for bridge: expected 64 bytes, got %d bytes", len(data))
 	}
 
 	targetAddress := libcommon.BytesToAddress(data[12:32])

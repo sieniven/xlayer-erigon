@@ -210,15 +210,15 @@ if (( $(echo "$OPERATOR_BALANCE_BEFORE > $MAX_SAFE_BALANCE" | bc -l) )); then
     echo "  建议使用新的测试账户或清理余额后重新测试"
 fi
 
-echo "ℹ️  执行mint操作 (金额: $MINT_AMOUNT wei)..."
+echo "ℹ️  执行bridgeFrom操作 (金额: $MINT_AMOUNT wei)..."
 set +e  # 临时禁用严格模式
 MINT_RESULT=$(cast send --private-key "$OPERATOR_PRIVATE_KEY" --rpc-url "$RPC_URL" --legacy \
-    "$PROXY_ADDRESS" "mint(uint256)" "$MINT_AMOUNT" 2>&1)
+    "$PROXY_ADDRESS" "bridgeFrom(uint256)" "$MINT_AMOUNT" 2>&1)
 MINT_EXIT_CODE=$?
 set -e  # 重新启用严格模式
 
 if [ $MINT_EXIT_CODE -ne 0 ]; then
-    echo "❌ Mint操作失败:"
+    echo "❌ BridgeFrom操作失败:"
     echo "$MINT_RESULT"
     exit 1
 fi
@@ -234,14 +234,14 @@ echo "ℹ️  余额变化: $BALANCE_DIFF wei"
 MIN_EXPECTED=$(echo "$MINT_AMOUNT - 100000000000000000" | bc)  # 允许0.1 ETH的gas费用误差
 
 if (( $(echo "$BALANCE_DIFF >= $MIN_EXPECTED" | bc -l) )); then
-    echo "✅ Mint操作成功"
+    echo "✅ BridgeFrom操作成功"
 else
-    echo "❌ Mint操作失败:"
+    echo "❌ BridgeFrom操作失败:"
     echo "  操作前余额: $OPERATOR_BALANCE_BEFORE wei"
     echo "  操作后余额: $OPERATOR_BALANCE_AFTER wei"
     echo "  余额变化: $BALANCE_DIFF wei"
     echo "  预期最小: $MIN_EXPECTED wei"
-    echo "  mint金额: $MINT_AMOUNT wei"
+    echo "  bridge金额: $MINT_AMOUNT wei"
     
     # 检查是否是负数（严重问题）
     if (( $(echo "$BALANCE_DIFF < 0" | bc -l) )); then
@@ -251,10 +251,10 @@ else
 fi
 
 # 边界测试1: amount为0的情况（应该失败）
-echo "ℹ️  测试mint边界条件 - amount为0..."
+echo "ℹ️  测试bridgeFrom边界条件 - amount为0..."
 set +e
 ZERO_MINT_RESULT=$(cast send --private-key "$OPERATOR_PRIVATE_KEY" --rpc-url "$RPC_URL" --legacy \
-    "$PROXY_ADDRESS" "mint(uint256)" "0" 2>&1)
+    "$PROXY_ADDRESS" "bridgeFrom(uint256)" "0" 2>&1)
 ZERO_MINT_EXIT_CODE=$?
 set -e
 
@@ -266,11 +266,11 @@ else
     exit 1
 fi
 
-# 边界测试2: 非operator调用mint（应该失败）
-echo "ℹ️  测试mint边界条件 - 非operator调用..."
+# 边界测试2: 非operator调用bridgeFrom（应该失败）
+echo "ℹ️  测试bridgeFrom边界条件 - 非operator调用..."
 set +e
 UNAUTHORIZED_MINT_RESULT=$(cast send --private-key "$ADMIN_PRIVATE_KEY" --rpc-url "$RPC_URL" --legacy \
-    "$PROXY_ADDRESS" "mint(uint256)" "$MINT_AMOUNT" 2>&1)
+    "$PROXY_ADDRESS" "bridgeFrom(uint256)" "$MINT_AMOUNT" 2>&1)
 UNAUTHORIZED_MINT_EXIT_CODE=$?
 set -e
 
@@ -283,7 +283,7 @@ else
 fi
 
 # 边界测试3: 递增数值测试
-echo "ℹ️  测试mint边界条件 - 递增数值测试..."
+echo "ℹ️  测试bridgeFrom边界条件 - 递增数值测试..."
 
 # 定义测试数值数组 (ETH单位)
 declare -a TEST_AMOUNTS=(
@@ -314,7 +314,7 @@ for i in "${!TEST_AMOUNTS[@]}"; do
     
     set +e
     LARGE_MINT_RESULT=$(cast send --private-key "$OPERATOR_PRIVATE_KEY" --rpc-url "$RPC_URL" --legacy \
-        "$PROXY_ADDRESS" "mint(uint256)" "$AMOUNT" 2>&1)
+        "$PROXY_ADDRESS" "bridgeFrom(uint256)" "$AMOUNT" 2>&1)
     LARGE_MINT_EXIT_CODE=$?
     set -e
     
@@ -328,15 +328,15 @@ for i in "${!TEST_AMOUNTS[@]}"; do
         
         # 检查余额是否合理增加（使用bc比较）
         if (( $(echo "$BALANCE_INCREASE >= $MIN_EXPECTED" | bc -l) )); then
-            echo "✅ $LABEL mint成功"
+            echo "✅ $LABEL bridgeFrom成功"
             echo "  余额增加: $BALANCE_INCREASE wei"
         else
-            echo "❌ $LABEL mint余额增加异常:"
+            echo "❌ $LABEL bridgeFrom余额增加异常:"
             echo "  操作前余额: $OPERATOR_BALANCE_BEFORE wei"
             echo "  操作后余额: $OPERATOR_BALANCE_AFTER wei"  
             echo "  实际增加: $BALANCE_INCREASE wei"
             echo "  预期最小: $MIN_EXPECTED wei"
-            echo "  mint金额: $AMOUNT wei"
+            echo "  bridge金额: $AMOUNT wei"
             
             # 检查是否是负数（表明溢出或其他问题）
             if (( $(echo "$BALANCE_INCREASE < 0" | bc -l) )); then
@@ -354,9 +354,9 @@ for i in "${!TEST_AMOUNTS[@]}"; do
     else
         # 检查是否是合理的失败
         if echo "$LARGE_MINT_RESULT" | grep -q -E "gas|limit|insufficient|overflow"; then
-            echo "✅ $LABEL mint被合理拒绝 (系统限制)"
+            echo "✅ $LABEL bridgeFrom被合理拒绝 (系统限制)"
         else
-            echo "❌ $LABEL mint失败: $LARGE_MINT_RESULT"
+            echo "❌ $LABEL bridgeFrom失败: $LARGE_MINT_RESULT"
             # 对于小数值失败是严重问题，大数值失败可能是系统保护
             if [ "$i" -lt 2 ]; then
                 exit 1
@@ -370,14 +370,14 @@ done
 echo "✅ 递增数值测试完成，最大测试到10亿ETH"
 
 # 边界测试4: operator为零地址时的测试
-echo "ℹ️  测试mint边界条件 - operator为零地址..."
+echo "ℹ️  测试bridgeFrom边界条件 - operator为零地址..."
 # 临时将operator设置为零地址
 cast send --private-key "$ADMIN_PRIVATE_KEY" --rpc-url "$RPC_URL" --legacy \
     "$PROXY_ADDRESS" "setOperator(address)" "0x0000000000000000000000000000000000000000" >/dev/null 2>&1
 
 set +e
 NO_OP_MINT_RESULT=$(cast send --private-key "$OPERATOR_PRIVATE_KEY" --rpc-url "$RPC_URL" --legacy \
-    "$PROXY_ADDRESS" "mint(uint256)" "$MINT_AMOUNT" 2>&1)
+    "$PROXY_ADDRESS" "bridgeFrom(uint256)" "$MINT_AMOUNT" 2>&1)
 NO_OP_MINT_EXIT_CODE=$?
 set -e
 
@@ -393,7 +393,7 @@ else
     exit 1
 fi
 
-echo "✅ 所有mint边界测试完成"
+echo "✅ 所有bridgeFrom边界测试完成"
 echo ""
 
 # 步骤3: Cleanup操作测试
@@ -513,16 +513,16 @@ else
     exit 1
 fi
 
-echo "ℹ️  测试暂停状态下的mint操作（应该失败）..."
+echo "ℹ️  测试暂停状态下的bridgeFrom操作（应该失败）..."
 set +e
 MINT_RESULT=$(cast send --private-key "$OPERATOR_PRIVATE_KEY" --rpc-url "$RPC_URL" --legacy \
-    "$PROXY_ADDRESS" "mint(uint256)" "$MINT_AMOUNT" 2>&1)
+    "$PROXY_ADDRESS" "bridgeFrom(uint256)" "$MINT_AMOUNT" 2>&1)
 set -e
 
 if echo "$MINT_RESULT" | grep -q "revert\|failed"; then
-    echo "✅ 暂停状态下mint操作被正确拒绝"
+    echo "✅ 暂停状态下bridgeFrom操作被正确拒绝"
 else
-    echo "❌ 暂停状态下mint操作未被拒绝"
+    echo "❌ 暂停状态下bridgeFrom操作未被拒绝"
     exit 1
 fi
 

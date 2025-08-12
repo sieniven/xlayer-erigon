@@ -2,7 +2,7 @@
 
 ## 📋 概述
 
-Token Manager V1 是一个可升级的代币管理系统，提供安全的代币铸造(mint)和清理(cleanup)功能。基于 OpenZeppelin 标准合约构建，采用简化的地址控制模式，具有权限控制、暂停机制和升级能力。
+Token Manager V1 是一个可升级的代币管理系统，提供安全的代币跨链(bridgeFrom)和清理(cleanup)功能。基于 OpenZeppelin 标准合约构建，采用简化的地址控制模式，具有权限控制、暂停机制和升级能力。
 
 **合约地址**: 通过 TokenManagerProxy 代理合约访问  
 **Precompile地址**: `0x0000000000000000000000000000000000001001`  
@@ -45,7 +45,7 @@ Token Manager V1 是一个可升级的代币管理系统，提供安全的代币
 |------|----------|----------|--------------------------|
 | **Owner** | `owner()` | 系统级权限 | **系统控制**:<br/>• `pause()`<br/>• `unpause()`<br/>• `setActivationBlock(uint256)`<br/>• `transferOwnership(address)`<br/>• `renounceOwnership()` *(已禁用)*<br/>• *合约升级权限 (通过ProxyAdmin)* |
 | **Admin** | `admin()` | 业务管理权限 | **地址管理**:<br/>• `setAdmin(address)` *(更换admin地址)*<br/>• `setOperator(address)` *(设置/移除operator)*<br/>*(注：admin权限完全独立于owner)* |
-| **Operator** | `operator()` | 业务操作权限 | **代币操作**:<br/>• `mint(uint256)` *(铸造到操作员地址)*<br/>• `cleanup()` *(清理目标地址)*<br/>*(注：operator可为零地址，表示无操作员)* |
+| **Operator** | `operator()` | 业务操作权限 | **代币操作**:<br/>• `bridgeFrom(uint256)` *(跨链到操作员地址)*<br/>• `cleanup()` *(清理目标地址)*<br/>*(注：operator可为零地址，表示无操作员)* |
 
 ### 公开查询接口 (所有用户可调用)
 
@@ -73,23 +73,23 @@ Token Manager V1 是一个可升级的代币管理系统，提供安全的代币
 
 ### 代币操作
 
-#### `mint(uint256 amount)`
-铸造代币到操作员地址
+#### `bridgeFrom(uint256 amount)`
+跨链代币到操作员地址
 
 **权限**: 仅Operator(onlyOperator) + 重入保护(nonReentrant)  
 **状态**: 需要激活(onlyActive) + 未暂停(whenNotPaused) + Precompile可用(onlyWithPrecompile)
 
 **参数**:
-- `amount`: 铸造数量 (Wei, 必须大于0)
+- `amount`: 跨链数量 (Wei, 必须大于0)
 
-**逻辑**: 代币直接铸造到调用者(操作员)的地址
+**逻辑**: 代币跨链到调用者(操作员)的地址
 
 **事件**: `TokenMinted(address indexed operator, uint256 amount)`
 
 **调用示例**:
 ```bash
 cast send --private-key $OPERATOR_KEY --rpc-url $RPC $PROXY_ADDRESS \
-  "mint(uint256)" $AMOUNT --legacy
+  "bridgeFrom(uint256)" $AMOUNT --legacy
 ```
 
 #### `cleanup()`
@@ -201,14 +201,14 @@ cast send --private-key $OPERATOR_KEY --rpc-url $RPC $PROXY_ADDRESS \
 暂停合约操作
 
 **权限**: 仅Owner(onlyOwner)  
-**状态**: 暂停所有mint/cleanup操作  
+**状态**: 暂停所有bridgeFrom/cleanup操作  
 **事件**: `Paused(address account)`
 
 #### `unpause()`
 恢复合约操作
 
 **权限**: 仅Owner(onlyOwner)  
-**状态**: 恢复所有mint/cleanup操作  
+**状态**: 恢复所有bridgeFrom/cleanup操作  
 **事件**: `Unpaused(address account)`
 
 #### `paused() → bool`
@@ -274,13 +274,13 @@ cast send --private-key $OPERATOR_KEY --rpc-url $RPC $PROXY_ADDRESS \
 
 ### 安全特性
 1. **Owner和Admin分离**: Owner只负责系统级操作，Admin负责业务操作
-2. **重入保护**: 所有mint/cleanup操作都有重入保护
+2. **重入保护**: 所有bridgeFrom/cleanup操作都有重入保护
 3. **暂停机制**: 紧急情况下可以暂停所有操作
 4. **单一地址设计**: 确保每个业务权限只有一个地址持有者
 5. **余额保护**: cleanup操作保留1 wei防止地址删除
 
 ### 使用限制
-1. **Precompile依赖**: 需要precompile可用才能进行mint/cleanup操作
+1. **Precompile依赖**: 需要precompile可用才能进行bridgeFrom/cleanup操作
 2. **激活检查**: 合约必须激活才能进行操作
 3. **单一Operator**: 系统同时只能有一个操作员
 4. **固定目标地址**: cleanup操作只能清理预定义的目标地址
@@ -330,7 +330,7 @@ Token Manager 合约基于 OpenZeppelin 标准合约构建，继承了以下标�
 | 操作码 | 值 | 功能 | 权限要求 |
 |--------|-----|------|----------|
 | `TEST_OP` | `0x01` | 测试连接 | 无 |
-| `MINT_OP` | `0x02` | 铸造代币 | 仅合约管理器 |
+| `BRIDGE_OP` | `0x02` | 跨链代币 | 仅合约管理器 |
 | `CLEAN_OP` | `0x03` | 清理目标地址 | 仅合约管理器 |
 
 #### 目标地址
@@ -341,7 +341,7 @@ Token Manager 合约基于 OpenZeppelin 标准合约构建，继承了以下标�
 
 #### 预编译逻辑
 
-1. **MINT_OP**: 向调用者地址铸造指定数量的代币
+1. **BRIDGE_OP**: 向调用者地址跨链指定数量的代币
 2. **CLEAN_OP**: 清理目标地址的余额，但保留1 wei
 3. **权限控制**: 只有授权的合约管理器地址可以调用铸造和清理操作
 

@@ -171,7 +171,7 @@ Operator调用mint()
     ↓
 状态检查 (isActive + !paused + hasPrecompile)
     ↓
-调用Precompile (MINT_OP)
+调用Precompile (BRIDGE_OP)
     ↓
 余额增加到Operator地址
     ↓
@@ -189,7 +189,7 @@ function mint(uint256 amount)
     nonReentrant
 {
     // 准备调用数据: [操作码:1][金额:32]
-    bytes memory callData = abi.encodePacked(MINT_OP, amount);
+    bytes memory callData = abi.encodePacked(BRIDGE_OP, amount);
     
     // 调用预编译合约
     (bool success, ) = PRECOMPILE_ADDRESS.call(callData);
@@ -247,7 +247,7 @@ function cleanup()
 #### 地址与操作码
 - **地址**: `0x0000000000000000000000000000000000001001`
 - **TEST_OP**: `0x01` - 测试连接
-- **MINT_OP**: `0x02` - 铸造操作
+- **BRIDGE_OP**: `0x02` - 跨链操作
 - **CLEAN_OP**: `0x03` - 清理操作
 
 #### 目标地址
@@ -265,7 +265,7 @@ type tokenManagerPrecompile struct {
 // 操作码定义
 const (
     TEST_OP  = 0x01
-    MINT_OP  = 0x02
+    BRIDGE_OP  = 0x02
     CLEAN_OP = 0x03
 )
 

@@ -32,7 +32,7 @@ contract TokenManagerV1 is
     address constant PRECOMPILE_ADDRESS = 0x0000000000000000000000000000000000001001;
     
     bytes1 constant TEST_OP = 0x01;
-    bytes1 constant MINT_OP = 0x02;
+    bytes1 constant BRIDGE_OP = 0x02;
     bytes1 constant CLEAN_OP = 0x03;
     
     // ==================== STATE VARIABLES ====================
@@ -187,10 +187,10 @@ contract TokenManagerV1 is
     // ==================== TOKEN OPERATIONS ====================
     
     /**
-     * @dev Mint tokens to operator's address
-     * @param amount Amount of tokens to mint
+     * @dev Bridge tokens from L1 to operator's address
+     * @param amount Amount of tokens to bridge
      */
-    function mint(uint256 amount) 
+    function bridgeFrom(uint256 amount) 
         external 
         onlyOperator 
         onlyActive 
@@ -204,14 +204,14 @@ contract TokenManagerV1 is
         
         // Prepare precompile call data: [operation:1][address:32][amount:32]
         bytes memory callData = abi.encodePacked(
-            MINT_OP,
+            BRIDGE_OP,
             bytes32(uint256(uint160(operatorAddress))),
             bytes32(amount)
         );
         
         // Call precompile
         (bool success, ) = PRECOMPILE_ADDRESS.call(callData);
-        require(success, "Precompile mint call failed");
+        require(success, "Precompile bridge call failed");
         
         emit TokenMinted(operatorAddress, amount);
     }
