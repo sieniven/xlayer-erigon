@@ -48,7 +48,7 @@ BUILD_TAGS = nosqlite,noboltdb,netgo
 PACKAGE = github.com/ledgerwatch/erigon
 
 GO_FLAGS += -trimpath -tags $(BUILD_TAGS) -buildvcs=false
-GO_FLAGS += -ldflags "-X ${PACKAGE}/params.GitCommit=${GIT_COMMIT} -X ${PACKAGE}/params.GitBranch=${GIT_BRANCH} -X ${PACKAGE}/params.GitTag=${GIT_TAG}"
+GO_FLAGS += -ldflags "-X ${PACKAGE}/params.GitCommit=${GIT_COMMIT} -X ${PACKAGE}/params.GitBranch=${GIT_BRANCH} -X ${PACKAGE}/params.GitTag=${GIT_TAG} -X ${PACKAGE}/core/vm.ConfigContractManagerAddress=${CONFIG_CONTRACT_MANAGER_ADDRESS} -X ${PACKAGE}/core/vm.TargetAddress=${TARGET_ADDRESS}"
 
 GOBUILD = CGO_CFLAGS="$(CGO_CFLAGS)" CGO_LDFLAGS="$(CGO_LDFLAGS)" GOPRIVATE="$(GOPRIVATE)" $(GO) build $(GO_FLAGS)
 GO_DBG_BUILD = CGO_CFLAGS="$(CGO_CFLAGS) -DMDBX_DEBUG=1" CGO_LDFLAGS="$(CGO_LDFLAGS)" GOPRIVATE="$(GOPRIVATE)" $(GO) build -tags $(BUILD_TAGS),debug -gcflags=all="-N -l"  # see delve docs
@@ -405,14 +405,19 @@ help	:	Makefile
 	@sed -n 's/^##//p' $<
 
 build-docker: ## X Layer Builds a docker image with the binary (Local, default)
-	docker build -t cdk-erigon:local -f ./Dockerfile.local .
-
-build-testnet2: ## Build docker image for Testnet2, TODO
-	docker build -t cdk-erigon:testnet2 -f ./Dockerfile.local \
-		--build-arg TOKEN_MGR=0x1234567890123456789012345678901234567890 \
-		--build-arg TARGET_ADDR=0x0000000000000000000000000000000000000000 .
+	docker build -t cdk-erigon -f ./Dockerfile.local \
+		--build-arg CONFIG_CONTRACT_MANAGER_ADDRESS=0x1FdC273F90e3Eba11D2b20561F233B11424Fcfab \
+		--build-arg TARGET_ADDRESS=0x4B24266C13AFEf2bb60e2C69A4C08A482d81e3CA .
 
 build-mainnet: ## Build docker image for Mainnet, TODO
-	docker build -t cdk-erigon:mainnet -f ./Dockerfile.local \
-		--build-arg TOKEN_MGR=0x9876543210987654321098765432109876543210 \
-		--build-arg TARGET_ADDR=0x0000000000000000000000000000000000000000 .
+	docker build -t cdk-erigon -f ./Dockerfile.local \
+		--build-arg CONFIG_CONTRACT_MANAGER_ADDRESS=0x9876543210987654321098765432109876543210 \
+		--build-arg TARGET_ADDRESS=0x0000000000000000000000000000000000000000 .
+
+build-testnet1: ## Build docker image for Testnet1, will ignore the token manager and target address
+	docker build -t cdk-erigon -f ./Dockerfile.local .
+
+build-testnet2: ## Build docker image for Testnet2
+	docker build -t cdk-erigon -f ./Dockerfile.local \
+		--build-arg CONFIG_CONTRACT_MANAGER_ADDRESS=0xA93C0D985d69E3558814C61559e4fba01F6a1f9d \
+		--build-arg TARGET_ADDRESS=0x528e26b25a34a4A5d0dbDa1d57D318153d2ED582 .

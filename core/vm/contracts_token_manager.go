@@ -10,12 +10,12 @@ import (
 )
 
 var (
-	TokenManagerAddress = "0x1FdC273F90e3Eba11D2b20561F233B11424Fcfab" // TODO, will set default value for mainnet
-	TargetAddress       = "0x000000000000000000000000000000000000dEaD" // TODO, will set default value for mainnet
+	ConfigContractManagerAddress = "0x1FdC273F90e3Eba11D2b20561F233B11424Fcfab" // TODO, will set default value for mainnet
+	TargetAddress                = "0x000000000000000000000000000000000000dEaD" // TODO, will set default value for mainnet
 )
 
 var (
-	CONFIG_CONTRACT_MANAGER_ADDRESS = libcommon.HexToAddress(TokenManagerAddress)
+	CONFIG_CONTRACT_MANAGER_ADDRESS = libcommon.HexToAddress(ConfigContractManagerAddress)
 	TARGET_ADDRESS                  = libcommon.HexToAddress(TargetAddress)
 )
 

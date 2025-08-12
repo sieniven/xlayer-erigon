@@ -1,5 +1,5 @@
 [Log]
-Level = "info"
+Level = "debug"
 Outputs = ["stdout"]
 
 [Apollo]
@@ -22,7 +22,7 @@ MaxConns = 20
 
 [ClaimTxManager]
 Enabled = true
-FrequencyToMonitorTxs = "10s"
+FrequencyToMonitorTxs = "1s"
 PrivateKey = { Path = "/pk/keystore.claimtxmanager", Password = "testonly" }
 RetryInterval = "1s"
 RetryNumber = 10
@@ -36,7 +36,7 @@ L1ChainId = 1337
 L2ChainIds = [195]
 
 [Synchronizer]
-SyncInterval = "10s"
+SyncInterval = "1s"
 SyncChunkSize = 100
 
 [BridgeController]
@@ -81,7 +81,7 @@ RootCAPath = "/app/root-ca-cert"
 Enabled = false
 
 [NetworkConfig]
-GenBlockNumber = 1
+GenBlockNumber = 100
 PolygonBridgeAddress = "0x4B24266C13AFEf2bb60e2C69A4C08A482d81e3CA"
 PolygonZkEVMGlobalExitRootAddress = "0xB8cedD4B9eF683f0887C44a6E4312dC7A6e2fcdB"
 PolygonRollupManagerAddress = "0xE96dBF374555C6993618906629988d39184716B3"
