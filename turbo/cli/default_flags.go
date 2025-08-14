@@ -384,4 +384,5 @@ var DefaultFlags = []cli.Flag{
 	&utils.RealtimeKafkaSyncGroupID,
 	&utils.RealtimeCacheDumpPath,
 	&utils.PessimisticForkNumber,
+	&utils.DynamicBlockGasLimit,
 }

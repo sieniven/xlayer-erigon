@@ -64,6 +64,8 @@ type XLayerConfig struct {
 	AnalysisGroupVerification AnalysisGroupVerificationConfig
 
 	Realtime realtime.RealtimeConfig
+
+	DynamicBlockGasLimit uint64
 }
 
 var DefaultXLayerConfig = XLayerConfig{}

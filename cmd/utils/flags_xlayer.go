@@ -417,6 +417,11 @@ var (
 		Usage: "Cache dump path",
 		Value: "/home/erigon/data/cache",
 	}
+	DynamicBlockGasLimit = cli.Uint64Flag{
+		Name:  "zkevm.dynamic-block-gas-limit",
+		Usage: "Dynamic block gas limit",
+		Value: 30_000_000,
+	}
 )
 
 func setGPOXLayer(ctx *cli.Context, cfg *gaspricecfg.Config) {
