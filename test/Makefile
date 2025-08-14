@@ -586,3 +586,50 @@ vmtouch-evict:
 vmtouch-check:
 	docker exec -it xlayer-seq sh -c "vmtouch /home/erigon/data/chaindata/mdbx.dat"
 	docker exec -it xlayer-seq sh -c "vmtouch /home/erigon/data/smt/mdbx.dat"
+
+# crash exit scenario: start async-off -> stop -> start async-on -> SIGKILL -> restart -> verify
+.PHONY: data-loss-crash
+data-loss-crash:
+	make stop
+	make build-docker
+	mkdir -p data
+	# run sequencer with async-commit OFF
+	$(DOCKER_COMPOSE) up -d xlayer-mock-l1-network
+	$(DOCKER_COMPOSE) up -d xlayer-agg-db
+	$(DOCKER_COMPOSE) up -d xlayer-bridge-db
+	$(DOCKER_COMPOSE) up -d xlayer-pool-db
+	$(DOCKER_COMPOSE) up -d xlayer-agglayer-prover
+	$(DOCKER_COMPOSE) up -d xlayer-agglayer
+	$(DOCKER_COMPOSE) up -d xlayer-bridge-redis
+	$(DOCKER_COMPOSE) up -d kafka-zookeeper
+	$(DOCKER_COMPOSE) up -d xlayer-bridge-coin-kafka
+	sleep 3
+	$(DOCKER_COMPOSE) up -d xlayer-approve
+	# start async-off sequencer service
+	$(DOCKER_COMPOSE) up -d xlayer-seq-async-off
+	sleep 20
+	$(DOCKER_COMPOSE) up -d xlayer-rpc
+	sleep 20
+	# stop sequencer (graceful) while async-commit is OFF
+	$(DOCKER_COMPOSE) stop -t 120 xlayer-seq-async-off
+	# collect async-off logs for debugging
+	docker logs xlayer-seq-async-off > data/seq_async_off.log 2>&1 || true
+	# start sequencer with async-commit ON (default service)
+	$(RUN_DOCKER_SEQ)
+	sleep 30
+	# crash the sequencer (non-graceful): send SIGKILL so no graceful flush happens
+	docker kill -s SIGKILL $(DOCKER_SEQ) || true
+	# collect logs right after crash
+	docker logs $(DOCKER_SEQ) > data/seq_crash_killed.log 2>&1 || true
+	# restart sequencer to trigger auto-recovery (unwind + resequence)
+	$(RUN_DOCKER_SEQ)
+	# wait for auto-alignment to run
+	sleep 90
+	# collect logs after recovery for inspection (look for unwind/resequence messages)
+	docker logs $(DOCKER_SEQ) > data/seq_after_recovery.log 2>&1 || true
+	# stop sequencer to avoid MDBX locking while host reads DB (graceful)
+	$(DOCKER_COMPOSE) stop -t 120 $(DOCKER_SEQ)
+	# verify SMT DB and header root consistency
+	go test -count=1 -v -p 1 -timeout 300s -run TestVerifySmtRootMatchesHeaderRoot ./e2e/data_loss_test.go
+	# keep final logs
+	docker logs $(DOCKER_SEQ) > data/seq_final.log 2>&1 || true
