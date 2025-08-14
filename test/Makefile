@@ -455,13 +455,9 @@ data-loss-8:
 	echo "data-loss-8-step-4"
 	make data-recovery
 
-# crash exit scenario: start async-off -> stop -> start async-on -> SIGKILL -> restart -> verify
-.PHONY: data-loss-9
-data-loss-9:
-	make stop
-	make build-docker
-	mkdir -p data
-	# run sequencer with async-commit OFF
+# Helper target: start base services without sequencer
+.PHONY: run-base-services
+run-base-services:
 	$(DOCKER_COMPOSE) up -d xlayer-mock-l1-network
 	$(DOCKER_COMPOSE) up -d xlayer-agg-db
 	$(DOCKER_COMPOSE) up -d xlayer-bridge-db
@@ -473,7 +469,16 @@ data-loss-9:
 	$(DOCKER_COMPOSE) up -d xlayer-bridge-coin-kafka
 	sleep 3
 	$(DOCKER_COMPOSE) up -d xlayer-approve
-	# start async-off sequencer service
+
+# crash exit scenario: start async-off -> stop -> start async-on -> SIGKILL -> restart -> verify
+.PHONY: data-loss-9
+data-loss-9:
+	make stop
+	make build-docker
+	mkdir -p data
+	# start base services (reuse common infrastructure)
+	make run-base-services
+	# start async-off sequencer service (instead of default xlayer-seq)
 	$(DOCKER_COMPOSE) up -d xlayer-seq-async-off
 	sleep 20
 	$(DOCKER_COMPOSE) up -d xlayer-rpc
