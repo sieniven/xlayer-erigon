@@ -616,7 +616,15 @@ data-loss-crash:
 	docker logs xlayer-seq-async-off > data/seq_async_off.log 2>&1 || true
 	# start sequencer with async-commit ON (default service)
 	$(RUN_DOCKER_SEQ)
-	sleep 30
+	# wait for sequencer to be running before crashing it
+	sleep 60
+	for i in $$(seq 1 60); do \
+		if [ "$$(docker inspect -f '{{.State.Running}}' $(DOCKER_SEQ) 2>/dev/null || true)" = "true" ]; then \
+			echo "$(DOCKER_SEQ) is running"; \
+			break; \
+		fi; \
+		sleep 1; \
+	done
 	# crash the sequencer (non-graceful): send SIGKILL so no graceful flush happens
 	docker kill -s SIGKILL $(DOCKER_SEQ) || true
 	# collect logs right after crash
@@ -624,12 +632,12 @@ data-loss-crash:
 	# restart sequencer to trigger auto-recovery (unwind + resequence)
 	$(RUN_DOCKER_SEQ)
 	# wait for auto-alignment to run
-	sleep 90
+	sleep 120
 	# collect logs after recovery for inspection (look for unwind/resequence messages)
 	docker logs $(DOCKER_SEQ) > data/seq_after_recovery.log 2>&1 || true
 	# stop sequencer to avoid MDBX locking while host reads DB (graceful)
 	$(DOCKER_COMPOSE) stop -t 120 $(DOCKER_SEQ)
-	# verify SMT DB and header root consistency
-	go test -count=1 -v -p 1 -timeout 300s -run TestVerifySmtRootMatchesHeaderRoot ./e2e/data_loss_test.go
+	# verify SMT DB and header root consistency (disable mlock to avoid EPERM on macOS)
+	MDBX_DISABLE_MLOCK=1 go test -count=1 -v -p 1 -timeout 300s -run TestVerifySmtRootMatchesHeaderRoot ./e2e/data_loss_test.go
 	# keep final logs
 	docker logs $(DOCKER_SEQ) > data/seq_final.log 2>&1 || true
