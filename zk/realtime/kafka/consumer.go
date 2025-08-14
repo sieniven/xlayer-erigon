@@ -67,7 +67,7 @@ func (h *consumerGroupHandler) ConsumeClaim(session sarama.ConsumerGroupSession,
 			return err
 		case msg, ok := <-claim.Messages():
 			if !ok {
-				log.Warn("[Realtime] kafka consumer failed to get claim messages")
+				log.Debug("[Realtime] kafka consumer failed to get claim messages")
 				continue
 			}
 			switch msg.Topic {
@@ -120,9 +120,8 @@ func (h *consumerGroupHandler) ConsumeClaim(session sarama.ConsumerGroupSession,
 					return err
 				}
 			default:
-				err := fmt.Errorf("unknown topic: %s", msg.Topic)
-				h.errorChan <- err
-				return err
+				log.Warn(fmt.Sprintf("[Realtime] unknown topic: %s", msg.Topic))
+				continue
 			}
 		}
 	}
