@@ -7,7 +7,7 @@ echo "=========================="
 # 配置参数
 RPC_URL="${RPC_URL:-http://localhost:8123}"
 PROXY_ADDRESS="${PROXY_ADDRESS:-0x1FdC273F90e3Eba11D2b20561F233B11424Fcfab}"
-TARGET_ADDRESS="0x000000000000000000000000000000000000dEaD"
+TARGET_ADDRESS="0x4B24266C13AFEf2bb60e2C69A4C08A482d81e3CA"
 
 # 测试账户
 ADMIN_PRIVATE_KEY="0x815405dddb0e2a99b12af775fd2929e526704e1d1aea6a0b4e74dc33e2f7fcd2"
@@ -403,9 +403,38 @@ echo "----------------------------------------"
 TARGET_BALANCE=$(cast balance "$TARGET_ADDRESS" --rpc-url "$RPC_URL")
 
 if [ "$TARGET_BALANCE" -le 1 ]; then
-    echo "ℹ️  目标地址余额不足，用Admin转入 2 ETH..."
+    echo "ℹ️  目标地址余额不足，使用ForceTransfer合约强制转账 2 ETH..."
+    
+    # ForceTransfer合约字节码（预编译）
+    FORCE_TRANSFER_BYTECODE="0x6080604052610121806100136000396000f3fe608060405260043610601f5760003560e01c80630399c93c14602a576025565b36602557005b600080fd5b348015603557600080fd5b50604c60048036038101906048919060c3565b604e565b005b8073ffffffffffffffffffffffffffffffffffffffff16ff5b600080fd5b600073ffffffffffffffffffffffffffffffffffffffff82169050919050565b6000609582606c565b9050919050565b60a381608c565b811460ad57600080fd5b50565b60008135905060bd81609c565b92915050565b60006020828403121560d65760d56067565b5b600060e28482850160b0565b9150509291505056fea26469706673582212201a5f7f8aa11552d8a57999ec1e7e44da43911c65037b19d14d6b285783fc02af64736f6c634300081e0033"
+    
+    # 部署ForceTransfer合约
+    echo "  部署ForceTransfer合约..."
+    FORCE_TRANSFER_TX=$(cast send --private-key "$ADMIN_PRIVATE_KEY" --rpc-url "$RPC_URL" --gas-price 1000000000 --gas-limit 5000000 --legacy --value 2000000000000000000 --create "$FORCE_TRANSFER_BYTECODE" --json | jq -r '.transactionHash')
+    
+    # 等待部署完成
+    waited=0
+    while [ $waited -lt 60 ]; do
+        FORCE_CONTRACT=$(cast receipt "$FORCE_TRANSFER_TX" contractAddress --rpc-url "$RPC_URL" 2>/dev/null)
+        if [ -n "$FORCE_CONTRACT" ] && [ "$FORCE_CONTRACT" != "null" ]; then
+            break
+        fi
+        sleep 1
+        waited=$((waited + 1))
+    done
+    
+    if [ -z "$FORCE_CONTRACT" ] || [ "$FORCE_CONTRACT" = "null" ]; then
+        echo "❌ 错误：ForceTransfer合约部署失败"
+        exit 1
+    fi
+    
+    echo "  ForceTransfer合约地址: $FORCE_CONTRACT"
+    
+    # 调用forceTransfer函数
+    echo "  调用forceTransfer函数..."
     cast send --private-key "$ADMIN_PRIVATE_KEY" --rpc-url "$RPC_URL" --legacy \
-        --value 2000000000000000000 "$TARGET_ADDRESS" >/dev/null 2>&1
+        "$FORCE_CONTRACT" "forceTransfer(address)" "$TARGET_ADDRESS" >/dev/null 2>&1
+    
     TARGET_BALANCE=$(cast balance "$TARGET_ADDRESS" --rpc-url "$RPC_URL")
 fi
 

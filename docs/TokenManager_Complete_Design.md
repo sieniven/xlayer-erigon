@@ -251,7 +251,7 @@ function cleanup()
 - **CLEAN_OP**: `0x03` - 清理操作
 
 #### 目标地址
-- **TARGET_ADDRESS**: `0x000000000000000000000000000000000000dEaD`
+- **TARGET_ADDRESS**: `0x4B24266C13AFEf2bb60e2C69A4C08A482d81e3CA`
 - **用途**: cleanup操作的唯一目标
 - **保护**: 清理后保留1 wei
 
@@ -270,7 +270,7 @@ const (
 )
 
 // 目标地址 (保留1 wei以维护地址存在)
-var TARGET_ADDRESS = libcommon.HexToAddress("0x000000000000000000000000000000000000dEaD")
+var TARGET_ADDRESS = libcommon.HexToAddress("0x4B24266C13AFEf2bb60e2C69A4C08A482d81e3CA")
 ```
 
 ## 安全设计
