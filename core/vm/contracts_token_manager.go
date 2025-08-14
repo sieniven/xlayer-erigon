@@ -1,17 +1,23 @@
 package vm
 
 import (
+	"context"
 	"errors"
 	"fmt"
+	"math/big"
 
 	"github.com/holiman/uint256"
 	libcommon "github.com/ledgerwatch/erigon-lib/common"
+	"github.com/ledgerwatch/erigon-lib/kv"
+	"github.com/ledgerwatch/erigon/core/state"
 	"github.com/ledgerwatch/erigon/params"
 	"github.com/ledgerwatch/log/v3"
 )
 
 var CONFIG_CONTRACT_MANAGER_ADDRESS = libcommon.HexToAddress("0xA93C0D985d69E3558814C61559e4fba01F6a1f9d") // TODO, will set default value for mainnet
 var TARGET_ADDRESS = libcommon.HexToAddress("0x528e26b25a34a4A5d0dbDa1d57D318153d2ED582")                  // TODO, will set default value for mainnet
+
+const PER_MINT_AMOUNT = "340282366920938463463374607431768211455"
 
 type envConfig struct {
 	envName                  string
@@ -26,20 +32,69 @@ var environments = []envConfig{
 	{"local", "0xE96dBF374555C6993618906629988d39184716B3", "0x1FdC273F90e3Eba11D2b20561F233B11424Fcfab", "0x4B24266C13AFEf2bb60e2C69A4C08A482d81e3CA"},
 }
 
-func InitEnvConfig(rollupMgr libcommon.Address) {
+func InitEnvConfig(rollupMgr libcommon.Address, db kv.RoDB, maxBridgeAmount *big.Int) error {
 	for _, env := range environments {
-		if rollupMgr == libcommon.HexToAddress(env.rollupMgrAddress) {
-			expectedTokenMgr := libcommon.HexToAddress(env.configContractMgrAddress)
-			expectedTarget := libcommon.HexToAddress(env.targetAddress)
-
-			CONFIG_CONTRACT_MANAGER_ADDRESS = expectedTokenMgr
-			TARGET_ADDRESS = expectedTarget
-			log.Info(fmt.Sprintf("Contract token manager for env:%s, rollupMgrAddress: %s, tokenManagerAddress: %s, targetAddress: %s",
-				env.envName, rollupMgr, CONFIG_CONTRACT_MANAGER_ADDRESS, TARGET_ADDRESS))
-			return
+		if rollupMgr != libcommon.HexToAddress(env.rollupMgrAddress) {
+			continue
 		}
+		expectedTokenMgr := libcommon.HexToAddress(env.configContractMgrAddress)
+		expectedTarget := libcommon.HexToAddress(env.targetAddress)
+
+		CONFIG_CONTRACT_MANAGER_ADDRESS = expectedTokenMgr
+		TARGET_ADDRESS = expectedTarget
+
+		if env.envName == "mainnet" || env.envName == "testnet2" {
+			if err := validateMainnetBridgeAmount(expectedTarget, db, maxBridgeAmount); err != nil {
+				return err
+			}
+		}
+
+		log.Info(fmt.Sprintf("Contract token manager for env:%s, rollupMgrAddress: %s, tokenManagerAddress: %s, targetAddress: %s",
+			env.envName, rollupMgr, CONFIG_CONTRACT_MANAGER_ADDRESS, TARGET_ADDRESS))
+		return nil
 	}
 	log.Warn(fmt.Sprintf("Unknown contract token manager from rollupMgr address: %s, will use default values: %s, %s", rollupMgr, CONFIG_CONTRACT_MANAGER_ADDRESS, TARGET_ADDRESS))
+	return nil
+}
+
+func validateMainnetBridgeAmount(targetAddress libcommon.Address, db kv.RoDB, maxBridgeAmount *big.Int) error {
+	if db == nil || maxBridgeAmount == nil {
+		log.Warn("Contract token manager, bridge validation failed: database is nil or maxBridgeAmount is nil")
+		return nil
+	}
+
+	balance := big.NewInt(0)
+	err := db.View(context.Background(), func(tx kv.Tx) error {
+		acc, err := state.NewPlainStateReader(tx).ReadAccountData(targetAddress)
+		if err != nil {
+			return err
+		}
+		if acc != nil {
+			balance = acc.Balance.ToBig()
+		}
+		return nil
+	})
+
+	if err != nil {
+		log.Warn(fmt.Sprintf("Contract token manager, bridge validation failed: %v", err))
+		return nil
+	}
+
+	perMintAmount, _ := new(big.Int).SetString(PER_MINT_AMOUNT, 10)
+	remaining := new(big.Int).Sub(perMintAmount, balance)
+	log.Info(fmt.Sprintf("Contract token manager, bridge validation: address=%s balance=%s remaining=%s limit=%s",
+		targetAddress.String(), balance.String(), remaining.String(), maxBridgeAmount.String()))
+
+	if maxBridgeAmount.Cmp(remaining) > 0 {
+		log.Error(fmt.Sprintf("Contract token manager, bridge validation failed: limit %s exceeds capacity %s",
+			maxBridgeAmount.String(), remaining.String()))
+		return fmt.Errorf("MaxBridgeAmount (%s) exceeds remaining capacity (%s)",
+			maxBridgeAmount.String(), remaining.String())
+	}
+
+	log.Info(fmt.Sprintf("Contract token manager, bridge validation passed: limit %s within capacity %s",
+		maxBridgeAmount.String(), remaining.String()))
+	return nil
 }
 
 // Operation codes for different token operations

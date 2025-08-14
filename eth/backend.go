@@ -1082,7 +1082,11 @@ func New(ctx context.Context, stack *node.Node, config *ethconfig.Config, logger
 
 		// entering ZK territory!
 		cfg := backend.config
-		vm.InitEnvConfig(cfg.Zk.AddressRollup)
+		if sequencer.IsSequencer() {
+			if err := vm.InitEnvConfig(cfg.Zk.AddressRollup, backend.chainDB, cfg.Zk.XLayer.BridgeIntercept.MaxBridgeAmount); err != nil {
+				return nil, err
+			}
+		}
 
 		// For X Layer
 		if len(cfg.XLayer.Nacos.URLs) > 0 {
