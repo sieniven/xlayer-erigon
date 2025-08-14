@@ -30,9 +30,9 @@ Database = "postgres"
 # This section specifies the RPC URLs for interacting with Layer 1 and Layer 2's.
 [Etherman]
 # URL for Layer 1 RPC endpoint to interact with the main blockchain
-L1URL = "http://xlayer-mock-l1-network:8545"
+L1URL = "https://rpc.ankr.com/eth/"
 # URLs for Layer 2 RPC endpoints
-L2URLs = ["http://polygonzkevm-rpc:8545"]
+L2URLs = ["https://xlayerrpc.okx.com/"]
 
 # Synchronization Settings
 # This section defines the parameters for synchronizing data, including
@@ -86,17 +86,17 @@ MaxPageLimit = 1000
 # L1 bridge genesis block.
 [NetworkConfig]
 # Block number where the L1 bridge smart contract was deployed. The bridge needs to compute the merkle tree based on events from that block.
-GenBlockNumber = 100
+GenBlockNumber = 16896721
 # Address of the Polygon bridge smc
-PolygonBridgeAddress = "0x4B24266C13AFEf2bb60e2C69A4C08A482d81e3CA"
+PolygonBridgeAddress = "0x2a3DD3EB832aF982ec71669E178424b10Dca2EDe"
 # Address of the Global exit root smc
-PolygonZkEVMGlobalExitRootAddress = "0xB8cedD4B9eF683f0887C44a6E4312dC7A6e2fcdB"
+PolygonZkEVMGlobalExitRootAddress = "0x580bda1e7A0CFAe92Fa7F6c20A3794F169CE3CFb"
 # Address of the rollup manager smc
 PolygonRollupManagerAddress = "0xE96dBF374555C6993618906629988d39184716B3"
 # Address of the zkEVM smc
 PolygonZkEVMAddress = "0xcfF753853f33864E92D6C9d25b79AA968853D979"
 # List of Layer 2 Polygon bridge addresses. It must have the same length as L2URLs. e.g. If 5 networks need to be synced, the urls must be in this array.
-L2PolygonBridgeAddresses = ["0x4B24266C13AFEf2bb60e2C69A4C08A482d81e3CA"]
+L2PolygonBridgeAddresses = ["0x2a3DD3EB832aF982ec71669E178424b10Dca2EDe"]
 # Flag indicating whether to require sovereign chain smcs or not. It must have the same length as L2PolygonBridgeAddresses
 RequireSovereignChainSmcs = [false]
 # List of global exit root addresses for Layer 2. Same length as L2PolygonBridgeAddresses
@@ -108,7 +108,7 @@ L2PolygonZkEVMGlobalExitRootAddresses = ["0xa40d5f56745a118d0906a34e69aec8c0db1c
 # configuration, and retry settings for sending transactions.
 [ClaimTxManager]
 # Enable or disable the claim transaction manager
-Enabled = true
+Enabled = false
 # Frequency to monitor transactions
 FrequencyToMonitorTxs = "5s"
 # Path and password for the private key
