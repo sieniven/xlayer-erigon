@@ -17,3 +17,15 @@ echo "PRE_MINT:   $PRE_MIN_BALANCE"
 echo "CURRENT:    $CURRENT_BALANCE"
 echo "MINED:      $MINED_BALANCE, $(echo "scale=18; $MINED_BALANCE / 10^18" | bc) ETH"
 echo "=========================="
+
+
+# Query from bridge db on mainnet
+# SELECT 
+#     (SELECT COALESCE(SUM(amount::NUMERIC), 0) FROM sync.deposit 
+#      WHERE orig_addr = '\x75231f58b43240c9718dd58b4967c5114342a86c' 
+#      AND dest_net = 3) 
+#     - 
+#     (SELECT COALESCE(SUM(amount::NUMERIC), 0) FROM sync.deposit 
+#      WHERE orig_addr = '\x75231f58b43240c9718dd58b4967c5114342a86c' 
+#      AND network_id = 3) 
+#     as difference;
