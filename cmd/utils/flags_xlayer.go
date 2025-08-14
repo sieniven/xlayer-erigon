@@ -417,6 +417,11 @@ var (
 		Usage: "Cache dump path",
 		Value: "/home/erigon/data/cache",
 	}
+	SkipL2RpcUrlForHighestBlock = cli.BoolFlag{
+		Name:  "zkevm.skip-l2-rpc-url-for-highest-block",
+		Usage: "Skip L2 RPC URL for highest block",
+		Value: false,
+	}
 )
 
 func setGPOXLayer(ctx *cli.Context, cfg *gaspricecfg.Config) {

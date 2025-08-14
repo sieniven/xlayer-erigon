@@ -64,6 +64,8 @@ type XLayerConfig struct {
 	AnalysisGroupVerification AnalysisGroupVerificationConfig
 
 	Realtime realtime.RealtimeConfig
+
+	SkipL2RpcUrlForHighestBlock bool
 }
 
 var DefaultXLayerConfig = XLayerConfig{}
