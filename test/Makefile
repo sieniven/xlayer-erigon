@@ -455,38 +455,25 @@ data-loss-8:
 	echo "data-loss-8-step-4"
 	make data-recovery
 
-# Helper target: start base services without sequencer
-.PHONY: run-base-services
-run-base-services:
-	$(DOCKER_COMPOSE) up -d xlayer-mock-l1-network
-	$(DOCKER_COMPOSE) up -d xlayer-agg-db
-	$(DOCKER_COMPOSE) up -d xlayer-bridge-db
-	$(DOCKER_COMPOSE) up -d xlayer-pool-db
-	$(DOCKER_COMPOSE) up -d xlayer-agglayer-prover
-	$(DOCKER_COMPOSE) up -d xlayer-agglayer
-	$(DOCKER_COMPOSE) up -d xlayer-bridge-redis
-	$(DOCKER_COMPOSE) up -d kafka-zookeeper
-	$(DOCKER_COMPOSE) up -d xlayer-bridge-coin-kafka
-	sleep 3
-	$(DOCKER_COMPOSE) up -d xlayer-approve
-
 # crash exit scenario: start async-off -> stop -> start async-on -> SIGKILL -> restart -> verify
 .PHONY: data-loss-9
 data-loss-9:
 	make stop
 	make build-docker
 	mkdir -p data
-	# start base services (reuse common infrastructure)
-	make run-base-services
-	# start async-off sequencer service (instead of default xlayer-seq)
-	$(DOCKER_COMPOSE) up -d xlayer-seq-async-off
-	sleep 20
-	$(DOCKER_COMPOSE) up -d xlayer-rpc
+	# temporarily disable async-commit in config to reuse make run
+	cp config/test.erigon.seq.config.yaml config/test.erigon.seq.config.yaml.backup
+	sed -i.tmp 's/zkevm.enable-async-commit: true/zkevm.enable-async-commit: false/' config/test.erigon.seq.config.yaml
+	# start all services with async-commit OFF using the default xlayer-seq
+	make run
 	sleep 20
 	# stop sequencer (graceful) while async-commit is OFF
-	$(DOCKER_COMPOSE) stop -t 120 xlayer-seq-async-off
+	$(DOCKER_COMPOSE) stop -t 120 $(DOCKER_SEQ)
 	# collect async-off logs for debugging
-	docker logs xlayer-seq-async-off > data/seq_async_off.log 2>&1 || true
+	docker logs $(DOCKER_SEQ) > data/seq_async_off.log 2>&1 || true
+	# restore original config (async-commit ON)
+	mv config/test.erigon.seq.config.yaml.backup config/test.erigon.seq.config.yaml
+	rm -f config/test.erigon.seq.config.yaml.tmp
 	# start sequencer with async-commit ON (default service)
 	$(RUN_DOCKER_SEQ)
 	# wait for sequencer to be running before crashing it
