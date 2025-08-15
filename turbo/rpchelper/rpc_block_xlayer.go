@@ -1,6 +1,7 @@
 package rpchelper
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"strconv"
@@ -65,7 +66,18 @@ func getFinalizedBatchNumberWithSequencerUrl(tx kv.Tx, sequencerRpcUrl string) (
 	if sequencer.IsSequencer() {
 		return getFinalizedBatchNumberAsSequencer(tx)
 	} else {
-		return getFinalizedBatchNumberAsRPC(sequencerRpcUrl)
+		if bn := currentFinalizedBatchNumber.Load(); bn != 0 {
+			return bn, nil
+		}
+		if sequencerRpcUrl == "" {
+			return 0, fmt.Errorf("sequencerRpcUrl is not set")
+		}
+		bn, err := getFinalizedBatchNumberAsRPC(sequencerRpcUrl)
+		if err != nil {
+			return 0, err
+		}
+		currentFinalizedBatchNumber.Store(bn)
+		return bn, nil
 	}
 }
 
@@ -130,13 +142,19 @@ func getFinalizedBlockNumberAsRPC(tx kv.Tx, sequencerRpcUrl string) (uint64, err
 
 // querySequencerForFinalizedBlock gets the finalized block number from the current finalized batch number
 func querySequencerForFinalizedBlock(tx kv.Tx, sequencerRpcUrl string) (uint64, error) {
-	// Ensure background query is started
-	startBackgroundQueryOnce.Do(startBackgroundQuery)
-
-	// Get current finalized batch number
+	if sequencerRpcUrl == "" {
+		return 0, fmt.Errorf("sequencerRpcUrl is not set")
+	}
+	// Read current finalized batch number from the poller cache
 	batchNumber := currentFinalizedBatchNumber.Load()
 	if batchNumber == 0 {
-		return 0, fmt.Errorf("no finalized batch number available yet")
+		// Fallback once to avoid empty result before poller kicks in
+		bn, err := getFinalizedBatchNumberAsRPC(sequencerRpcUrl)
+		if err != nil {
+			return 0, fmt.Errorf("no finalized batch number available yet: %w", err)
+		}
+		currentFinalizedBatchNumber.Store(bn)
+		batchNumber = bn
 	}
 
 	// Use hermez database to get the highest block in the finalized batch
@@ -168,25 +186,46 @@ func transHexToUint64(hex json.RawMessage) (uint64, error) {
 	return result1, nil
 }
 
+// StartFinalizedBatchPoller starts a background goroutine that queries the sequencer
+// for finalized batch number on given interval; stops when ctx is done.
+func StartFinalizedBatchPoller(ctx context.Context, interval time.Duration) {
+	if sequencer.IsSequencer() {
+		return
+	}
+	startBackgroundQueryOnce.Do(func() {
+		go startBackgroundQuery(ctx, interval)
+	})
+}
+
 // startBackgroundQuery starts a background goroutine that queries the sequencer
 // for finalized batch number every second
-func startBackgroundQuery() {
-	go func() {
-		ticker := time.NewTicker(1 * time.Second)
-		defer ticker.Stop()
+func startBackgroundQuery(ctx context.Context, interval time.Duration) {
+	if sequencerRpcUrl == "" {
+		log.Warn("finalized batch poller not started: empty sequencer RPC URL")
+		return
+	}
+	// initial fetch
+	if bn, err := getFinalizedBatchNumberAsRPC(sequencerRpcUrl); err != nil {
+		log.Error("failed to get finalized batch number from sequencer (initial)", "err", err)
+	} else {
+		currentFinalizedBatchNumber.Store(bn)
+	}
 
-		for {
-			select {
-			case <-ticker.C:
-				if sequencerRpcUrl == "" {
-					panic("only should be called in rpc")
-				}
-				batchNumber, err := getFinalizedBatchNumberAsRPC(sequencerRpcUrl)
-				if err != nil {
-					log.Error("failed to get finalized batch number from sequencer", "err", err)
-				}
-				currentFinalizedBatchNumber.Store(batchNumber)
+	ticker := time.NewTicker(interval)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ctx.Done():
+			log.Info("finalized batch poller stopped")
+			return
+		case <-ticker.C:
+			bn, err := getFinalizedBatchNumberAsRPC(sequencerRpcUrl)
+			if err != nil {
+				log.Error("failed to get finalized batch number from sequencer", "err", err)
+				continue
 			}
+			currentFinalizedBatchNumber.Store(bn)
 		}
-	}()
+	}
 }
