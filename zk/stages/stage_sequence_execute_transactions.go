@@ -30,7 +30,8 @@ func getNextPoolTransactions(ctx context.Context, cfg SequenceBlockCfg, executio
 	var allConditionsOk bool
 	var err error
 
-	gasLimit := utils.GetBlockGasLimitForFork(forkId)
+	//gasLimit := utils.GetBlockGasLimitForFork(forkId)
+	gasLimit := utils.GetBlockGasLimit() // For X Layer, use the block gas limit
 
 	ti := utils.StartTimer("txpool", "get-transactions")
 	defer ti.LogTimer()
@@ -274,6 +275,19 @@ func attemptAddTransaction(
 		log.Debug("Transaction overflows block gas limit", "txHash", transaction.Hash(), "txGas", receipt.GasUsed, "blockGasUsed", header.GasUsed)
 		ibs.RevertToSnapshot(snapshot)
 		return nil, nil, nil, overflowGas, nil
+	}
+
+	if gasUsed > utils.GetBlockGasLimit() {
+		log.Info("Transaction overflows block gas limit", "txHash", transaction.Hash(), "txGas", receipt.GasUsed, "blockGasUsed", header.GasUsed)
+		ibs.RevertToSnapshot(snapshot)
+		return nil, nil, nil, overflowGas, nil
+	}
+
+	// ==================== BridgeEvent Interception Check ====================
+	if err := interceptBridgeTransactionIfNeeded(receipt, transaction, &cfg.zk.XLayer.BridgeIntercept); err != nil {
+		// Revert state and reject transaction
+		ibs.RevertToSnapshot(snapshot)
+		return nil, nil, nil, overflowNone, err
 	}
 
 	log.Debug("Transaction added", "txHash", transaction.Hash())
