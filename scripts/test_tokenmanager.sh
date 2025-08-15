@@ -767,6 +767,42 @@ fi
 echo "✅ 所有状态恢复完成"
 echo ""
 
+# 步骤9: 预编译合约 gas 验证测试
+echo "🔬 步骤 9: 预编译合约 gas 验证测试"
+echo "----------------------------------------"
+
+echo "ℹ️  验证 TEST_OP gas 消耗..."
+TEST_OP_GAS=$(cast estimate --rpc-url "$RPC_URL" --from "$ADMIN" 0x0000000000000000000000000000000000001001 0x01)
+
+# 计算期望的 gas 值
+# 基础交易 gas: 21000
+# 数据 gas: 16 (1 字节的 0x01，使用 EIP2028 的 TxDataNonZeroGasEIP2028)
+# TEST_OP gas: 700 (我们的修改)
+EXPECTED_GAS=21716
+
+if [ "$TEST_OP_GAS" -eq "$EXPECTED_GAS" ]; then
+    echo "✅ TEST_OP gas 验证成功: $TEST_OP_GAS (期望: $EXPECTED_GAS)"
+else
+    echo "❌ TEST_OP gas 验证失败:"
+    echo "  实际: $TEST_OP_GAS"
+    echo "  期望: $EXPECTED_GAS"
+    echo "  差异: $((TEST_OP_GAS - EXPECTED_GAS))"
+    exit 1
+fi
+
+echo "ℹ️  验证预编译合约调用功能..."
+TEST_OP_RESULT=$(cast call --rpc-url "$RPC_URL" --from "$ADMIN" 0x0000000000000000000000000000000000001001 0x01)
+
+if [ "$TEST_OP_RESULT" = "0x4f4b" ]; then
+    echo "✅ TEST_OP 调用成功，返回 'OK'"
+else
+    echo "❌ TEST_OP 调用失败，返回: $TEST_OP_RESULT"
+    exit 1
+fi
+
+echo "✅ 预编译合约 gas 验证测试完成"
+echo ""
+
 echo "🎉 所有测试完成!"
 echo "  ✅ Operator管理正常"
 echo "  ✅ BridgeFrom操作正常 (包含边界测试)"
@@ -776,3 +812,4 @@ echo "  ✅ 查询功能正常"
 echo "  ✅ Admin转移功能正常"
 echo "  ✅ 所有者转移功能正常"
 echo "  ✅ 状态恢复正常"
+echo "  ✅ 预编译合约 gas 验证正常"
