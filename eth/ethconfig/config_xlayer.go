@@ -65,7 +65,7 @@ type XLayerConfig struct {
 
 	Realtime realtime.RealtimeConfig
 
-	SkipL2RpcUrlForHighestBlock bool
+	EnableLatestDataStreamBlockNumberGlobalVariableForRpc bool
 }
 
 var DefaultXLayerConfig = XLayerConfig{}

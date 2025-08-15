@@ -839,14 +839,12 @@ func newStreamClient(ctx context.Context, cfg BatchesCfg, latestForkId uint64) (
 func getHighestDSL2Block(ctx context.Context, batchCfg BatchesCfg, latestFork uint16) (uint64, error) {
 	cfg := batchCfg.zkCfg
 
-	if !cfg.XLayer.SkipL2RpcUrlForHighestBlock {
-		// first try the sequencer rpc endpoint, it might not have been upgraded to the
-		// latest version yet so if we get an error back from this call we can try the older
-		// method of calling the datastream directly
-		highestBlock, err := GetSequencerHighestDataStreamBlock(cfg.L2RpcUrl)
-		if err == nil {
-			return highestBlock, nil
-		}
+	// first try the sequencer rpc endpoint, it might not have been upgraded to the
+	// latest version yet so if we get an error back from this call we can try the older
+	// method of calling the datastream directly
+	highestBlock, err := GetSequencerHighestDataStreamBlock(cfg.L2RpcUrl)
+	if err == nil {
+		return highestBlock, nil
 	}
 
 	// so something went wrong with the rpc call, let's try the older method,
@@ -854,7 +852,7 @@ func getHighestDSL2Block(ctx context.Context, batchCfg BatchesCfg, latestFork ui
 	// This is so we can keep the logic simple and just dispose of the connection when we're done
 	// greatly simplifying state juggling of the connection if it errors
 	dsClient := buildNewStreamClient(ctx, batchCfg, latestFork)
-	if err := dsClient.Start(); err != nil {
+	if err = dsClient.Start(); err != nil {
 		return 0, err
 	}
 	defer func() {

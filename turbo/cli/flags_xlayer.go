@@ -88,7 +88,7 @@ func ApplyFlagsForEthXLayerConfig(ctx *cli.Context, cfg *ethconfig.Config) {
 				GroupID:          groupID,
 			},
 		},
-		SkipL2RpcUrlForHighestBlock: ctx.Bool(utils.SkipL2RpcUrlForHighestBlock.Name),
+		EnableLatestDataStreamBlockNumberGlobalVariableForRpc: ctx.Bool(utils.EnableLatestDataStreamBlockNumberGlobalVariableForRpc.Name),
 	}
 	if cfg.XLayer.BlockInfoConcurrent {
 		blockinfo.SetUseBlockInfoTree(true)

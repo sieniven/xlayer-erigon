@@ -417,9 +417,9 @@ var (
 		Usage: "Cache dump path",
 		Value: "/home/erigon/data/cache",
 	}
-	SkipL2RpcUrlForHighestBlock = cli.BoolFlag{
-		Name:  "zkevm.skip-l2-rpc-url-for-highest-block",
-		Usage: "Skip L2 RPC URL for highest block",
+	EnableLatestDataStreamBlockNumberGlobalVariableForRpc = cli.BoolFlag{
+		Name:  "zkevm.enable-latest-data-stream-block-number-global-variable-for-rpc",
+		Usage: "Enable latest data stream block number global variable for RPC",
 		Value: false,
 	}
 )

@@ -384,5 +384,5 @@ var DefaultFlags = []cli.Flag{
 	&utils.RealtimeKafkaSyncGroupID,
 	&utils.RealtimeCacheDumpPath,
 	&utils.PessimisticForkNumber,
-	&utils.SkipL2RpcUrlForHighestBlock,
+	&utils.EnableLatestDataStreamBlockNumberGlobalVariableForRpc,
 }
