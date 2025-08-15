@@ -53,6 +53,9 @@ func (s *Ethereum) listenApollo(ctx context.Context, cfg *ethconfig.Config) {
 				cfg.Zk.XLayer.GetLogsRetries = ethCfg.XLayer.GetLogsRetries
 				l1SyncerConfigChanged = true
 			}
+			if slices.Contains(ethCfg.XLayer.ApolloChanged, utils.DynamicBlockGasLimit.Name) {
+				cfg.Zk.XLayer.DynamicBlockGasLimit = ethCfg.XLayer.DynamicBlockGasLimit
+			}
 			if l1SyncerConfigChanged {
 				s.updateAllL1Syncer(cfg.Zk.XLayer.GetLogsTimeout, cfg.Zk.XLayer.GetLogsRetries)
 			}

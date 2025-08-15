@@ -117,6 +117,9 @@ func loadEthSequencerConfig(ctx *cli.Context, ethCfg *ethconfig.Config) {
 	if ctx.IsSet(utils.GetLogsRetries.Name) {
 		ethCfg.Zk.XLayer.GetLogsRetries = ctx.Int(utils.GetLogsRetries.Name)
 	}
+	if ctx.IsSet(utils.DynamicBlockGasLimit.Name) {
+		ethCfg.Zk.XLayer.DynamicBlockGasLimit = ctx.Uint64(utils.DynamicBlockGasLimit.Name)
+	}
 
 	// For OkPay
 	utils.SetApolloOkPayXLayer(ctx, &ethCfg.DeprecatedTxPool)
