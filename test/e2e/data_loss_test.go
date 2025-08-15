@@ -437,6 +437,53 @@ var shouldCheckForExecutionAndSMTAlignment = SMTAlignmentTerminated`
 	}
 }
 
+func TestModifyCodeCase9(t *testing.T) {
+	// File to modify
+	filePath := "../../eth/backend.go"
+
+	// Read the file contents
+	data, err := os.ReadFile(filePath)
+	if err != nil {
+		t.Fatal("Error reading file:", err)
+	}
+
+	// Convert data to string for easier manipulation
+	content := string(data)
+
+	// Check if 'os' import is already present, if not add it
+	if !strings.Contains(content, "\"os\"") {
+		importIndex := strings.Index(content, "import (")
+		if importIndex != -1 {
+			content = content[:importIndex+8] + "\n\t\"os\"" + content[importIndex+8:]
+		}
+	}
+
+	// Insert lose data logic before SetSmtCache
+	blockToInsert := `
+// For data loss
+panic("test")
+`
+
+	lines := strings.Split(content, "\n")
+	inserted := false
+	for i, line := range lines {
+		if strings.Contains(line, "if sequencer.IsSequencer() && s.config.Zk.XLayer.EnableAsyncCommit {") {
+			lines = append(lines[:i], append([]string{blockToInsert}, lines[i:]...)...)
+			inserted = true
+			break
+		}
+	}
+	require.True(t, inserted, "Expected the block to be inserted before panic")
+
+	content = strings.Join(lines, "\n")
+
+	// Write the modified content back to the file
+	err = os.WriteFile(filePath, []byte(content), 0644)
+	if err != nil {
+		t.Fatal("Error writing file:", err)
+	}
+}
+
 func TestStressAndStopSeq(t *testing.T) {
 	if testing.Short() {
 		t.Skip()
