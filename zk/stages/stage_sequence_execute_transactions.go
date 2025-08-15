@@ -288,7 +288,8 @@ func attemptAddTransaction(
 	}
 
 	if cfg.zk.XLayer.Realtime.Enable && cfg.kafkaTxInfoChan != nil {
-		ibs.GenerateChangesetSinceSnapshotAndSendTxInfo(snapshot, cfg.kafkaTxInfoChan, transaction, receipt, innerTxs)
+		precompiles := vm.ActivePrecompiles(cfg.chainConfig.Rules(header.Number.Uint64(), header.Time))
+		ibs.GenerateChangesetSinceSnapshotAndSendTxInfo(snapshot, cfg.kafkaTxInfoChan, transaction, receipt, innerTxs, precompiles)
 	}
 
 	ibs.FinalizeTx(evm.ChainRules(), noop)

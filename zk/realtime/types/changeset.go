@@ -28,3 +28,13 @@ func NewChangeset() *Changeset {
 		StorageChanges:        make(map[libcommon.Address]map[libcommon.Hash]*uint256.Int),
 	}
 }
+
+func (c *Changeset) DeleteAddress(addr libcommon.Address) {
+	delete(c.BalanceChanges, addr)
+	delete(c.NonceChanges, addr)
+	delete(c.CodeHashChanges, addr)
+	delete(c.StorageChanges, addr)
+	delete(c.IncarnationChanges, addr)
+	delete(c.IncarnationMapChanges, addr)
+	delete(c.DeletedAccounts, addr)
+}
