@@ -450,15 +450,7 @@ func TestModifyCodeCase9(t *testing.T) {
 	// Convert data to string for easier manipulation
 	content := string(data)
 
-	// Check if 'os' import is already present, if not add it
-	if !strings.Contains(content, "\"os\"") {
-		importIndex := strings.Index(content, "import (")
-		if importIndex != -1 {
-			content = content[:importIndex+8] + "\n\t\"os\"" + content[importIndex+8:]
-		}
-	}
-
-	// Insert lose data logic before SetSmtCache
+	// Insert lose data logic before panic
 	blockToInsert := `
 // For data loss
 s.logger.Info("will panic...")
