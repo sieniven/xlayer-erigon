@@ -450,7 +450,7 @@ func TestModifyCodeCase9(t *testing.T) {
 	// Convert data to string for easier manipulation
 	content := string(data)
 
-	// Insert lose data logic before panic
+	// Insert lose data logic before SetSmtCache
 	blockToInsert := `
 // For data loss
 s.logger.Info("will panic...")
