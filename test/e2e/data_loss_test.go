@@ -461,6 +461,7 @@ func TestModifyCodeCase9(t *testing.T) {
 	// Insert lose data logic before SetSmtCache
 	blockToInsert := `
 // For data loss
+s.logger.Info("will panic...")
 panic("test")
 `
 
