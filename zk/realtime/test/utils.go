@@ -473,7 +473,6 @@ func DeployPrecompileCallerContract(t *testing.T, ctx context.Context, client *r
 func SendCallPrecompileTx(t *testing.T, ctx context.Context, client *rtclient.RealtimeClient, privateKey *ecdsa.PrivateKey, precompileCallerAddr common.Address) types.Transaction {
 	data, err := precompileCallerABI.Pack("callPrecompile2")
 	require.NoError(t, err)
-	fmt.Printf("calldata: 0x%x\n", data)
 
 	nonce, err := client.RealtimeGetTransactionCount(common.HexToAddress(DefaultL2AdminAddress))
 	require.NoError(t, err)

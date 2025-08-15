@@ -44,23 +44,15 @@ type journal struct {
 	dirties map[libcommon.Address]int // Dirty accounts and the number of changes
 }
 
-// For X Layer, realtime
 type Entries struct {
-	entries     *[]journalEntry
-	snapshot    int
-	precompiles []libcommon.Address
+	entries  *[]journalEntry
+	snapshot int
 }
 
-// For X Layer, realtime
 func CollectChangeset(entries Entries) *realtimeTypes.Changeset {
 	changeset := realtimeTypes.NewChangeset()
 	for _, entry := range (*entries.entries)[(entries).snapshot:] {
 		entry.collectChangeset(changeset)
-	}
-
-	// Ensure we do not send precompiles changesets
-	for _, precompile := range entries.precompiles {
-		changeset.DeleteAddress(precompile)
 	}
 	return changeset
 }
