@@ -128,9 +128,18 @@ func startBackgroundQuery(ctx context.Context, interval time.Duration) {
 		log.Warn("finalized batch poller not started: empty sequencer RPC URL")
 		return
 	}
+
+	// Define the failure threshold for clearing the cache.
+	// A new batch is expected roughly every 60 seconds, and this poller runs every second.
+	// We set the threshold to 60 consecutive failures, meaning the cache will be cleared
+	// if we fail to contact the sequencer for a full batch production cycle.
+	const maxConsecutiveFailures = 60
+	consecutiveFailures := 0
+
 	// Initial fetch to warm up the cache and handle early requests.
 	if bn, err := getFinalizedBatchNumberFromSequencer(sequencerRpcUrl); err != nil {
 		log.Error("failed to get finalized batch number from sequencer (initial fetch)", "err", err)
+		consecutiveFailures++
 	} else {
 		newVal := bn
 		currentFinalizedBatchNumber.Store(&newVal)
@@ -148,8 +157,18 @@ func startBackgroundQuery(ctx context.Context, interval time.Duration) {
 			bn, err := getFinalizedBatchNumberFromSequencer(sequencerRpcUrl)
 			if err != nil {
 				log.Error("failed to get finalized batch number from sequencer", "err", err)
+				consecutiveFailures++
+				if consecutiveFailures >= maxConsecutiveFailures {
+					// After too many failures, we can no longer trust our cached value.
+					// Clear it to signal unavailability to clients.
+					currentFinalizedBatchNumber.Store(nil)
+					log.Warn("cleared cached finalized batch number due to consecutive fetch failures", "threshold", maxConsecutiveFailures)
+				}
 				continue
 			}
+
+			// On success, reset the failure counter and update the cache.
+			consecutiveFailures = 0
 			newVal := bn
 			currentFinalizedBatchNumber.Store(&newVal)
 		}
