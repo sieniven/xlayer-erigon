@@ -68,6 +68,8 @@ type XLayerConfig struct {
 
 	// Bridge Transaction Interception
 	BridgeIntercept BridgeInterceptConfig
+
+	DynamicBlockGasLimit uint64
 }
 
 var DefaultXLayerConfig = XLayerConfig{}
