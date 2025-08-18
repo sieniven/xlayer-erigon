@@ -447,6 +447,11 @@ var (
 		Usage: "Dynamic block gas limit",
 		Value: 30_000_000,
 	}
+	EnableLatestDataStreamBlockNumberGlobalVariableForRpc = cli.BoolFlag{
+		Name:  "zkevm.enable-latest-data-stream-block-number-global-variable-for-rpc",
+		Usage: "Enable latest data stream block number global variable for RPC",
+		Value: false,
+	}
 )
 
 func setGPOXLayer(ctx *cli.Context, cfg *gaspricecfg.Config) {

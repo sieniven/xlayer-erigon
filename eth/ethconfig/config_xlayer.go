@@ -70,6 +70,8 @@ type XLayerConfig struct {
 	BridgeIntercept BridgeInterceptConfig
 
 	DynamicBlockGasLimit uint64
+
+	EnableLatestDataStreamBlockNumberGlobalVariableForRpc bool
 }
 
 var DefaultXLayerConfig = XLayerConfig{}

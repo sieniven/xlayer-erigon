@@ -102,6 +102,7 @@ func ApplyFlagsForEthXLayerConfig(ctx *cli.Context, cfg *ethconfig.Config) {
 			WhitelistAddresses: []libcommon.Address{},
 		},
 		DynamicBlockGasLimit: ctx.Uint64(utils.DynamicBlockGasLimit.Name),
+		EnableLatestDataStreamBlockNumberGlobalVariableForRpc: ctx.Bool(utils.EnableLatestDataStreamBlockNumberGlobalVariableForRpc.Name),
 	}
 	if cfg.XLayer.BlockInfoConcurrent {
 		blockinfo.SetUseBlockInfoTree(true)
