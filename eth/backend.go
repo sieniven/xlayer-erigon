@@ -1149,6 +1149,18 @@ func New(ctx context.Context, stack *node.Node, config *ethconfig.Config, logger
 		} else {
 			l1Topics = seqAndVerifTopics
 			l1Contracts = seqAndVerifL1Contracts
+			if cfg.Zk.XLayer.SyncSeqLogs {
+				log.Info(fmt.Sprintf("Before SyncSeqLogs:%v, %v", l1Contracts, l1Topics))
+				l1Topics = append(l1Topics, [][]libcommon.Hash{{
+					contracts.InitialSequenceBatchesTopic,
+					contracts.AddNewRollupTypeTopic,
+					contracts.AddNewRollupTypeTopicBanana,
+					contracts.CreateNewRollupTopic,
+					contracts.UpdateRollupTopic,
+				}}...)
+				l1Contracts = append(l1Contracts, cfg.AddressZkevm, cfg.AddressRollup)
+				log.Info(fmt.Sprintf("After SyncSeqLogs:%v, %v", l1Contracts, l1Topics))
+			}
 		}
 
 		ethermanClients := make([]syncer.IEtherman, len(backend.etherManClients))
@@ -1300,6 +1312,26 @@ func New(ctx context.Context, stack *node.Node, config *ethconfig.Config, logger
 			}
 			streamClient := initDataStreamClient(ctx, cfg.Zk, uint16(latestForkId))
 
+			var l1BlockSyncer *syncer.L1Syncer
+			if cfg.Zk.XLayer.SyncSeqLogs {
+				l1BlockSyncer = syncer.NewL1Syncer(
+					ctx,
+					ethermanClients,
+					[]libcommon.Address{cfg.AddressZkevm, cfg.AddressRollup},
+					[][]libcommon.Hash{{
+						contracts.SequenceBatchesTopic,
+					}},
+					cfg.L1BlockRange,
+					cfg.L1QueryDelay,
+					cfg.L1HighestBlockType,
+					cfg.Zk.XLayer.GetLogsTimeout,
+					cfg.Zk.XLayer.GetLogsRetries,
+				)
+
+				// For X Layer, apollo
+				backend.l1BlockSyncer = l1BlockSyncer
+			}
+
 			// For X Layer, realtime
 			if cfg.Zk.XLayer.Realtime.Enable {
 				// Init kafka consumer
@@ -1339,6 +1371,7 @@ func New(ctx context.Context, stack *node.Node, config *ethconfig.Config, logger
 				backend.forkValidator,
 				backend.engine,
 				backend.l1Syncer,
+				backend.l1BlockSyncer,
 				streamClient,
 				dataStreamServer,
 				l1InfoTreeUpdater,

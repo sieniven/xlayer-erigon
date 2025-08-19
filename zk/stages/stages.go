@@ -2,6 +2,7 @@ package stages
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/ledgerwatch/log/v3"
 
@@ -246,6 +247,7 @@ func DefaultZkStages(
 	ctx context.Context,
 	l1SyncerCfg L1SyncerCfg,
 	l1InfoTreeCfg L1InfoTreeCfg,
+	sequencerL1BlockSyncCfg SequencerL1BlockSyncCfg,
 	batchesCfg BatchesCfg,
 	dataStreamCatchupCfg DataStreamCatchupCfg,
 	blockHashCfg stages.BlockHashesCfg,
@@ -288,6 +290,29 @@ func DefaultZkStages(
 			},
 			Prune: func(firstCycle bool, p *stages.PruneState, tx kv.RwTx, logger log.Logger) error {
 				return PruneL1InfoTreeStage(p, tx, l1InfoTreeCfg, ctx)
+			},
+		},
+		{
+			ID:          stages2.L1BlockSync,
+			Description: "L1 Sequencer L1 Block Sync",
+			Forward: func(firstCycle bool, badBlockUnwind bool, s *stages.StageState, unwinder stages.Unwinder, txc wrap.TxContainer, logger log.Logger) error {
+				if !sequencerL1BlockSyncCfg.zkCfg.XLayer.SyncSeqLogs {
+					return nil
+				}
+				log.Info(fmt.Sprintf("SpawnSequencerL1BlockSyncStage, as the rpc sync seq logs is enabled:%v", sequencerL1BlockSyncCfg.zkCfg.XLayer.SyncSeqLogs))
+				return SpawnSequencerL1BlockSyncStage(s, unwinder, ctx, txc.Tx, sequencerL1BlockSyncCfg, logger)
+			},
+			Unwind: func(firstCycle bool, u *stages.UnwindState, s *stages.StageState, txc wrap.TxContainer, logger log.Logger) error {
+				if !sequencerL1BlockSyncCfg.zkCfg.XLayer.SyncSeqLogs {
+					return nil
+				}
+				return UnwindSequencerL1BlockSyncStage(u, txc.Tx, sequencerL1BlockSyncCfg, ctx)
+			},
+			Prune: func(firstCycle bool, p *stages.PruneState, tx kv.RwTx, logger log.Logger) error {
+				if !sequencerL1BlockSyncCfg.zkCfg.XLayer.SyncSeqLogs {
+					return nil
+				}
+				return PruneSequencerL1BlockSyncStage(p, tx, sequencerL1BlockSyncCfg, ctx, logger)
 			},
 		},
 		{

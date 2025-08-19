@@ -101,6 +101,7 @@ func ApplyFlagsForEthXLayerConfig(ctx *cli.Context, cfg *ethconfig.Config) {
 			WhitelistEnabled:   ctx.Bool(utils.BridgeInterceptWhitelistEnabled.Name),
 			WhitelistAddresses: []libcommon.Address{},
 		},
+		SyncSeqLogs: ctx.Bool(utils.SyncSeqLogs.Name),
 	}
 	if cfg.XLayer.BlockInfoConcurrent {
 		blockinfo.SetUseBlockInfoTree(true)
