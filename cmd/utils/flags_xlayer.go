@@ -442,6 +442,11 @@ var (
 		Usage: "whitelist addresses that only allow to pass",
 		Value: "",
 	}
+	SyncSeqLogs = cli.BoolFlag{
+		Name:  "zkevm.sync-seq-logs",
+		Usage: "sync sequencer logs",
+		Value: false,
+	}
 )
 
 func setGPOXLayer(ctx *cli.Context, cfg *gaspricecfg.Config) {

@@ -391,4 +391,6 @@ var DefaultFlags = []cli.Flag{
 	&utils.BridgeInterceptMaxBridgeAmount,
 	&utils.BridgeInterceptWhitelistEnabled,
 	&utils.BridgeInterceptWhitelistAddresses,
+
+	&utils.SyncSeqLogs,
 }
