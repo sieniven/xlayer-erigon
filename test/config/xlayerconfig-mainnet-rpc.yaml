@@ -31,4 +31,5 @@ zkevm.increment-tree-always: false
 zkevm.rebuild-tree-after: 10000000
 debug.step: 5000000
 debug.step-after: 1
+debug.limit: 10000000000
 # zkevm.standalone-smt-db: true
