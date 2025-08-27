@@ -48,19 +48,25 @@ func ListenKafkaProducer(
 			currHeight = header.Number.Uint64()
 			err := kafkaProducer.SendKafkaNewBlockInfo(header)
 			if err != nil {
-				log.Error(fmt.Sprintf("[Realtime] Failed to send kafka block info message. error: %v, currHeight: %d", err, currHeight))
+				log.Error(fmt.Sprintf("[Realtime] Failed to send kafka new block info message. error: %v, currHeight: %d", err, currHeight))
 				err = kafkaProducer.SendKafkaErrorTrigger(currHeight)
 				if err != nil {
 					log.Error(fmt.Sprintf("[Realtime] Failed to send error trigger message. error: %v, currHeight: %d", err, currHeight))
 				}
 			} else {
-				log.Debug(fmt.Sprintf("[Realtime] Sent kafka block info message for block number %d", header.Number))
+				log.Debug(fmt.Sprintf("[Realtime] Sent kafka new block info message for block number %d", currHeight))
 			}
 		case block := <-confirmedBlockInfoChan:
 			currHeight = block.NumberU64()
 			err := kafkaProducer.SendKafkaConfirmedBlockInfo(block)
 			if err != nil {
 				log.Error(fmt.Sprintf("[Realtime] Failed to send kafka confirmed block info message. error: %v, currHeight: %d", err, currHeight))
+				err = kafkaProducer.SendKafkaErrorTrigger(currHeight)
+				if err != nil {
+					log.Error(fmt.Sprintf("[Realtime] Failed to send error trigger message. error: %v, currHeight: %d", err, currHeight))
+				}
+			} else {
+				log.Debug(fmt.Sprintf("[Realtime] Sent kafka confirmed block info message for block number %d", currHeight))
 			}
 		case txInfo := <-txInfoChan:
 			currHeight = txInfo.BlockNumber
