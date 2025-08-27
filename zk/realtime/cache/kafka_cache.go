@@ -16,7 +16,11 @@ type KafkaCache struct {
 }
 
 func NewKafkaCache(maxCacheSize int) (*KafkaCache, error) {
-	blockCache, err := NewBlockMessageCache(maxCacheSize)
+	newBlockCache, err := NewBlockMessageCache(maxCacheSize)
+	if err != nil {
+		return nil, err
+	}
+	confirmedBlockCache, err := NewBlockMessageCache(maxCacheSize)
 	if err != nil {
 		return nil, err
 	}
@@ -25,8 +29,8 @@ func NewKafkaCache(maxCacheSize int) (*KafkaCache, error) {
 		return nil, err
 	}
 	return &KafkaCache{
-		NewBlockMsgCache:       blockCache,
-		ConfirmedBlockMsgCache: blockCache,
+		NewBlockMsgCache:       newBlockCache,
+		ConfirmedBlockMsgCache: confirmedBlockCache,
 		TxMsgCache:             txCache,
 	}, nil
 }
@@ -89,16 +93,11 @@ func (cache *BlockMessageCache) Size() int {
 	return cache.cache.Len()
 }
 
-// GetAndFlush pops the block message for the given block number
-func (cache *BlockMessageCache) Pop(blockNumber uint64) (*realtimeTypes.BlockInfo, bool) {
-	cache.mu.Lock()
-	defer cache.mu.Unlock()
+func (cache *BlockMessageCache) Get(blockNumber uint64) (*realtimeTypes.BlockInfo, bool) {
+	cache.mu.RLock()
+	defer cache.mu.RUnlock()
 
-	blockMsg, ok := cache.cache.Get(blockNumber)
-	if ok {
-		cache.cache.Remove(blockNumber)
-	}
-	return blockMsg, ok
+	return cache.cache.Get(blockNumber)
 }
 
 func (cache *BlockMessageCache) Flush(blockNumber uint64) {
@@ -124,6 +123,23 @@ func (cache *BlockMessageCache) GetLowestBlockHeight() uint64 {
 		}
 	}
 	return lowestBlockHeight
+}
+
+func (cache *BlockMessageCache) GetBlockMsgsFromHeight(height uint64) []*realtimeTypes.BlockInfo {
+	cache.mu.RLock()
+	defer cache.mu.RUnlock()
+
+	blockMsgs := make([]*realtimeTypes.BlockInfo, 0)
+	for _, k := range cache.cache.Keys() {
+		if k >= height {
+			blockMsg, ok := cache.cache.Get(k)
+			if ok {
+				cache.cache.Remove(k)
+				blockMsgs = append(blockMsgs, blockMsg)
+			}
+		}
+	}
+	return blockMsgs
 }
 
 // -------------- Tx Message Cache --------------

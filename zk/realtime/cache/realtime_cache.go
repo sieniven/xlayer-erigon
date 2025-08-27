@@ -134,7 +134,7 @@ func (cache *RealtimeCache) UpdateExecution(finishEntry realtimeTypes.FinishedEn
 	}
 }
 
-func (cache *RealtimeCache) GetCurrentPendingHeight() uint64 {
+func (cache *RealtimeCache) GetPendingHeight() uint64 {
 	if cache.GetHighestPendingHeight() == 0 {
 		return 0
 	}
@@ -183,7 +183,7 @@ func (cache *RealtimeCache) TryApplyNewBlockMsg(blockNum uint64, blockMsg *realt
 	return nil
 }
 
-func (cache *RealtimeCache) TryCloseBlockFromConfirmedBlockMsg(blockNum uint64, blockMsg *realtimeTypes.BlockInfo) error {
+func (cache *RealtimeCache) TryCloseBlockFromConfirmedBlockMsg(blockNum uint64, blockMsg *realtimeTypes.BlockInfo) (bool, error) {
 	var pendingContext *PendingBlockContext
 	for _, context := range cache.pendingBlocks.Items() {
 		if context.blockNum == blockNum {
@@ -192,17 +192,18 @@ func (cache *RealtimeCache) TryCloseBlockFromConfirmedBlockMsg(blockNum uint64, 
 		}
 		if context.blockNum > blockNum {
 			// Next block header must be received first before previous block can be closed
-			return fmt.Errorf("prev block %d is not in pending blocks", blockNum)
+			return false, fmt.Errorf("prev block %d is not in pending blocks", blockNum)
 		}
 	}
-	if pendingContext != nil {
-		pendingContext.txCount = blockMsg.TxCount
+	if pendingContext == nil {
+		return false, nil
 	}
 
+	pendingContext.txCount = blockMsg.TxCount
 	// Try close pending block
 	cache.tryCloseBlock(pendingContext)
 
-	return nil
+	return true, nil
 }
 
 func (cache *RealtimeCache) HandlePendingBlocks(kafkaCache *KafkaCache) error {
