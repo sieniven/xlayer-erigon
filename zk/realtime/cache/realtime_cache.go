@@ -179,7 +179,7 @@ func (cache *RealtimeCache) TryApplyNewBlockMsg(blockNum uint64, blockMsg *realt
 		return err
 	}
 
-	cache.Stateless.PutHeader(blockNum, blockMsg)
+	cache.Stateless.PutNewHeader(blockNum, blockMsg)
 	return nil
 }
 
@@ -199,8 +199,11 @@ func (cache *RealtimeCache) TryCloseBlockFromConfirmedBlockMsg(blockNum uint64, 
 		return false, nil
 	}
 
+	// Update stateless cache
+	cache.Stateless.PutConfirmedHeader(blockNum, blockMsg)
+
+	// Update pending block context
 	pendingContext.txCount = blockMsg.TxCount
-	// Try close pending block
 	cache.tryCloseBlock(pendingContext)
 
 	return true, nil

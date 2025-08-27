@@ -39,10 +39,17 @@ func (bm *BlockInfoMap) GetBlockNumberByHash(blockHash libcommon.Hash) (uint64, 
 	return blockNum, exists
 }
 
-func (bm *BlockInfoMap) PutHeader(blockNum uint64, blockInfo *BlockInfo) {
+func (bm *BlockInfoMap) PutNewHeader(blockNum uint64, blockInfo *BlockInfo) {
 	bm.mu.Lock()
 	defer bm.mu.Unlock()
 	bm.blockInfos[blockNum] = blockInfo
+}
+
+func (bm *BlockInfoMap) PutConfirmedHeader(blockNum uint64, blockInfo *BlockInfo) {
+	bm.mu.Lock()
+	defer bm.mu.Unlock()
+	bm.blockInfos[blockNum] = blockInfo
+	bm.blockHashToHeight[blockInfo.Hash] = blockNum
 }
 
 func (bm *BlockInfoMap) Delete(blockNum uint64) {

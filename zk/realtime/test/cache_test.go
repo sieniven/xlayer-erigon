@@ -26,7 +26,7 @@ func TestBlockInfoMap(t *testing.T) {
 	txCount := int64(10)
 
 	t.Run("BlockInfoMapPutAndGet", func(t *testing.T) {
-		bm.PutHeader(blockNum, &realtimeTypes.BlockInfo{
+		bm.PutNewHeader(blockNum, &realtimeTypes.BlockInfo{
 			Header:  header,
 			TxCount: txCount,
 			Hash:    hash,
@@ -36,13 +36,7 @@ func TestBlockInfoMap(t *testing.T) {
 		cacheHeader, cacheTxCount, cacheHash, exists := bm.Get(blockNum)
 		assert.True(t, exists)
 		assert.Equal(t, header, cacheHeader)
-		assert.Equal(t, cacheHash, common.Hash{})
-		// Init txCount is -1
-		assert.Equal(t, int64(-1), cacheTxCount)
-
-		// Check previous header should not exist
-		cacheHeader, cacheTxCount, cacheHash, exists = bm.Get(blockNum - 1)
-		assert.True(t, exists)
+		assert.Equal(t, txCount, cacheTxCount)
 		assert.Equal(t, hash, cacheHash)
 	})
 
@@ -69,7 +63,7 @@ func TestBlockInfoMap(t *testing.T) {
 			hash := common.HexToHash(fmt.Sprintf("0x%x", i))
 
 			// Test PutHeader
-			bm.PutHeader(blockNum, &realtimeTypes.BlockInfo{
+			bm.PutNewHeader(blockNum, &realtimeTypes.BlockInfo{
 				Header:  header,
 				TxCount: txCount,
 				Hash:    hash,
