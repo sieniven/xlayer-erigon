@@ -1,13 +1,11 @@
 package cache
 
 import (
-	"fmt"
 	"sync"
 
 	lru "github.com/hashicorp/golang-lru/v2"
 	kafkaTypes "github.com/ledgerwatch/erigon/zk/realtime/kafka/types"
 	realtimeTypes "github.com/ledgerwatch/erigon/zk/realtime/types"
-	"github.com/ledgerwatch/log/v3"
 )
 
 // -------------- Kafka Cache --------------
@@ -75,7 +73,6 @@ func (cache *BlockMessageCache) Add(blockMsg *realtimeTypes.BlockInfo) {
 	defer cache.mu.Unlock()
 
 	cache.cache.Add(blockMsg.Header.Number.Uint64(), blockMsg)
-	log.Debug(fmt.Sprintf("[Realtime] Added block message to kafka cache for block number %d", blockMsg.Header.Number.Uint64()))
 }
 
 func (cache *BlockMessageCache) Clear() {
@@ -156,7 +153,6 @@ func (cache *TransactionMessageCache) Add(txMsg *kafkaTypes.TransactionMessage) 
 	}
 	txMsgsList.Add(txMsg)
 	txMsgsList.Sort()
-	log.Debug(fmt.Sprintf("[Realtime] Added tx message to kafka cache for block number %d with txhash: %x", txMsg.BlockNumber, txMsg.Hash))
 }
 
 func (cache *TransactionMessageCache) Clear() {

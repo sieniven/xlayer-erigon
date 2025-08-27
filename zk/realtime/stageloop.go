@@ -161,7 +161,7 @@ func ListenKafkaConsumer(
 				// Publish tx to subscriptions
 				subService.BroadcastNewMsg(nil, &txMsg)
 			}
-			log.Debug(fmt.Sprintf("[Realtime] Received transaction message. blockNum: %d", txMsg.BlockNumber))
+			log.Debug(fmt.Sprintf("[Realtime] Received transaction message. blockNum: %d, txHash: %x", txMsg.BlockNumber, txMsg.Hash))
 		case errorTriggerMsg := <-errorMsgsChan:
 			resetFlag.Store(true)
 			triggerHeight := errorTriggerMsg.BlockNumber
@@ -219,7 +219,7 @@ func realtimeLoop(ctx context.Context, realtimeCache *cache.RealtimeCache) {
 
 		// Handle confirmed block msgs
 		confirmBlockMsg, ok := kafkaCache.ConfirmedBlockMsgCache.Pop(pendingHeight)
-		if ok {
+		if ok && pendingHeight != 0 {
 			err := realtimeCache.TryCloseBlockFromConfirmedBlockMsg(pendingHeight, confirmBlockMsg)
 			if err != nil {
 				// Apply state error. Reset cache
@@ -230,6 +230,7 @@ func realtimeLoop(ctx context.Context, realtimeCache *cache.RealtimeCache) {
 		}
 
 		// Handle new block msgs
+		pendingHeight = realtimeCache.GetCurrentPendingHeight()
 		nextHeight := pendingHeight + 1
 		if pendingHeight == 0 {
 			// First block msg after cache init

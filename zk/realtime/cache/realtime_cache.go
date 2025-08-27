@@ -183,27 +183,24 @@ func (cache *RealtimeCache) TryApplyNewBlockMsg(blockNum uint64, blockMsg *realt
 	return nil
 }
 
-func (cache *RealtimeCache) TryCloseBlockFromConfirmedBlockMsg(prevblockNum uint64, blockMsg *realtimeTypes.BlockInfo) error {
-	if prevblockNum == 0 {
-		// Cache init
-		return nil
-	}
-
-	var prevContext *PendingBlockContext
+func (cache *RealtimeCache) TryCloseBlockFromConfirmedBlockMsg(blockNum uint64, blockMsg *realtimeTypes.BlockInfo) error {
+	var pendingContext *PendingBlockContext
 	for _, context := range cache.pendingBlocks.Items() {
-		if context.blockNum == prevblockNum {
-			prevContext = context
+		if context.blockNum == blockNum {
+			pendingContext = context
 			break
 		}
-		if context.blockNum > prevblockNum {
+		if context.blockNum > blockNum {
 			// Next block header must be received first before previous block can be closed
-			return fmt.Errorf("prev block %d is not in pending blocks", prevblockNum)
+			return fmt.Errorf("prev block %d is not in pending blocks", blockNum)
 		}
 	}
-	prevContext.txCount = blockMsg.TxCount
+	if pendingContext != nil {
+		pendingContext.txCount = blockMsg.TxCount
+	}
 
 	// Try close pending block
-	cache.tryCloseBlock(prevContext)
+	cache.tryCloseBlock(pendingContext)
 
 	return nil
 }
@@ -308,6 +305,10 @@ func (cache *RealtimeCache) tryCreateNewPendingBlockContext(blockNum uint64) err
 }
 
 func (cache *RealtimeCache) tryCloseBlock(pendingBlockContext *PendingBlockContext) {
+	if pendingBlockContext == nil {
+		return
+	}
+
 	if pendingBlockContext.txCount < 0 {
 		// Header not received yet. Skip close
 		return
