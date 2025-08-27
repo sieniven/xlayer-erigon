@@ -175,11 +175,10 @@ func (cache *RealtimeCache) TryInitStateCache(executionHeight uint64) error {
 }
 
 func (cache *RealtimeCache) TryApplyNewBlockMsg(blockNum uint64, blockMsg *realtimeTypes.BlockInfo) error {
+	cache.Stateless.PutNewHeader(blockNum, blockMsg)
 	if err := cache.tryCreateNewPendingBlockContext(blockNum); err != nil {
 		return err
 	}
-
-	cache.Stateless.PutNewHeader(blockNum, blockMsg)
 	return nil
 }
 
