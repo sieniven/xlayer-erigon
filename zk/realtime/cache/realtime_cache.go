@@ -174,16 +174,16 @@ func (cache *RealtimeCache) TryInitStateCache(executionHeight uint64) error {
 	return nil
 }
 
-func (cache *RealtimeCache) TryApplyBlockMsg(blockNum uint64, blockMsg *kafkaTypes.BlockMessage) error {
+func (cache *RealtimeCache) TryApplyNewBlockMsg(blockNum uint64, blockMsg *realtimeTypes.BlockInfo) error {
 	if err := cache.tryCreateNewPendingBlockContext(blockNum); err != nil {
 		return err
 	}
 
-	cache.Stateless.PutHeader(blockNum, blockMsg.Header, blockMsg.PrevBlockInfo)
+	cache.Stateless.PutHeader(blockNum, blockMsg)
 	return nil
 }
 
-func (cache *RealtimeCache) TryCloseBlockFromBlockMsg(prevblockNum uint64, blockMsg *kafkaTypes.BlockMessage) error {
+func (cache *RealtimeCache) TryCloseBlockFromConfirmedBlockMsg(prevblockNum uint64, blockMsg *realtimeTypes.BlockInfo) error {
 	if prevblockNum == 0 {
 		// Cache init
 		return nil
@@ -200,7 +200,7 @@ func (cache *RealtimeCache) TryCloseBlockFromBlockMsg(prevblockNum uint64, block
 			return fmt.Errorf("prev block %d is not in pending blocks", prevblockNum)
 		}
 	}
-	prevContext.txCount = blockMsg.PrevBlockInfo.TxCount
+	prevContext.txCount = blockMsg.TxCount
 
 	// Try close pending block
 	cache.tryCloseBlock(prevContext)

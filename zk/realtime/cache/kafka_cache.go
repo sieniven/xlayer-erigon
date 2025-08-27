@@ -12,8 +12,9 @@ import (
 
 // -------------- Kafka Cache --------------
 type KafkaCache struct {
-	BlockMsgCache *BlockMessageCache
-	TxMsgCache    *TransactionMessageCache
+	NewBlockMsgCache       *BlockMessageCache
+	ConfirmedBlockMsgCache *BlockMessageCache
+	TxMsgCache             *TransactionMessageCache
 }
 
 func NewKafkaCache(maxCacheSize int) (*KafkaCache, error) {
@@ -26,37 +27,40 @@ func NewKafkaCache(maxCacheSize int) (*KafkaCache, error) {
 		return nil, err
 	}
 	return &KafkaCache{
-		BlockMsgCache: blockCache,
-		TxMsgCache:    txCache,
+		NewBlockMsgCache:       blockCache,
+		ConfirmedBlockMsgCache: blockCache,
+		TxMsgCache:             txCache,
 	}, nil
 }
 
 func (cache *KafkaCache) Clear() {
-	cache.BlockMsgCache.Clear()
+	cache.NewBlockMsgCache.Clear()
+	cache.ConfirmedBlockMsgCache.Clear()
 	cache.TxMsgCache.Clear()
 }
 
-func (cache *KafkaCache) Flush(blockNumber uint64) {
-	if blockNumber == 0 {
+func (cache *KafkaCache) Flush(executionHeight uint64) {
+	if executionHeight == 0 {
 		return
 	}
 
-	cache.BlockMsgCache.Flush(blockNumber)
-	cache.TxMsgCache.Flush(blockNumber)
+	cache.NewBlockMsgCache.Flush(executionHeight)
+	cache.ConfirmedBlockMsgCache.Flush(executionHeight - 1)
+	cache.TxMsgCache.Flush(executionHeight)
 }
 
-func (cache *KafkaCache) GetLowestBlockHeight() uint64 {
-	return cache.BlockMsgCache.GetLowestBlockHeight()
+func (cache *KafkaCache) GetLowestNewBlockHeight() uint64 {
+	return cache.NewBlockMsgCache.GetLowestBlockHeight()
 }
 
 // -------------- Block Message Cache --------------
 type BlockMessageCache struct {
 	mu    sync.RWMutex
-	cache *lru.Cache[uint64, *kafkaTypes.BlockMessage]
+	cache *lru.Cache[uint64, *realtimeTypes.BlockInfo]
 }
 
 func NewBlockMessageCache(maxCacheSize int) (*BlockMessageCache, error) {
-	cache, err := lru.New[uint64, *kafkaTypes.BlockMessage](maxCacheSize)
+	cache, err := lru.New[uint64, *realtimeTypes.BlockInfo](maxCacheSize)
 	if err != nil {
 		return nil, err
 	}
@@ -66,7 +70,7 @@ func NewBlockMessageCache(maxCacheSize int) (*BlockMessageCache, error) {
 	}, nil
 }
 
-func (cache *BlockMessageCache) Add(blockMsg *kafkaTypes.BlockMessage) {
+func (cache *BlockMessageCache) Add(blockMsg *realtimeTypes.BlockInfo) {
 	cache.mu.Lock()
 	defer cache.mu.Unlock()
 
@@ -89,7 +93,7 @@ func (cache *BlockMessageCache) Size() int {
 }
 
 // GetAndFlush pops the block message for the given block number
-func (cache *BlockMessageCache) Pop(blockNumber uint64) (*kafkaTypes.BlockMessage, bool) {
+func (cache *BlockMessageCache) Pop(blockNumber uint64) (*realtimeTypes.BlockInfo, bool) {
 	cache.mu.Lock()
 	defer cache.mu.Unlock()
 
